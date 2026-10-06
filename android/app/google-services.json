@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "828867486553",
+    "project_id": "grihsetu-a82d1",
+    "storage_bucket": "grihsetu-a82d1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:828867486553:android:ba51845f63e17364302248",
+        "android_client_info": {
+          "package_name": "com.example.grihsetu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAOXTA3uYKhVrod6ywvrX295uTbYcdz-yI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
