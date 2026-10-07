@@ -36,37 +36,66 @@ class GrihSetuApp extends StatelessWidget {
 }
 
 /// Resolves Firebase identity first, then loads the trusted Firestore profile.
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key, required this.authService});
 
   final AuthService authService;
 
   @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  String? _currentUid;
+  Future<AppUser>? _profileFuture;
+
+  void _syncProfileFuture(User? firebaseUser) {
+    if (firebaseUser == null) {
+      _currentUid = null;
+      _profileFuture = null;
+    } else if (firebaseUser.uid != _currentUid) {
+      _currentUid = firebaseUser.uid;
+      _profileFuture = widget.authService.loadProfile(firebaseUser.uid);
+    }
+  }
+
+  @override
+  void didUpdateWidget(AuthGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.authService != widget.authService) {
+      _currentUid = null;
+      _profileFuture = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: authService.authStateChanges,
+      stream: widget.authService.authStateChanges,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const _AuthLoadingScreen();
         }
         final firebaseUser = snapshot.data;
         if (firebaseUser == null) {
-          return LoginScreen(authService: authService);
+          _syncProfileFuture(null);
+          return LoginScreen(authService: widget.authService);
         }
 
+        _syncProfileFuture(firebaseUser);
+
         return FutureBuilder<AppUser>(
-          future: authService.loadProfile(firebaseUser.uid),
+          future: _profileFuture,
           builder: (context, profileSnapshot) {
             if (profileSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
+              return const _AuthLoadingScreen();
             }
             final profile = profileSnapshot.data;
             if (profile != null) {
-              return AppShell(profile: profile, authService: authService);
+              return AppShell(
+                profile: profile,
+                authService: widget.authService,
+              );
             }
             final error = profileSnapshot.error;
             final message = error is AuthFailure
@@ -74,7 +103,7 @@ class AuthGate extends StatelessWidget {
                 : const AuthFailure(AuthFailureCode.unknown).message;
             return _ProfileAccessError(
               message: message,
-              authService: authService,
+              authService: widget.authService,
             );
           },
         );
@@ -83,11 +112,42 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-class _ProfileAccessError extends StatelessWidget {
+class _AuthLoadingScreen extends StatelessWidget {
+  const _AuthLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  }
+}
+
+class _ProfileAccessError extends StatefulWidget {
   const _ProfileAccessError({required this.message, required this.authService});
 
   final String message;
   final AuthService authService;
+
+  @override
+  State<_ProfileAccessError> createState() => _ProfileAccessErrorState();
+}
+
+class _ProfileAccessErrorState extends State<_ProfileAccessError> {
+  bool _isSigningOut = false;
+
+  Future<void> _handleSignOut() async {
+    setState(() => _isSigningOut = true);
+    try {
+      await widget.authService.signOut();
+    } on AuthFailure catch (e) {
+      if (!mounted) return;
+      setState(() => _isSigningOut = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSigningOut = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,18 +158,21 @@ class _ProfileAccessError extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(message, textAlign: TextAlign.center),
+              Text(
+                widget.message,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
               const SizedBox(height: 16),
               FilledButton(
-                onPressed: () async {
-                  try {
-                    await authService.signOut();
-                  } on AuthFailure {
-                    // The auth stream remains the source of truth. If the
-                    // sign-out fails, leave this safe error state in place.
-                  }
-                },
-                child: const Text('Sign out'),
+                onPressed: _isSigningOut ? null : _handleSignOut,
+                child: _isSigningOut
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Sign out'),
               ),
             ],
           ),

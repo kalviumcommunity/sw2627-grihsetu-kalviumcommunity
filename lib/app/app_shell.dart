@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_constants.dart';
 import '../core/enums/user_role.dart';
 import '../core/models/user.dart';
-import '../screens/auth/login_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../services/auth_failure.dart';
 import '../services/auth_service.dart';
+import '../widgets/profile_header.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, this.profile, this.authService});
@@ -22,26 +22,38 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   late final UserRole _role = widget.profile?.role ?? UserRole.technician;
   int _index = 0;
+  bool _isSigningOut = false;
 
   static const double _railBreakpoint = 840;
 
   AuthService get _authService => widget.authService ?? AuthService.firebase();
 
   Future<void> _signOut() async {
+    if (_isSigningOut) return;
+    setState(() => _isSigningOut = true);
     try {
       await _authService.signOut();
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } on AuthFailure catch (error) {
       if (mounted) {
+        setState(() => _isSigningOut = false);
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
       }
       return;
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isSigningOut = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Something went wrong. Please try again.'),
+          ),
+        );
+      }
+      return;
     }
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
   }
 
   @override
@@ -83,8 +95,14 @@ class _AppShellState extends State<AppShell> {
           ),
           IconButton(
             tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: _signOut,
+            icon: _isSigningOut
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.logout),
+            onPressed: _isSigningOut ? null : _signOut,
           ),
         ],
       ),
@@ -107,10 +125,19 @@ class _AppShellState extends State<AppShell> {
                 ],
               ),
             Expanded(
-              child: _SectionPlaceholder(
-                key: ValueKey('${_role.name}-$_index'),
-                role: _role,
-                item: selected,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.profile != null)
+                    ProfileHeader(profile: widget.profile!),
+                  Expanded(
+                    child: _SectionPlaceholder(
+                      key: ValueKey('${_role.name}-$_index'),
+                      role: _role,
+                      item: selected,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

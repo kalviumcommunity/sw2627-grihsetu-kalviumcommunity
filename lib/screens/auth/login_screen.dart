@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app/app_shell.dart';
 import '../../services/auth_failure.dart';
 import '../../services/auth_service.dart';
 import '../../utils/validators.dart';
@@ -41,16 +40,13 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      final profile = await _authService.signIn(
+      await _authService.signIn(
         email: _email.text.trim(),
         password: _password.text,
       );
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => AppShell(profile: profile, authService: _authService),
-        ),
-      );
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } on AuthFailure catch (error) {
       if (!mounted) return;
       setState(() => _error = error.message);
