@@ -9,5 +9,5 @@ Future<void> main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  runApp(const GrihSetuApp());
+  runApp(const GrihSetuApp(enableAuthentication: true));
 }
