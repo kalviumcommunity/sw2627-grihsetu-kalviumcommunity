@@ -4,6 +4,7 @@ import 'core/constants/constants.dart';
 import 'core/enums/enums.dart';
 import 'core/fixtures/sample_fixtures.dart';
 import 'core/models/models.dart';
+import 'screens/auth/login_screen.dart';
 
 class GrihSetuApp extends StatelessWidget {
   const GrihSetuApp({super.key});
@@ -16,11 +17,22 @@ class GrihSetuApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E3A8A), // Rich Indigo
-          brightness: Brightness.light,
+          seedColor: const Color(0xFF0F4C45),
+          surface: const Color(0xFFFFFDFA),
         ),
+        scaffoldBackgroundColor: const Color(0xFFF6F2EA),
       ),
-      home: const DomainPreviewScreen(),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0F4C45),
+          brightness: Brightness.dark,
+          surface: const Color(0xFF192421),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF101917),
+      ),
+      home: const LoginScreen(),
     );
   }
 }
