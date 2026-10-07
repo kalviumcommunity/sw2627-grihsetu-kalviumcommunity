@@ -1,14 +1,17 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_shell.dart';
+import '../../services/auth_failure.dart';
+import '../../services/auth_service.dart';
 import '../../utils/validators.dart';
 import 'auth_layout.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.authService});
+
+  final AuthService? authService;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -21,6 +24,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _hide = true;
   bool _busy = false;
   String? _error;
+
+  AuthService get _authService => widget.authService ?? AuthService.firebase();
 
   @override
   void dispose() {
@@ -36,17 +41,19 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final profile = await _authService.signIn(
         email: _email.text.trim(),
         password: _password.text,
       );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const AppShell()),
+        MaterialPageRoute<void>(
+          builder: (_) => AppShell(profile: profile, authService: _authService),
+        ),
       );
-    } on FirebaseAuthException catch (error) {
+    } on AuthFailure catch (error) {
       if (!mounted) return;
-      setState(() => _error = error.message ?? 'Could not sign in.');
+      setState(() => _error = error.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

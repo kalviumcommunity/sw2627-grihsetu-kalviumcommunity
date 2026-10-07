@@ -1,0 +1,43 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      // A client may create only its own UID-keyed, unassigned profile.
+      // Role assignment is intentionally left to a trusted backend/admin
+      // process using the Admin SDK, which is not constrained by these rules.
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'phoneNumber',
+          'createdAt',
+          'updatedAt'
+        ]);
+
+      allow read: if request.auth != null
+        && request.auth.uid == userId;
+
+      // Users may update only non-sensitive profile fields. In particular,
+      // role, uid, and createdAt cannot be added or changed by the client.
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName',
+          'phoneNumber',
+          'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // No other collection is opened by this issue. Add explicit rules for
+    // future collections as their authorized workflows are implemented.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
