@@ -4,16 +4,19 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_constants.dart';
 import '../core/enums/user_role.dart';
 import '../core/models/user.dart';
+import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../services/auth_failure.dart';
 import '../services/auth_service.dart';
+import '../services/reference_data_seed_service.dart';
 import '../widgets/profile_header.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, this.profile, this.authService});
+  const AppShell({super.key, this.profile, this.authService, this.seedService});
 
   final AppUser? profile;
   final AuthService? authService;
+  final ReferenceDataSeedService? seedService;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -77,21 +80,49 @@ class _AppShellState extends State<AppShell> {
                     builder: (_) => const WidgetGalleryScreen(),
                   ),
                 );
+              } else if (value == 'seed_reference') {
+                final currentProfile = widget.profile;
+                if (currentProfile != null &&
+                    currentProfile.isAuthorized &&
+                    currentProfile.role.isOperationsStaff) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ReferenceDataSeedScreen(
+                        profile: currentProfile,
+                        seedService: widget.seedService,
+                      ),
+                    ),
+                  );
+                }
               }
             },
-            itemBuilder: (context) => [
-              if (kDebugMode) ...[
-                const PopupMenuDivider(),
-                const PopupMenuItem(
-                  value: 'gallery',
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.widgets_outlined),
-                    title: Text('Widget gallery'),
+            itemBuilder: (context) {
+              final isOpsStaff =
+                  widget.profile?.isAuthorized == true &&
+                  widget.profile!.role.isOperationsStaff;
+              return [
+                if (isOpsStaff)
+                  const PopupMenuItem(
+                    value: 'seed_reference',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.dataset_outlined),
+                      title: Text('Seed reference data'),
+                    ),
                   ),
-                ),
-              ],
-            ],
+                if (kDebugMode) ...[
+                  if (isOpsStaff) const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'gallery',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.widgets_outlined),
+                      title: Text('Widget gallery'),
+                    ),
+                  ),
+                ],
+              ];
+            },
           ),
           IconButton(
             tooltip: 'Sign out',
