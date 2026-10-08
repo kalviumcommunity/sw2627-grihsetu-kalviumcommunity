@@ -1,13 +1,14 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../../app/app_shell.dart';
-import '../../core/enums/user_role.dart';
+import '../../services/auth_failure.dart';
+import '../../services/auth_service.dart';
 import 'auth_layout.dart';
 import '../../utils/validators.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  const SignupScreen({super.key, this.authService});
+
+  final AuthService? authService;
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -20,12 +21,13 @@ class _SignupScreenState extends State<SignupScreen> {
   final _phone = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
-  UserRole _role = UserRole.tenant;
   bool _hide = true;
   bool _busy = false;
   bool _termsAccepted = false;
   bool _showTermsError = false;
   String? _error;
+
+  AuthService get _authService => widget.authService ?? AuthService.firebase();
 
   @override
   void dispose() {
@@ -48,20 +50,26 @@ class _SignupScreenState extends State<SignupScreen> {
       _error = null;
     });
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      await _authService.signUp(
         email: _email.text.trim(),
         password: _password.text,
+        displayName: _name.text,
+        phoneNumber: _phone.text,
       );
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => AppShell(initialRole: _role)),
-        (_) => false,
-      );
-    } on FirebaseAuthException catch (error) {
+      // A newly registered account has no authoritative role. End the local
+      // Firebase session until a trusted process assigns one.
+      try {
+        await _authService.signOut();
+      } on AuthFailure {
+        // The account/profile result remains safe because no role was set.
+      }
       if (!mounted) return;
       setState(
-        () => _error = error.message ?? 'Could not create your account.',
+        () => _error = 'Account created. A trusted administrator must assign your role before you can sign in.',
       );
+    } on AuthFailure catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -77,23 +85,6 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('I am a', style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final role in UserRole.values)
-                  ChoiceChip(
-                    label: Text(role.displayLabel),
-                    selected: _role == role,
-                    onSelected: _busy
-                        ? null
-                        : (_) => setState(() => _role = role),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
             TextFormField(
               controller: _name,
               textCapitalization: TextCapitalization.words,

@@ -1,35 +1,59 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/constants/app_constants.dart';
 import '../core/enums/user_role.dart';
-import '../screens/auth/login_screen.dart';
+import '../core/models/user.dart';
+import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../screens/property/property_browser_screen.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, this.initialRole = UserRole.technician});
+  const AppShell({super.key, this.profile, this.authService, this.seedService});
 
-  final UserRole initialRole;
+  final AppUser? profile;
+  final AuthService? authService;
+  final ReferenceDataSeedService? seedService;
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
-  late UserRole _role = widget.initialRole;
+  late final UserRole _role = widget.profile?.role ?? UserRole.technician;
   int _index = 0;
+  bool _isSigningOut = false;
 
   static const double _railBreakpoint = 840;
 
+  AuthService get _authService => widget.authService ?? AuthService.firebase();
+
   Future<void> _signOut() async {
-    await FirebaseAuth.instance.signOut();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
+    if (_isSigningOut) return;
+    setState(() => _isSigningOut = true);
+    try {
+      await _authService.signOut();
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } on AuthFailure catch (error) {
+      if (mounted) {
+        setState(() => _isSigningOut = false);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return;
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isSigningOut = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Something went wrong. Please try again.'),
+          ),
+        );
+      }
+      return;
+    }
   }
 
   @override
@@ -44,7 +68,7 @@ class _AppShellState extends State<AppShell> {
         title: const Text(AppConstants.appName),
         actions: [
           PopupMenuButton<String>(
-            tooltip: 'Switch role',
+            tooltip: 'Developer tools',
             icon: const Icon(Icons.swap_horiz),
             onSelected: (value) {
               if (value == 'gallery') {
@@ -53,36 +77,60 @@ class _AppShellState extends State<AppShell> {
                     builder: (_) => const WidgetGalleryScreen(),
                   ),
                 );
-                return;
+              } else if (value == 'seed_reference') {
+                final currentProfile = widget.profile;
+                if (currentProfile != null &&
+                    currentProfile.isAuthorized &&
+                    currentProfile.role.isOperationsStaff) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ReferenceDataSeedScreen(
+                        profile: currentProfile,
+                        seedService: widget.seedService,
+                      ),
+                    ),
+                  );
+                }
               }
-              final role = UserRole.values.firstWhere(
-                (item) => item.name == value,
-              );
-              setState(() {
-                _role = role;
-                _index = 0;
-              });
             },
-            itemBuilder: (context) => [
-              for (final role in UserRole.values)
-                PopupMenuItem(value: role.name, child: Text(role.displayLabel)),
-              if (kDebugMode) ...[
-                const PopupMenuDivider(),
-                const PopupMenuItem(
-                  value: 'gallery',
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.widgets_outlined),
-                    title: Text('Widget gallery'),
+            itemBuilder: (context) {
+              final isOpsStaff =
+                  widget.profile?.isAuthorized == true &&
+                  widget.profile!.role.isOperationsStaff;
+              return [
+                if (isOpsStaff)
+                  const PopupMenuItem(
+                    value: 'seed_reference',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.dataset_outlined),
+                      title: Text('Seed reference data'),
+                    ),
                   ),
-                ),
-              ],
-            ],
+                if (kDebugMode) ...[
+                  if (isOpsStaff) const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'gallery',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.widgets_outlined),
+                      title: Text('Widget gallery'),
+                    ),
+                  ),
+                ],
+              ];
+            },
           ),
           IconButton(
             tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: _signOut,
+            icon: _isSigningOut
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.logout),
+            onPressed: _isSigningOut ? null : _signOut,
           ),
         ],
       ),
@@ -105,10 +153,19 @@ class _AppShellState extends State<AppShell> {
                 ],
               ),
             Expanded(
-              child: _SectionPlaceholder(
-                key: ValueKey('${_role.name}-$_index'),
-                role: _role,
-                item: selected,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.profile != null)
+                    ProfileHeader(profile: widget.profile!),
+                  Expanded(
+                    child: _SectionPlaceholder(
+                      key: ValueKey('${_role.name}-$_index'),
+                      role: _role,
+                      item: selected,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -153,7 +210,7 @@ const Map<UserRole, List<_NavigationItem>> _roleNavigation = {
     _NavigationItem('Tenants', Icons.people_outline, Icons.people),
   ],
   UserRole.technician: [
-    _NavigationItem('My jobs', Icons.build_outlined, Icons.build),
+    _NavigationItem('Today', Icons.today_outlined, Icons.today),
     _NavigationItem(
       'Schedule',
       Icons.calendar_month_outlined,
