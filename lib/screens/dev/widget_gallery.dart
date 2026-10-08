@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_palette.dart';
+import '../property/property_selection_flow.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/audit_timeline.dart';
 import '../../widgets/empty_state.dart';
@@ -81,6 +82,18 @@ class WidgetGalleryScreen extends StatelessWidget {
                 'Reusable building blocks, shown in light and dark themes.',
                 style: Theme.of(context).textTheme.bodyLarge
                     ?.copyWith(color: palette.muted),
+              ),
+              const SizedBox(height: 28),
+              AppCard(
+                onTap: () => _openPropertyPicker(context),
+                child: const Row(
+                  children: [
+                    Icon(Icons.domain_add_outlined),
+                    SizedBox(width: 12),
+                    Expanded(child: Text('Select property / unit / tenant')),
+                    Icon(Icons.arrow_forward),
+                  ],
+                ),
               ),
               const SizedBox(height: 28),
               SectionHeader(
@@ -166,6 +179,18 @@ class WidgetGalleryScreen extends StatelessWidget {
               AppCard(child: AuditTimeline(events: _events)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openPropertyPicker(BuildContext context) async {
+    final selection = await PropertySelectionFlow.pick(context);
+    if (!context.mounted || selection == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${selection.propertyName} · ${selection.unitNumber} · ${selection.tenantName}',
         ),
       ),
     );

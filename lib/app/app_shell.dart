@@ -6,6 +6,7 @@ import '../core/constants/app_constants.dart';
 import '../core/enums/user_role.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/dev/widget_gallery.dart';
+import '../screens/property/property_browser_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, this.initialRole = UserRole.technician});
@@ -185,6 +186,9 @@ class _SectionPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (item.label == 'Properties') {
+      return const PropertyBrowserScreen(showAppBar: false);
+    }
     final theme = Theme.of(context);
     return Center(
       child: Padding(
