@@ -6,10 +6,7 @@ import '../core/enums/user_role.dart';
 import '../core/models/user.dart';
 import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
-import '../services/auth_failure.dart';
-import '../services/auth_service.dart';
-import '../services/reference_data_seed_service.dart';
-import '../widgets/profile_header.dart';
+import '../screens/property/property_browser_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, this.profile, this.authService, this.seedService});
@@ -246,6 +243,9 @@ class _SectionPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (item.label == 'Properties') {
+      return const PropertyBrowserScreen(showAppBar: false);
+    }
     final theme = Theme.of(context);
     return Center(
       child: Padding(

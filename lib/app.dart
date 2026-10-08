@@ -16,6 +16,7 @@ class GrihSetuApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        fontFamily: 'Inter',
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF0F4C45),
           surface: const Color(0xFFFFFDFA),
@@ -24,6 +25,7 @@ class GrihSetuApp extends StatelessWidget {
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
+        fontFamily: 'Inter',
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF0F4C45),
