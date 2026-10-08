@@ -561,6 +561,61 @@ to find the device ID.
 
 ---
 
+## 🌱 Reference Data Seeding (GRIH-012)
+
+GrihSetu includes a reference-data seed helper (`ReferenceDataSeedService` and `ReferenceDataSeedScreen`) to populate Cloud Firestore with deterministic demo properties, units, and tenants without building a full admin ERP.
+
+### 1. What the Seed Helper Creates
+- **Properties (`properties` collection)**:
+  - `prop_001`: Shanti Heights (`12 Park Avenue, Sector 14, Gurugram`)
+  - `prop_002`: Surya Residency (`45 MG Road, Indiranagar, Bengaluru`)
+- **Units (`units` collection)**:
+  - `unit_101`: Unit A-101 in `prop_001` (Floor 1, occupied by `ten_001`)
+  - `unit_204`: Unit B-204 in `prop_001` (Floor 2, occupied by `ten_002`)
+  - `unit_402`: Unit C-402 in `prop_002` (Floor 4, occupied by `ten_003`)
+- **Tenants (`tenants` collection)**:
+  - `ten_001`: Priya Patel (`+91 98765 43210`, `prop_001`, `unit_101`)
+  - `ten_002`: Rajesh Kumar (`+91 98123 45678`, `prop_001`, `unit_204`)
+  - `ten_003`: Anita Desai (`+91 99887 76655`, `prop_002`, `unit_402`)
+
+All seed records are sourced directly from the domain fixtures in `SampleFixtures`.
+
+### 2. Affected Collections
+- `properties`
+- `units`
+- `tenants`
+
+### 3. Deterministic Document IDs
+Documents are created with explicit, deterministic IDs (`prop_001`, `unit_101`, `ten_001`, etc.) rather than random auto-generated IDs. This ensures repeatable, predictable testing.
+
+### 4. Duplicate Guard Strategy (Idempotency)
+Before creating any document, the service checks if the deterministic document ID already exists in Cloud Firestore:
+- **If existing**: The record is safely **skipped** and counted as already existing. It is never overwritten.
+- **If missing**: The document is written using `.set(...)`.
+- The service never deletes or resets database records.
+
+### 5. Authorized-Only Access
+The seed helper is strictly restricted to trusted internal operations staff:
+- Requires an active, authenticated `AppUser` profile (`AppUser.isAuthorized == true`).
+- Role must satisfy `UserRole.isOperationsStaff` (`propertyOperations` or `complaintOperations`).
+- Technicians, property owners, tenants, and unassigned users are denied access at both the UI layer (hidden from menus) and the service layer.
+
+### 6. Authoritative Server Timestamps
+All created records use Firestore server timestamps (`FieldValue.serverTimestamp()`) for `createdAt` and `updatedAt`. Client device clocks are never used for persisted timestamps.
+
+### 7. How to Run the Seed Operation
+
+1. Sign in as an operational user with role `property_operations` or `complaint_operations` (e.g., `usr_001` Riya Sharma or `usr_003` Vikram Malhotra).
+2. In the top AppBar, click the **Developer tools** icon (`swap_horiz`).
+3. Select **Seed reference data** to open the `ReferenceDataSeedScreen`.
+4. Tap **Seed All Reference Data** (or individually seed Properties, Units, or Tenants).
+5. Review the execution results card displaying the count of created, skipped, and failed records, along with itemized IDs.
+
+> [!NOTE]
+> **Firestore Security Rules**: In production or staging environments where Firestore Security Rules are active, ensure the security rules allow authenticated operations staff to write to `/properties/{id}`, `/units/{id}`, and `/tenants/{id}`, or execute the seed helper in the Firebase Local Emulator Suite.
+
+---
+
 ## 🧪 Development Workflow
 
 The team follows a GitHub-based collaborative development workflow.
