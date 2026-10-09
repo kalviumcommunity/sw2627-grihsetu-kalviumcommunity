@@ -1,0 +1,167 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasRole(role) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isActive != false;
+    }
+
+    function isOperationsStaff() {
+      return hasRole('property_operations') || hasRole('complaint_operations');
+    }
+
+    function isPropertyOperations() {
+      return hasRole('property_operations');
+    }
+
+    match /users/{userId} {
+      // A client may create only its own UID-keyed, unassigned profile.
+      // Role assignment is intentionally left to a trusted backend/admin
+      // process using the Admin SDK, which is not constrained by these rules.
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'phoneNumber',
+          'createdAt',
+          'updatedAt'
+        ]);
+
+      allow read: if request.auth != null
+        && request.auth.uid == userId;
+
+      // Users may update only non-sensitive profile fields. In particular,
+      // role, uid, and createdAt cannot be added or changed by the client.
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName',
+          'phoneNumber',
+          'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // Reference data is readable only by authenticated operational roles.
+    // Property Operations may seed the minimum reference records used by the
+    // current GRIH-012 helper; updates and deletes remain closed until their
+    // dedicated CRUD workflow is implemented.
+    match /properties/{propertyId} {
+      allow read: if isOperationsStaff();
+      allow create: if isPropertyOperations()
+        && request.resource.data.keys().hasOnly([
+          'id', 'name', 'address', 'status', 'isActive', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'id', 'name', 'address', 'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.id == propertyId
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /units/{unitId} {
+      allow read: if isOperationsStaff();
+      allow create: if isPropertyOperations()
+        && request.resource.data.keys().hasOnly([
+          'id', 'propertyId', 'unitNumber', 'floor', 'status',
+          'occupancyStatus', 'tenantId', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'id', 'propertyId', 'unitNumber', 'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.id == unitId
+        && exists(/databases/$(database)/documents/properties/$(request.resource.data.propertyId))
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /tenants/{tenantId} {
+      allow read: if isOperationsStaff();
+      allow create: if isPropertyOperations()
+        && request.resource.data.keys().hasOnly([
+          'id', 'name', 'fullName', 'phone', 'email', 'propertyId', 'unitId',
+          'linkedUserId', 'status', 'isActive', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'id', 'fullName', 'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.id == tenantId
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && (!request.resource.data.keys().hasAny(['unitId'])
+          || request.resource.data.keys().hasAny(['propertyId']))
+        && (!request.resource.data.keys().hasAny(['propertyId'])
+          || exists(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)))
+        && (!request.resource.data.keys().hasAny(['unitId'])
+          || (exists(/databases/$(database)/documents/units/$(request.resource.data.unitId))
+            && get(/databases/$(database)/documents/units/$(request.resource.data.unitId)).data.propertyId == request.resource.data.propertyId));
+      allow update, delete: if false;
+    }
+
+    match /complaints/{complaintId} {
+      allow read: if isOperationsStaff();
+      allow create: if isOperationsStaff()
+        && request.resource.data.keys().hasOnly([
+          'tenantId', 'propertyId', 'unitId', 'title', 'description',
+          'category', 'priority', 'status', 'currentTechnicianId',
+          'visitCount', 'isRepeatVisit', 'reopenCount', 'createdBy',
+          'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'tenantId', 'propertyId', 'unitId', 'title', 'description',
+          'category', 'priority', 'status', 'visitCount', 'isRepeatVisit',
+          'reopenCount', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && exists(/databases/$(database)/documents/properties/$(request.resource.data.propertyId))
+        && get(/databases/$(database)/documents/units/$(request.resource.data.unitId)).data.propertyId == request.resource.data.propertyId
+        && get(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId)).data.propertyId == request.resource.data.propertyId
+        && get(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId)).data.unitId == request.resource.data.unitId;
+      allow update, delete: if false;
+    }
+
+    match /audit_events/{eventId} {
+      allow read: if isOperationsStaff();
+      allow create: if isOperationsStaff()
+        && request.resource.data.keys().hasOnly([
+          'complaintId', 'eventType', 'actorId', 'createdAt', 'metadata'
+        ])
+        && request.resource.data.keys().hasAll([
+          'complaintId', 'eventType', 'actorId', 'createdAt', 'metadata'
+        ])
+        && request.resource.data.eventType == 'COMPLAINT_CREATED'
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.createdBy == request.auth.uid
+        && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == 'open';
+      allow update, delete: if false;
+    }
+
+    // All future collections remain closed until their authorized workflows
+    // and invariants are implemented explicitly.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

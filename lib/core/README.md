@@ -96,3 +96,16 @@ import 'package:grihsetu/core/fixtures/fixtures.dart';
 final complaints = SampleFixtures.sampleComplaints;
 final rentRecords = SampleFixtures.sampleRentRecords;
 ```
+
+---
+
+## 5. Reference Data Seeding (`GRIH-012`)
+
+The `SampleFixtures` properties (`sampleProperties`), units (`sampleUnits`), and tenants (`sampleTenants`) serve as the authoritative fixture source for demo and testing reference data.
+
+`ReferenceDataSeedService` (`lib/services/reference_data_seed_service.dart`) seeds these fixtures into Cloud Firestore with:
+- Deterministic document IDs (`prop_001`, `unit_101`, `ten_001`, etc.)
+- Duplicate prevention (existing documents are skipped, never overwritten)
+- Cloud Firestore server timestamps (`FieldValue.serverTimestamp()`)
+- Role authorization enforcement (restricted to operational staff with `UserRole.isOperationsStaff`)
+
