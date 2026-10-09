@@ -6,7 +6,7 @@ import '../core/enums/user_role.dart';
 import '../core/models/user.dart';
 import '../repositories/complaint_repository.dart';
 import '../repositories/property_repository.dart';
-import '../screens/complaints/complaint_create_screen.dart';
+import '../screens/complaints/complaint_list_screen.dart';
 import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../screens/property/property_browser_screen.dart';
@@ -275,7 +275,7 @@ class _SectionPlaceholder extends StatelessWidget {
       return const PropertyBrowserScreen(showAppBar: false);
     }
     if (item.label == 'Complaints') {
-      return ComplaintCreateScreen(
+      return ComplaintListScreen(
         profile: profile,
         authService: authService,
         complaintRepository: complaintRepository,

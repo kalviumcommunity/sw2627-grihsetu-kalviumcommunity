@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../core/fixtures/sample_fixtures.dart';
 import '../../theme/app_palette.dart';
 import '../property/property_selection_flow.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/audit_timeline.dart';
+import '../../widgets/complaint_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/section_header.dart';
@@ -177,6 +179,14 @@ class WidgetGalleryScreen extends StatelessWidget {
               const SectionHeader(title: 'Audit timeline · five events'),
               const SizedBox(height: 16),
               AppCard(child: AuditTimeline(events: _events)),
+              const SizedBox(height: 28),
+              const SectionHeader(title: 'Complaint cards'),
+              const SizedBox(height: 16),
+              ComplaintCard(
+                complaint: SampleFixtures.sampleComplaints.first,
+                propertyName: 'Green Valley Heights',
+                unitNumber: 'A-101',
+              ),
             ],
           ),
         ),
