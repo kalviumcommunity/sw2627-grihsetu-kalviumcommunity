@@ -89,9 +89,10 @@ Future<List<PropertyBrowseData>> loadPropertyDirectory(
                   isPrimary: entry.key == 0,
                   recentComplaints: complaintsForTenant
                       .where(
-                        (item) => item.createdAt.isAfter(
+                        (item) => item.createdAt?.isAfter(
                           DateTime.now().subtract(const Duration(days: 90)),
-                        ),
+                        ) ==
+                            true,
                       )
                       .length,
                 );

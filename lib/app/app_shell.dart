@@ -4,16 +4,32 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_constants.dart';
 import '../core/enums/user_role.dart';
 import '../core/models/user.dart';
+import '../repositories/complaint_repository.dart';
+import '../repositories/property_repository.dart';
+import '../screens/complaints/complaint_create_screen.dart';
 import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../screens/property/property_browser_screen.dart';
+import '../services/auth_failure.dart';
+import '../services/auth_service.dart';
+import '../services/reference_data_seed_service.dart';
+import '../widgets/profile_header.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, this.profile, this.authService, this.seedService});
+  const AppShell({
+    super.key,
+    this.profile,
+    this.authService,
+    this.seedService,
+    this.complaintRepository,
+    this.propertyRepository,
+  });
 
   final AppUser? profile;
   final AuthService? authService;
   final ReferenceDataSeedService? seedService;
+  final ComplaintRepository? complaintRepository;
+  final PropertyRepository? propertyRepository;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -163,6 +179,10 @@ class _AppShellState extends State<AppShell> {
                       key: ValueKey('${_role.name}-$_index'),
                       role: _role,
                       item: selected,
+                      profile: widget.profile,
+                      authService: widget.authService,
+                      complaintRepository: widget.complaintRepository,
+                      propertyRepository: widget.propertyRepository,
                     ),
                   ),
                 ],
@@ -235,16 +255,33 @@ class _SectionPlaceholder extends StatelessWidget {
   const _SectionPlaceholder({
     required this.role,
     required this.item,
+    this.profile,
+    this.authService,
+    this.complaintRepository,
+    this.propertyRepository,
     super.key,
   });
 
   final UserRole role;
   final _NavigationItem item;
+  final AppUser? profile;
+  final AuthService? authService;
+  final ComplaintRepository? complaintRepository;
+  final PropertyRepository? propertyRepository;
 
   @override
   Widget build(BuildContext context) {
     if (item.label == 'Properties') {
       return const PropertyBrowserScreen(showAppBar: false);
+    }
+    if (item.label == 'Complaints') {
+      return ComplaintCreateScreen(
+        profile: profile,
+        authService: authService,
+        complaintRepository: complaintRepository,
+        propertyRepository: propertyRepository,
+        showAppBar: false,
+      );
     }
     final theme = Theme.of(context);
     return Center(
