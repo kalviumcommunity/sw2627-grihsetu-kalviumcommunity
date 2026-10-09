@@ -248,7 +248,11 @@ class _UnitListPanelState extends State<UnitListPanel> {
           return queryMatches && filterMatches;
         })
         .toList(growable: false);
-    final floors = filtered.map((item) => item.unit.floor).toSet().toList()
+    final floors = filtered
+        .map((item) => item.unit.floor)
+        .whereType<int>()
+        .toSet()
+        .toList()
       ..sort((a, b) => b.compareTo(a));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -648,7 +652,7 @@ class _TenantListPanelState extends State<TenantListPanel> {
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Text(
-                            data.tenant.phone,
+                            data.tenant.phone ?? 'No phone provided',
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(color: context.palette.muted),
                           ),

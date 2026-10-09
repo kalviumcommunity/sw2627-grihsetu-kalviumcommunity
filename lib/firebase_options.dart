@@ -56,7 +56,6 @@ class DefaultFirebaseOptions {
     projectId: 'grihsetu-a82d1',
     storageBucket: 'grihsetu-a82d1.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyC3EeYc66e_h0qpmXAwsiNI2RgH-EFEalI',
     appId: '1:828867486553:ios:ccf0906634ae0ad2302248',
@@ -65,7 +64,6 @@ class DefaultFirebaseOptions {
     storageBucket: 'grihsetu-a82d1.firebasestorage.app',
     iosBundleId: 'com.example.grihsetu',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyC3EeYc66e_h0qpmXAwsiNI2RgH-EFEalI',
     appId: '1:828867486553:ios:ccf0906634ae0ad2302248',

@@ -2,10 +2,52 @@ import '../constants/app_constants.dart';
 import '../enums/complaint_category.dart';
 import '../enums/complaint_priority.dart';
 import '../enums/complaint_status.dart';
+import '../utils/firestore_values.dart';
 
-/// Lightweight Complaint model stub matching PRD Section 16 (Complaint Entity).
+/// Complaint location and reporting data supplied by the create workflow.
 ///
-/// Central domain entity representing tenant maintenance requests and office workflows.
+/// [submissionId] is an idempotency key. A caller must reuse it when retrying
+/// the same logical submission, and generate a new one for a new complaint.
+class CreateComplaintInput {
+  const CreateComplaintInput({
+    required this.title,
+    required this.description,
+    required this.category,
+    required this.priority,
+    required this.propertyId,
+    required this.unitId,
+    required this.tenantId,
+    this.submissionId,
+  });
+
+  final String title;
+  final String description;
+  final ComplaintCategory category;
+  final ComplaintPriority priority;
+  final String propertyId;
+  final String unitId;
+  final String tenantId;
+  final String? submissionId;
+
+  List<String> validate() {
+    final errors = <String>[];
+    if (title.trim().isEmpty) errors.add('Complaint title is required.');
+    if (description.trim().isEmpty) {
+      errors.add('Complaint description is required.');
+    }
+    if (propertyId.trim().isEmpty) errors.add('Property is required.');
+    if (unitId.trim().isEmpty) errors.add('Unit is required.');
+    if (tenantId.trim().isEmpty) errors.add('Tenant is required.');
+    return errors;
+  }
+}
+
+/// Firestore-backed complaint entity.
+///
+/// New writes are created through [ComplaintRepository], which forces
+/// [status] to [ComplaintStatus.open], derives [createdBy] from Firebase Auth,
+/// and supplies server timestamps. [createdAt] is nullable because a freshly
+/// acknowledged write may still contain a pending server timestamp locally.
 class Complaint {
   final String id;
   final String tenantId;
@@ -25,7 +67,7 @@ class Complaint {
   final int reopenCount;
 
   final String createdBy;
-  final DateTime createdAt;
+  final DateTime? createdAt;
 
   final DateTime? firstAssignedAt;
   final DateTime? resolvedAt;
@@ -47,7 +89,7 @@ class Complaint {
     bool? isRepeatVisit,
     this.reopenCount = 0,
     required this.createdBy,
-    required this.createdAt,
+    this.createdAt,
     this.firstAssignedAt,
     this.resolvedAt,
     this.closedAt,
@@ -55,9 +97,26 @@ class Complaint {
   }) : isRepeatVisit =
            isRepeatVisit ?? (visitCount > AppConstants.repeatVisitThreshold);
 
-  /// Serializes model to a Firestore-friendly Map using stable enum string values.
+  /// Returns required-field errors before persistence.
+  List<String> validate() => CreateComplaintInput(
+    title: title,
+    description: description,
+    category: category,
+    priority: priority,
+    propertyId: propertyId,
+    unitId: unitId,
+    tenantId: tenantId,
+  ).validate();
+
+  /// Existing fixture-compatible map. Repository payloads should use
+  /// [toFirestoreMap] so document IDs are not duplicated in the document.
   Map<String, dynamic> toMap() => {
     'id': id,
+    ...toFirestoreMap(),
+  };
+
+  /// Firestore payload without the document ID.
+  Map<String, dynamic> toFirestoreMap() => {
     'tenantId': tenantId,
     'propertyId': propertyId,
     'unitId': unitId,
@@ -66,19 +125,19 @@ class Complaint {
     'category': category.value,
     'priority': priority.value,
     'status': status.value,
-    'currentTechnicianId': currentTechnicianId,
+    if (currentTechnicianId != null) 'currentTechnicianId': currentTechnicianId,
     'visitCount': visitCount,
     'isRepeatVisit': isRepeatVisit,
     'reopenCount': reopenCount,
     'createdBy': createdBy,
-    'createdAt': createdAt.toIso8601String(),
-    'firstAssignedAt': firstAssignedAt?.toIso8601String(),
-    'resolvedAt': resolvedAt?.toIso8601String(),
-    'closedAt': closedAt?.toIso8601String(),
-    'updatedAt': updatedAt?.toIso8601String(),
+    if (createdAt != null) 'createdAt': timestampFromDateTime(createdAt),
+    if (firstAssignedAt != null)
+      'firstAssignedAt': timestampFromDateTime(firstAssignedAt),
+    if (resolvedAt != null) 'resolvedAt': timestampFromDateTime(resolvedAt),
+    if (closedAt != null) 'closedAt': timestampFromDateTime(closedAt),
+    if (updatedAt != null) 'updatedAt': timestampFromDateTime(updatedAt),
   };
 
-  /// Constructs a [Complaint] from a Firestore/JSON map.
   factory Complaint.fromMap(Map<String, dynamic> map, {String id = ''}) {
     final visitCount = (map['visitCount'] as num?)?.toInt() ?? 0;
     return Complaint(
@@ -98,11 +157,11 @@ class Complaint {
           (visitCount > AppConstants.repeatVisitThreshold),
       reopenCount: (map['reopenCount'] as num?)?.toInt() ?? 0,
       createdBy: map['createdBy'] as String? ?? '',
-      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
-      firstAssignedAt: _parseDateTime(map['firstAssignedAt']),
-      resolvedAt: _parseDateTime(map['resolvedAt']),
-      closedAt: _parseDateTime(map['closedAt']),
-      updatedAt: _parseDateTime(map['updatedAt']),
+      createdAt: dateTimeFromFirestore(map['createdAt']),
+      firstAssignedAt: dateTimeFromFirestore(map['firstAssignedAt']),
+      resolvedAt: dateTimeFromFirestore(map['resolvedAt']),
+      closedAt: dateTimeFromFirestore(map['closedAt']),
+      updatedAt: dateTimeFromFirestore(map['updatedAt']),
     );
   }
 
@@ -126,35 +185,33 @@ class Complaint {
     DateTime? resolvedAt,
     DateTime? closedAt,
     DateTime? updatedAt,
-  }) {
-    return Complaint(
-      id: id ?? this.id,
-      tenantId: tenantId ?? this.tenantId,
-      propertyId: propertyId ?? this.propertyId,
-      unitId: unitId ?? this.unitId,
-      title: title ?? this.title,
-      description: description ?? this.description,
-      category: category ?? this.category,
-      priority: priority ?? this.priority,
-      status: status ?? this.status,
-      currentTechnicianId: currentTechnicianId ?? this.currentTechnicianId,
-      visitCount: visitCount ?? this.visitCount,
-      isRepeatVisit: isRepeatVisit ?? this.isRepeatVisit,
-      reopenCount: reopenCount ?? this.reopenCount,
-      createdBy: createdBy ?? this.createdBy,
-      createdAt: createdAt ?? this.createdAt,
-      firstAssignedAt: firstAssignedAt ?? this.firstAssignedAt,
-      resolvedAt: resolvedAt ?? this.resolvedAt,
-      closedAt: closedAt ?? this.closedAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
+  }) =>
+      Complaint(
+        id: id ?? this.id,
+        tenantId: tenantId ?? this.tenantId,
+        propertyId: propertyId ?? this.propertyId,
+        unitId: unitId ?? this.unitId,
+        title: title ?? this.title,
+        description: description ?? this.description,
+        category: category ?? this.category,
+        priority: priority ?? this.priority,
+        status: status ?? this.status,
+        currentTechnicianId: currentTechnicianId ?? this.currentTechnicianId,
+        visitCount: visitCount ?? this.visitCount,
+        isRepeatVisit: isRepeatVisit ?? this.isRepeatVisit,
+        reopenCount: reopenCount ?? this.reopenCount,
+        createdBy: createdBy ?? this.createdBy,
+        createdAt: createdAt ?? this.createdAt,
+        firstAssignedAt: firstAssignedAt ?? this.firstAssignedAt,
+        resolvedAt: resolvedAt ?? this.resolvedAt,
+        closedAt: closedAt ?? this.closedAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is Complaint &&
-          runtimeType == other.runtimeType &&
           id == other.id &&
           tenantId == other.tenantId &&
           propertyId == other.propertyId &&
@@ -184,15 +241,4 @@ class Complaint {
   @override
   String toString() =>
       'Complaint(id: $id, title: $title, status: ${status.displayLabel}, priority: ${priority.displayLabel})';
-}
-
-DateTime? _parseDateTime(dynamic value) {
-  if (value == null) return null;
-  if (value is DateTime) return value;
-  if (value is String) return DateTime.tryParse(value);
-  try {
-    return (value as dynamic).toDate() as DateTime?;
-  } catch (_) {
-    return null;
-  }
 }

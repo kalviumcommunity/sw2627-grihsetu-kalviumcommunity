@@ -11,7 +11,13 @@ import 'auth_failure.dart';
 /// Firebase Auth is the identity source of truth. Firestore `users/{uid}` is
 /// the application profile and role source of truth. Callers never provide a
 /// role to [signIn] or [signUp].
-class AuthService {
+/// Minimal identity boundary used by workflows that must derive actor IDs
+/// from the authenticated Firebase session.
+abstract interface class AuthenticatedUserProvider {
+  User? get currentUser;
+}
+
+class AuthService implements AuthenticatedUserProvider {
   AuthService(this._auth, this._firestore);
 
   /// Creates a production service using the already initialized Firebase app.
@@ -23,6 +29,7 @@ class AuthService {
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  @override
   User? get currentUser => _auth.currentUser;
 
   Future<AppUser> signIn({
