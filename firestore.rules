@@ -113,7 +113,12 @@ service cloud.firestore {
     }
 
     match /complaints/{complaintId} {
-      allow read: if isOperationsStaff();
+      allow read: if isOperationsStaff()
+        || (
+          hasRole('technician')
+          && resource.data.currentTechnicianId == request.auth.uid
+          && resource.data.status in ['open', 'assigned', 'in_progress', 'waiting_for_parts', 'reopened']
+        );
       allow create: if isOperationsStaff()
         && request.resource.data.keys().hasOnly([
           'tenantId', 'propertyId', 'unitId', 'title', 'description',

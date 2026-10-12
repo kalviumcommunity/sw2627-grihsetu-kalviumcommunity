@@ -167,3 +167,28 @@ occupancy from a mutable current tenant document.
 
 Full complaint, maintenance, rent, audit, and property CRUD are outside
 GRIH-010.
+
+## Technician Assigned-Work Queue (GRIH-018)
+
+Technicians view active complaints assigned to them in real time.
+
+### Query semantics
+- Collection: `complaints`
+- Filter 1: `currentTechnicianId == request.auth.uid`
+- Filter 2: `status in ['open', 'assigned', 'in_progress', 'waiting_for_parts', 'reopened']`
+- Excluded statuses: Terminal statuses (`resolved`, `closed`, `cancelled`) are strictly excluded.
+- Ordering: Handled client-side by priority (urgent -> high -> in-progress -> other active) and `createdAt` ascending.
+
+### Security rules
+- Active technicians with trusted profile role `technician` can read only documents where `currentTechnicianId == request.auth.uid` and status is active.
+- Unauthenticated users, inactive profiles, other roles, and requests for another technician's complaints are denied.
+- Operations staff retain broad read access across all complaints.
+
+### Composite index
+- Collection: `complaints`
+- Scope: `COLLECTION`
+- Fields:
+  - `currentTechnicianId`: `ASCENDING`
+  - `status`: `ASCENDING`
+- Declared in `firestore.indexes.json`.
+

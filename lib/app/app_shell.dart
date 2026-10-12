@@ -7,6 +7,7 @@ import '../core/models/user.dart';
 import '../repositories/complaint_repository.dart';
 import '../repositories/property_repository.dart';
 import '../screens/complaints/complaint_list_screen.dart';
+import '../screens/complaints/technician_queue_screen.dart';
 import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../screens/property/property_browser_screen.dart';
@@ -232,6 +233,11 @@ const Map<UserRole, List<_NavigationItem>> _roleNavigation = {
   UserRole.technician: [
     _NavigationItem('Today', Icons.today_outlined, Icons.today),
     _NavigationItem(
+      'Assigned Work',
+      Icons.assignment_outlined,
+      Icons.assignment,
+    ),
+    _NavigationItem(
       'Schedule',
       Icons.calendar_month_outlined,
       Icons.calendar_month,
@@ -276,6 +282,15 @@ class _SectionPlaceholder extends StatelessWidget {
     }
     if (item.label == 'Complaints') {
       return ComplaintListScreen(
+        profile: profile,
+        authService: authService,
+        complaintRepository: complaintRepository,
+        propertyRepository: propertyRepository,
+        showAppBar: false,
+      );
+    }
+    if (item.label == 'Assigned Work') {
+      return TechnicianQueueScreen(
         profile: profile,
         authService: authService,
         complaintRepository: complaintRepository,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants/firestore_collections.dart';
+import '../core/enums/complaint_priority.dart';
 import '../core/enums/complaint_status.dart';
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/complaint.dart';
@@ -126,6 +127,48 @@ abstract interface class ComplaintRepository {
     String? unitId,
     String? tenantId,
   });
+
+  /// Streams active complaints assigned to [technicianId].
+  Stream<List<Complaint>> watchAssignedComplaints({
+    required String technicianId,
+  });
+}
+
+/// Deterministically sorts a technician's assigned complaints for field workflow:
+/// 1. Urgent priority
+/// 2. High priority
+/// 3. In-progress field work (in_progress, waiting_for_parts)
+/// 4. Other active complaints (medium, low)
+///
+/// Within each tier, items are sorted by oldest outstanding work first
+/// ([Complaint.createdAt] ascending), with nullable timestamps and ID as tie-breakers.
+void sortTechnicianQueue(List<Complaint> complaints) {
+  complaints.sort((a, b) {
+    int rank(Complaint c) {
+      if (c.priority == ComplaintPriority.urgent) return 0;
+      if (c.priority == ComplaintPriority.high) return 1;
+      if (c.status.isFieldWorkActive) return 2;
+      if (c.priority == ComplaintPriority.medium) return 3;
+      return 4;
+    }
+
+    final rankA = rank(a);
+    final rankB = rank(b);
+    if (rankA != rankB) return rankA.compareTo(rankB);
+
+    final aTime = a.createdAt;
+    final bTime = b.createdAt;
+    if (aTime != null && bTime != null) {
+      final comp = aTime.compareTo(bTime);
+      if (comp != 0) return comp;
+    } else if (aTime != null) {
+      return -1;
+    } else if (bTime != null) {
+      return 1;
+    }
+
+    return a.id.compareTo(b.id);
+  });
 }
 
 /// Firestore implementation for atomic complaint + initial audit creation and live streams.
@@ -180,6 +223,32 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         return b.id.compareTo(a.id);
       });
 
+      return complaints;
+    });
+  }
+
+  @override
+  Stream<List<Complaint>> watchAssignedComplaints({
+    required String technicianId,
+  }) {
+    final tid = technicianId.trim();
+    if (tid.isEmpty) {
+      throw const ComplaintValidationException(
+        'Technician ID cannot be empty.',
+      );
+    }
+
+    final query = _firestore
+        .collection(FirestoreCollections.complaints)
+        .where('currentTechnicianId', isEqualTo: tid)
+        .where('status', whereIn: ComplaintStatus.activeStatusValues);
+
+    return query.snapshots().map((snapshot) {
+      final complaints = snapshot.docs.map((doc) {
+        return Complaint.fromMap(doc.data(), id: doc.id);
+      }).toList();
+
+      sortTechnicianQueue(complaints);
       return complaints;
     });
   }
@@ -465,6 +534,67 @@ class InMemoryComplaintRepository implements ComplaintRepository {
           (data) {
             if (!controller.isClosed) {
               controller.add(filter(data));
+            }
+          },
+          onError: (Object err, StackTrace st) {
+            if (!controller.isClosed) {
+              controller.addError(err, st);
+            }
+          },
+        );
+      },
+      onCancel: () {
+        sub?.cancel();
+      },
+    );
+
+    return controller.stream;
+  }
+
+  @override
+  Stream<List<Complaint>> watchAssignedComplaints({
+    required String technicianId,
+  }) {
+    final tid = technicianId.trim();
+    if (tid.isEmpty) {
+      throw const ComplaintValidationException(
+        'Technician ID cannot be empty.',
+      );
+    }
+
+    List<Complaint> filter(List<Complaint> list) {
+      return list.where((item) {
+        if (item.currentTechnicianId != tid) return false;
+        if (!item.status.isActive) return false;
+        return true;
+      }).toList();
+    }
+
+    late final StreamController<List<Complaint>> controller;
+    StreamSubscription<List<Complaint>>? sub;
+
+    controller = StreamController<List<Complaint>>(
+      onListen: () {
+        void sendInitial() {
+          if (!controller.isClosed) {
+            final initial = filter(_complaints);
+            sortTechnicianQueue(initial);
+            controller.add(initial);
+          }
+        }
+
+        if (streamDelay > Duration.zero) {
+          Future<void>.delayed(streamDelay, sendInitial);
+        } else {
+          scheduleMicrotask(sendInitial);
+        }
+
+        sub = _controller.stream.listen(
+          (data) {
+            if (!controller.isClosed) {
+              final filtered = filter(data);
+              sortTechnicianQueue(filtered);
+              controller.add(filtered);
             }
           },
           onError: (Object err, StackTrace st) {

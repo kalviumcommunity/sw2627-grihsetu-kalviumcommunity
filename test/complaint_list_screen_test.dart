@@ -30,6 +30,11 @@ class TestStreamComplaintRepository implements ComplaintRepository {
   }) => _controller.stream;
 
   @override
+  Stream<List<Complaint>> watchAssignedComplaints({
+    required String technicianId,
+  }) => _controller.stream;
+
+  @override
   Future<Complaint> createComplaint(CreateComplaintInput input) async {
     throw UnimplementedError();
   }

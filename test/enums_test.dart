@@ -111,6 +111,46 @@ void main() {
       expect(ComplaintStatus.closed.isResolvedOrClosed, isTrue);
       expect(ComplaintStatus.open.isResolvedOrClosed, isFalse);
     });
+
+    test('active and terminal statuses match queue requirements', () {
+      expect(ComplaintStatus.activeStatuses, {
+        ComplaintStatus.open,
+        ComplaintStatus.assigned,
+        ComplaintStatus.inProgress,
+        ComplaintStatus.waitingForParts,
+        ComplaintStatus.reopened,
+      });
+
+      expect(ComplaintStatus.activeStatusValues, [
+        'open',
+        'assigned',
+        'in_progress',
+        'waiting_for_parts',
+        'reopened',
+      ]);
+
+      expect(ComplaintStatus.terminalStatuses, {
+        ComplaintStatus.resolved,
+        ComplaintStatus.closed,
+        ComplaintStatus.cancelled,
+      });
+
+      expect(ComplaintStatus.terminalStatusValues, [
+        'resolved',
+        'closed',
+        'cancelled',
+      ]);
+
+      for (final s in ComplaintStatus.activeStatuses) {
+        expect(s.isActive, isTrue);
+        expect(s.isTerminal, isFalse);
+      }
+
+      for (final s in ComplaintStatus.terminalStatuses) {
+        expect(s.isActive, isFalse);
+        expect(s.isTerminal, isTrue);
+      }
+    });
   });
 
   group('ComplaintPriority Enum Tests', () {
