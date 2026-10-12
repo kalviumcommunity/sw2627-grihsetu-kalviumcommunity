@@ -55,8 +55,22 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     super.initState();
     _complaint = widget.complaint;
     _repository = widget.assignmentRepository ?? InMemoryAssignmentRepository();
-    _assignedTechnician = widget.initialTechnician ?? _defaultInitialTechnician();
+    _assignedTechnician =
+        widget.initialTechnician ?? _defaultInitialTechnician();
     _initAuditEvents();
+  }
+
+  @override
+  void didUpdateWidget(ComplaintDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.complaint != oldWidget.complaint ||
+        widget.userRole != oldWidget.userRole ||
+        widget.initialTechnician != oldWidget.initialTechnician) {
+      _complaint = widget.complaint;
+      _assignedTechnician =
+          widget.initialTechnician ?? _defaultInitialTechnician();
+      _initAuditEvents();
+    }
   }
 
   @override
@@ -275,10 +289,12 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                               color: palette.muted,
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              'Created ${_formatDate(_complaint.createdAt)}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: palette.muted,
+                            Expanded(
+                              child: Text(
+                                'Created ${_formatDate(_complaint.createdAt)}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: palette.muted,
+                                ),
                               ),
                             ),
                           ],
@@ -360,6 +376,51 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Placeholder notice for subsequent workflow updates
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: palette.accentSoft,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: palette.accent.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: palette.accent,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Complaint detail placeholder',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  color: palette.ink,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Full workflow actions (technician assignment, visit logs, resolution, and audit history) will be introduced in subsequent updates.',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: palette.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -381,17 +442,15 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SectionHeader(title: 'Assigned technician'),
-              if (isStaff && isAssigned)
-                _buildActionButton(
-                  context,
-                  isReassign: true,
-                  isTerminal: isTerminal,
-                ),
-            ],
+          SectionHeader(
+            title: 'Assigned technician',
+            trailing: (isStaff && isAssigned)
+                ? _buildActionButton(
+                    context,
+                    isReassign: true,
+                    isTerminal: isTerminal,
+                  )
+                : null,
           ),
           const SizedBox(height: AppSpacing.md),
           if (isAssigned) ...[
@@ -540,30 +599,28 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SectionHeader(title: 'Audit timeline'),
-              if (_highlightAudit)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: palette.accent,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'Updated',
-                    style: TextStyle(
-                      color: palette.surface,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+          SectionHeader(
+            title: 'Audit timeline',
+            trailing: _highlightAudit
+                ? Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
                     ),
-                  ),
-                ),
-            ],
+                    decoration: BoxDecoration(
+                      color: palette.accent,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Updated',
+                      style: TextStyle(
+                        color: palette.surface,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(height: AppSpacing.md),
           AuditTimeline(events: _auditEvents),

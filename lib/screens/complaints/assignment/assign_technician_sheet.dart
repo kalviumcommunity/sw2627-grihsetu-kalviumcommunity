@@ -11,6 +11,7 @@ import 'package:grihsetu/widgets/empty_state.dart';
 import 'package:grihsetu/widgets/error_state.dart';
 import 'package:grihsetu/widgets/skeleton_box.dart';
 import 'package:grihsetu/widgets/status_badge.dart';
+
 import 'scheduling_and_reason_section.dart';
 import 'technician_card.dart';
 
@@ -73,7 +74,10 @@ class AssignTechnicianSheet extends StatefulWidget {
         barrierDismissible: true,
         builder: (dialogCtx) => Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
           alignment: Alignment.centerRight,
           child: SizedBox(
             width: 420,
@@ -266,9 +270,7 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
 
     final confirmLabel = validation.hasWarnings
         ? (widget.isReassign ? 'Reassign anyway' : 'Assign anyway')
-        : (widget.isReassign
-            ? 'Confirm reassignment'
-            : 'Confirm assignment');
+        : (widget.isReassign ? 'Confirm reassignment' : 'Confirm assignment');
 
     return Shortcuts(
       shortcuts: <LogicalKeySet, Intent>{
@@ -413,7 +415,9 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
             children: [
               Expanded(
                 child: Text(
-                  widget.isReassign ? 'Reassign technician' : 'Assign technician',
+                  widget.isReassign
+                      ? 'Reassign technician'
+                      : 'Assign technician',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: palette.ink,
@@ -703,8 +707,11 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
         vertical: AppSpacing.sm + 4,
       ),
       color: palette.surface,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.xs,
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           OutlinedButton(
             key: const Key('cancel_assign_button'),
@@ -718,7 +725,6 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
             onPressed: () => Navigator.of(context).maybePop(),
             child: const Text('Cancel'),
           ),
-          const SizedBox(width: AppSpacing.sm),
           FilledButton(
             key: const Key('confirm_assign_button'),
             style: FilledButton.styleFrom(
@@ -743,9 +749,7 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation(
-                        validation.hasWarnings
-                            ? palette.ink
-                            : palette.surface,
+                        validation.hasWarnings ? palette.ink : palette.surface,
                       ),
                     ),
                   )

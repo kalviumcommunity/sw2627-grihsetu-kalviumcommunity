@@ -173,9 +173,7 @@ class SchedulingAndReasonSection extends StatelessWidget {
                   color: visitDate != null ? palette.accent : palette.muted,
                 ),
                 label: Text(
-                  visitDate == null
-                      ? 'Select date'
-                      : _formatDate(visitDate!),
+                  visitDate == null ? 'Select date' : _formatDate(visitDate!),
                   style: TextStyle(
                     fontSize: 13,
                     color: visitDate != null ? palette.accent : palette.ink,
@@ -219,7 +217,9 @@ class SchedulingAndReasonSection extends StatelessWidget {
               for (final slot in AssignmentSlot.values)
                 ChoiceChip(
                   key: Key('slot_chip_${slot.name}'),
-                  label: Text('${slot.label} (${slot.timeRange.split(' - ').first})'),
+                  label: Text(
+                    '${slot.label} (${slot.timeRange.split(' - ').first})',
+                  ),
                   selected: selectedSlot == slot,
                   selectedColor: palette.accentSoft,
                   backgroundColor: palette.surface,
@@ -277,8 +277,7 @@ class SchedulingAndReasonSection extends StatelessWidget {
             required currentLength,
             required isFocused,
             maxLength,
-          }) =>
-              null, // Counter is shown above
+          }) => null, // Counter is shown above
           decoration: InputDecoration(
             hintText: 'e.g. Call tenant 15 minutes before arrival...',
             hintStyle: TextStyle(color: palette.muted, fontSize: 13),
@@ -305,9 +304,7 @@ class SchedulingAndReasonSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: palette.warning.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: palette.warning.withValues(alpha: 0.4),
-              ),
+              border: Border.all(color: palette.warning.withValues(alpha: 0.4)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
