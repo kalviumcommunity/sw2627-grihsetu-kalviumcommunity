@@ -32,6 +32,30 @@ enum ComplaintStatus {
     ComplaintStatus.cancelled => 'Cancelled',
   };
 
+  /// Authoritative active statuses for field and technician work queues.
+  static const Set<ComplaintStatus> activeStatuses = {
+    ComplaintStatus.open,
+    ComplaintStatus.assigned,
+    ComplaintStatus.inProgress,
+    ComplaintStatus.waitingForParts,
+    ComplaintStatus.reopened,
+  };
+
+  /// Persisted Firestore string values for active statuses.
+  static List<String> get activeStatusValues =>
+      activeStatuses.map((s) => s.value).toList();
+
+  /// Authoritative terminal statuses excluded from active work queues.
+  static const Set<ComplaintStatus> terminalStatuses = {
+    ComplaintStatus.resolved,
+    ComplaintStatus.closed,
+    ComplaintStatus.cancelled,
+  };
+
+  /// Persisted Firestore string values for terminal statuses.
+  static List<String> get terminalStatusValues =>
+      terminalStatuses.map((s) => s.value).toList();
+
   /// Parses a string value from Firestore or returns null if unmatched.
   static ComplaintStatus? tryFromValue(String? value) {
     if (value == null) return null;
@@ -56,12 +80,15 @@ enum ComplaintStatus {
 
 /// Domain helpers for complaint lifecycle and status checks (PRD FR-18).
 extension ComplaintStatusLabel on ComplaintStatus {
+  /// Whether this status belongs to the active queue status set.
+  bool get isActive => ComplaintStatus.activeStatuses.contains(this);
+
+  /// Whether this status belongs to the terminal status set.
+  bool get isTerminal => ComplaintStatus.terminalStatuses.contains(this);
+
   /// According to PRD FR-18, a complaint is unresolved if it is not
   /// resolved, closed, or cancelled.
-  bool get isUnresolved =>
-      this != ComplaintStatus.resolved &&
-      this != ComplaintStatus.closed &&
-      this != ComplaintStatus.cancelled;
+  bool get isUnresolved => !isTerminal;
 
   /// Whether the complaint has reached a terminal resolved or closed state.
   bool get isResolvedOrClosed =>
