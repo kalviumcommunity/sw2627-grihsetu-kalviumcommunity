@@ -1,5 +1,4 @@
 import '../core/enums/complaint_priority.dart';
-import '../core/models/complaint.dart';
 import '../utils/validators.dart';
 import '../screens/complaints/complaint_draft.dart';
 

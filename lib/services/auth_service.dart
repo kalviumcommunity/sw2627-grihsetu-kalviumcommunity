@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/constants/firestore_collections.dart';
 import '../core/enums/user_role.dart';
@@ -41,19 +42,26 @@ class AuthService implements AuthenticatedUserProvider {
       throw const AuthFailure(AuthFailureCode.invalidInput);
     }
 
+    _log('login submission begins');
     try {
+      _log('Firebase sign-in attempt begins');
       final credential = await _auth.signInWithEmailAndPassword(
         email: normalizedEmail,
         password: password,
       );
       final firebaseUser = credential.user;
       if (firebaseUser == null || firebaseUser.uid.isEmpty) {
+        _log('Firebase sign-in returned no authenticated user');
         throw const AuthFailure(AuthFailureCode.unknown);
       }
+      _log('Firebase sign-in succeeded; uid=${firebaseUser.uid}');
 
       try {
+        _log('Firestore profile fetch begins; uid=${firebaseUser.uid}');
         return await loadProfile(firebaseUser.uid);
-      } on AuthFailure {
+      } on AuthFailure catch (error, stackTrace) {
+        _log('Firestore profile/role resolution failed: ${error.code.name}');
+        if (kDebugMode) debugPrintStack(stackTrace: stackTrace);
         // Authentication succeeded, but authorization did not. Do not leave
         // an unusable authenticated session active in the client.
         await _signOutSafely();
@@ -62,8 +70,10 @@ class AuthService implements AuthenticatedUserProvider {
     } on AuthFailure {
       rethrow;
     } on FirebaseAuthException catch (error) {
+      _logFirebaseError('Firebase sign-in failed', error);
       throw AuthFailure.fromAuthException(error);
     } on FirebaseException catch (error) {
+      _logFirebaseError('Firebase sign-in failed', error);
       throw AuthFailure.fromFirestoreException(error);
     } catch (_) {
       throw const AuthFailure(AuthFailureCode.unknown);
@@ -156,36 +166,44 @@ class AuthService implements AuthenticatedUserProvider {
     }
 
     try {
+      _log('Firestore profile fetch begins; uid=$normalizedUid');
       final snapshot = await _firestore
           .collection(FirestoreCollections.users)
           .doc(normalizedUid)
           .get();
       final data = snapshot.data();
       if (!snapshot.exists || data == null) {
+        _log('Firestore profile fetch failed: profile-not-found');
         throw const AuthFailure(AuthFailureCode.profileNotFound);
       }
 
       final profileUid = data['uid'];
       if (profileUid is! String || profileUid != normalizedUid) {
+        _log('Firestore profile fetch failed: invalid-profile-uid');
         throw const AuthFailure(AuthFailureCode.invalidProfile);
       }
 
       final rawRole = data['role'];
       if (rawRole == null || (rawRole is String && rawRole.trim().isEmpty)) {
+        _log('Role resolution failed: role-not-assigned');
         throw const AuthFailure(AuthFailureCode.roleNotAssigned);
       }
       if (rawRole is! String || UserRole.tryFromValue(rawRole) == null) {
+        _log('Role resolution failed: invalid-role');
         throw const AuthFailure(AuthFailureCode.invalidRole);
       }
 
       final profile = AppUser.fromMap(data, id: normalizedUid);
       if (!profile.isAuthorized) {
+        _log('Role resolution failed: inactive-or-invalid-profile');
         throw const AuthFailure(AuthFailureCode.invalidProfile);
       }
+      _log('Firestore profile fetch and role resolution succeeded');
       return profile;
     } on AuthFailure {
       rethrow;
     } on FirebaseException catch (error) {
+      _logFirebaseError('Firestore profile fetch failed', error);
       throw AuthFailure.fromFirestoreException(error);
     } catch (_) {
       throw const AuthFailure(AuthFailureCode.unknown);
@@ -203,5 +221,16 @@ class AuthService implements AuthenticatedUserProvider {
   static String? _cleanOptional(String? value) {
     final cleaned = value?.trim();
     return cleaned == null || cleaned.isEmpty ? null : cleaned;
+  }
+
+  static void _log(String message) {
+    if (kDebugMode) debugPrint('[Auth] $message');
+  }
+
+  static void _logFirebaseError(String stage, FirebaseException error) {
+    if (!kDebugMode) return;
+    debugPrint(
+      '[Auth] $stage: code=${error.code}, message=${error.message ?? 'none'}',
+    );
   }
 }

@@ -38,7 +38,7 @@ service cloud.firestore {
         ]);
 
       allow read: if request.auth != null
-        && request.auth.uid == userId;
+        && (request.auth.uid == userId || isOperationsStaff());
 
       // Users may update only non-sensitive profile fields. In particular,
       // role, uid, and createdAt cannot be added or changed by the client.
@@ -138,6 +138,80 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/units/$(request.resource.data.unitId)).data.propertyId == request.resource.data.propertyId
         && get(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId)).data.propertyId == request.resource.data.propertyId
         && get(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId)).data.unitId == request.resource.data.unitId;
+      // Assignment writes are intentionally narrow. The client transaction
+      // also writes one history and one audit document, but rules cannot
+      // require the presence of an arbitrary paired document from this match.
+      allow update: if isOperationsStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'currentTechnicianId', 'firstAssignedAt', 'status', 'updatedAt'
+        ])
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.currentTechnicianId is string
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.currentTechnicianId))
+        && get(/databases/$(database)/documents/users/$(request.resource.data.currentTechnicianId)).data.role == 'technician'
+        && get(/databases/$(database)/documents/users/$(request.resource.data.currentTechnicianId)).data.isActive != false
+        && (
+          (
+            resource.data.status == 'open'
+            && request.resource.data.status == 'assigned'
+            && (!resource.data.keys().hasAny(['currentTechnicianId'])
+              || resource.data.currentTechnicianId == null)
+            && (
+              (!resource.data.keys().hasAny(['firstAssignedAt'])
+                && request.resource.data.keys().hasAny(['firstAssignedAt'])
+                && request.resource.data.firstAssignedAt == request.time)
+              || (resource.data.keys().hasAny(['firstAssignedAt'])
+                && request.resource.data.keys().hasAny(['firstAssignedAt'])
+                && request.resource.data.firstAssignedAt == resource.data.firstAssignedAt)
+            )
+          )
+          ||
+          (
+            resource.data.status in ['assigned', 'in_progress', 'waiting_for_parts', 'reopened']
+            && request.resource.data.status == resource.data.status
+            && resource.data.currentTechnicianId is string
+            && request.resource.data.currentTechnicianId != resource.data.currentTechnicianId
+            && (
+              (!resource.data.keys().hasAny(['firstAssignedAt'])
+                && !request.resource.data.keys().hasAny(['firstAssignedAt']))
+              || (resource.data.keys().hasAny(['firstAssignedAt'])
+                && request.resource.data.keys().hasAny(['firstAssignedAt'])
+                && request.resource.data.firstAssignedAt == resource.data.firstAssignedAt)
+            )
+          )
+        );
+      allow delete: if false;
+    }
+
+    match /technician_assignments/{assignmentId} {
+      allow read: if isOperationsStaff();
+      allow create: if isOperationsStaff()
+        && request.resource.data.keys().hasOnly([
+          'complaintId', 'previousTechnicianId', 'newTechnicianId',
+          'assignedBy', 'assignedAt', 'assignmentType', 'operationId', 'reason'
+        ])
+        && request.resource.data.keys().hasAll([
+          'complaintId', 'previousTechnicianId', 'newTechnicianId',
+          'assignedBy', 'assignedAt', 'assignmentType', 'operationId'
+        ])
+        && request.resource.data.assignedBy == request.auth.uid
+        && request.resource.data.assignedAt == request.time
+        && exists(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId))
+        && request.resource.data.newTechnicianId is string
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.newTechnicianId))
+        && get(/databases/$(database)/documents/users/$(request.resource.data.newTechnicianId)).data.role == 'technician'
+        && get(/databases/$(database)/documents/users/$(request.resource.data.newTechnicianId)).data.isActive != false
+        && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.currentTechnicianId == request.resource.data.newTechnicianId
+        && (
+          (request.resource.data.assignmentType == 'INITIAL_ASSIGNMENT'
+            && request.resource.data.previousTechnicianId == null
+            && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == 'assigned')
+          ||
+          (request.resource.data.assignmentType == 'REASSIGNMENT'
+            && request.resource.data.previousTechnicianId is string
+            && request.resource.data.previousTechnicianId != request.resource.data.newTechnicianId
+            && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status)
+        );
       allow update, delete: if false;
     }
 
@@ -150,11 +224,41 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll([
           'complaintId', 'eventType', 'actorId', 'createdAt', 'metadata'
         ])
-        && request.resource.data.eventType == 'COMPLAINT_CREATED'
         && request.resource.data.actorId == request.auth.uid
         && request.resource.data.createdAt == request.time
-        && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.createdBy == request.auth.uid
-        && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == 'open';
+        && (
+          (
+            request.resource.data.eventType == 'COMPLAINT_CREATED'
+            && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.createdBy == request.auth.uid
+            && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == 'open'
+          )
+          ||
+          (
+            request.resource.data.eventType in ['TECHNICIAN_ASSIGNED', 'TECHNICIAN_REASSIGNED']
+            && request.resource.data.metadata.keys().hasOnly([
+              'previousTechnicianId', 'newTechnicianId', 'assignmentType', 'operationId'
+            ])
+            && request.resource.data.metadata.keys().hasAll([
+              'previousTechnicianId', 'newTechnicianId', 'assignmentType', 'operationId'
+            ])
+            && request.resource.data.metadata.newTechnicianId == getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.currentTechnicianId
+            && (
+              (
+                request.resource.data.eventType == 'TECHNICIAN_ASSIGNED'
+                && request.resource.data.metadata.assignmentType == 'INITIAL_ASSIGNMENT'
+                && request.resource.data.metadata.previousTechnicianId == null
+                && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == 'assigned'
+              )
+              ||
+              (
+                request.resource.data.eventType == 'TECHNICIAN_REASSIGNED'
+                && request.resource.data.metadata.assignmentType == 'REASSIGNMENT'
+                && request.resource.data.metadata.previousTechnicianId is string
+                && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status
+              )
+            )
+          )
+        );
       allow update, delete: if false;
     }
 

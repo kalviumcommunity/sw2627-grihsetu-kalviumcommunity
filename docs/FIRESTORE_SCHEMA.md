@@ -109,6 +109,41 @@ source of truth; this issue does not build that subsystem.
 Vacant units are represented by `units.status == "vacant"` and no active tenant
 assignment. No placeholder tenant is created for a vacancy.
 
+### `technician_assignments/{assignmentId}`
+
+Assignment changes are append-only. The document ID is generated from the
+complaint ID and caller-supplied operation ID, so a retry of the same logical
+request cannot append a second history row.
+
+```text
+complaintId             string, required
+previousTechnicianId    string or null, required
+newTechnicianId         string, required
+assignedBy              Firebase Auth UID, required
+assignedAt              Timestamp, server generated
+assignmentType          "INITIAL_ASSIGNMENT" | "REASSIGNMENT"
+operationId             string, required
+reason                  string, optional
+```
+
+`complaints/{complaintId}` keeps only the current technician, while this
+collection retains every successful responsibility change. Initial assignment
+sets `firstAssignedAt` once; reassignment never changes it.
+
+### `audit_events/{eventId}` assignment events
+
+Assignment audit records reuse the existing top-level audit collection. They
+use `TECHNICIAN_ASSIGNED` or `TECHNICIAN_REASSIGNED` and store
+`previousTechnicianId`, `newTechnicianId`, `assignmentType`, and `operationId`
+inside the existing `metadata` map. Audit records are append-only.
+
+The Flutter client uses one Firestore transaction for the complaint update,
+assignment history row, and audit row. Firestore Security Rules restrict the
+individual writes and validate roles, fields, timestamps, and lifecycle state.
+Rules cannot prove that an arbitrary client always submits all three paired
+writes; a trusted server-side callable operation would be required for that
+stronger guarantee.
+
 ## Downstream relationship contracts
 
 Future operational documents should store IDs rather than copied entity maps:
