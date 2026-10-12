@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../constants/app_strings.dart';
@@ -51,10 +52,16 @@ class _AuthGateState extends State<AuthGate> {
 
   void _syncProfileFuture(User? firebaseUser) {
     if (firebaseUser == null) {
+      if (kDebugMode && _currentUid != null) {
+        debugPrint('[Auth] navigation state: signed out');
+      }
       _currentUid = null;
       _profileFuture = null;
     } else if (firebaseUser.uid != _currentUid) {
       _currentUid = firebaseUser.uid;
+      if (kDebugMode) {
+        debugPrint('[Auth] navigation begins: loading authenticated app shell');
+      }
       _profileFuture = widget.authService.loadProfile(firebaseUser.uid);
     }
   }

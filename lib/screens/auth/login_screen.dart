@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../services/auth_failure.dart';
 import '../../services/auth_service.dart';
@@ -48,6 +49,9 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } on AuthFailure catch (error) {
+      if (kDebugMode) {
+        debugPrint('[Auth] login UI received failure: ${error.code.name}');
+      }
       if (!mounted) return;
       setState(() => _error = error.message);
     } finally {
