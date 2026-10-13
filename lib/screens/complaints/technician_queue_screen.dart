@@ -47,6 +47,8 @@ class _TechnicianQueueScreenState extends State<TechnicianQueueScreen> {
   late ComplaintReferenceResolver _resolver;
   Stream<List<Complaint>>? _complaintsStream;
   String? _technicianId;
+  bool _isRetrying = false;
+  bool _isResolvingReferences = false;
 
   @override
   void initState() {
@@ -137,7 +139,30 @@ class _TechnicianQueueScreenState extends State<TechnicianQueueScreen> {
 
   void _retry() {
     setState(() {
+      _isRetrying = true;
       _initStream();
+    });
+  }
+
+  void _resolveReferencesIfNeeded(List<Complaint> complaints) {
+    if (_isResolvingReferences) return;
+    _isResolvingReferences = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _isResolvingReferences = false;
+        return;
+      }
+      _resolver
+          .resolveForComplaints(complaints)
+          .then((updated) {
+            _isResolvingReferences = false;
+            if (updated && mounted) {
+              setState(() {});
+            }
+          })
+          .catchError((_) {
+            _isResolvingReferences = false;
+          });
     });
   }
 
@@ -184,8 +209,7 @@ class _TechnicianQueueScreenState extends State<TechnicianQueueScreen> {
           child: Center(
             child: SingleChildScrollView(
               padding: EdgeInsets.all(AppSpacing.md),
-              child: EmptyState(
-                icon: Icons.lock_outline,
+              child: EmptyState.restricted(
                 title: 'Access restricted',
                 message: 'This work queue is only accessible to authorized field technicians.',
               ),
@@ -209,6 +233,7 @@ class _TechnicianQueueScreenState extends State<TechnicianQueueScreen> {
                   child: ErrorState(
                     message: _userFriendlyErrorMessage(snapshot.error),
                     onRetry: _retry,
+                    isRetrying: _isRetrying,
                   ),
                 );
               }
@@ -220,6 +245,11 @@ class _TechnicianQueueScreenState extends State<TechnicianQueueScreen> {
                   padding: EdgeInsets.all(AppSpacing.md),
                   child: SkeletonList(itemCount: 4),
                 );
+              }
+
+              // Reset retry state when data arrives
+              if (_isRetrying && snapshot.hasData) {
+                _isRetrying = false;
               }
 
               final complaints = snapshot.data ?? const [];
@@ -236,12 +266,8 @@ class _TechnicianQueueScreenState extends State<TechnicianQueueScreen> {
                 );
               }
 
-              // Asynchronously resolve unknown property/unit references
-              _resolver.resolveForComplaints(complaints).then((updated) {
-                if (updated && mounted) {
-                  setState(() {});
-                }
-              });
+              // Asynchronously resolve unknown property/unit references safely
+              _resolveReferencesIfNeeded(complaints);
 
               // 4. Populated queue with field-work grouping:
               // Group 1: Urgent & High Priority

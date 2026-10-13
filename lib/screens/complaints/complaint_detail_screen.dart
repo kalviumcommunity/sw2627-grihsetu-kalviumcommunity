@@ -12,6 +12,7 @@ import '../../widgets/app_card.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/audit_timeline.dart';
 import '../../widgets/complaint_card.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/status_badge.dart';
 import 'assignment/assign_technician_sheet.dart';
@@ -93,8 +94,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
   }
 
   void _initAuditEvents() {
-    if (widget.initialAuditEvents != null &&
-        widget.initialAuditEvents!.isNotEmpty) {
+    if (widget.initialAuditEvents != null) {
       _auditEvents = List.of(widget.initialAuditEvents!);
       return;
     }
@@ -276,10 +276,12 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                               color: palette.muted,
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              'Created ${_formatDate(_complaint.createdAt)}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: palette.muted,
+                            Expanded(
+                              child: Text(
+                                'Created ${_formatDate(_complaint.createdAt)}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: palette.muted,
+                                ),
                               ),
                             ),
                           ],
@@ -382,17 +384,15 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SectionHeader(title: 'Assigned technician'),
-              if (isStaff && isAssigned)
-                _buildActionButton(
-                  context,
-                  isReassign: true,
-                  isTerminal: isTerminal,
-                ),
-            ],
+          SectionHeader(
+            title: 'Assigned technician',
+            trailing: isStaff && isAssigned
+                ? _buildActionButton(
+                    context,
+                    isReassign: true,
+                    isTerminal: isTerminal,
+                  )
+                : null,
           ),
           const SizedBox(height: AppSpacing.md),
           if (isAssigned) ...[
@@ -453,14 +453,16 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               ],
             ),
           ] else ...[
-            Row(
+            Wrap(
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.sm,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              alignment: WrapAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    'No technician currently assigned.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: palette.muted,
-                    ),
+                Text(
+                  'No technician currently assigned.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: palette.muted,
                   ),
                 ),
                 if (isStaff)
@@ -541,33 +543,38 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SectionHeader(title: 'Audit timeline'),
-              if (_highlightAudit)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: palette.accent,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'Updated',
-                    style: TextStyle(
-                      color: palette.surface,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+          SectionHeader(
+            title: 'Audit timeline',
+            trailing: _highlightAudit
+                ? Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
                     ),
-                  ),
-                ),
-            ],
+                    decoration: BoxDecoration(
+                      color: palette.accent,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Updated',
+                      style: TextStyle(
+                        color: palette.surface,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(height: AppSpacing.md),
-          AuditTimeline(events: _auditEvents),
+          if (_auditEvents.isEmpty)
+            const EmptyState.compact(
+              icon: Icons.history_toggle_off_outlined,
+              title: 'No activity recorded yet',
+              message: 'Timeline events will appear here as the complaint progresses.',
+            )
+          else
+            AuditTimeline(events: _auditEvents),
         ],
       ),
     );
