@@ -362,6 +362,85 @@ void main() {
 
       repo.dispose();
     });
+
+    testWidgets('maps Firebase unavailable error to user-friendly message', (
+      tester,
+    ) async {
+      final repo = TestTechnicianComplaintRepository();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TechnicianQueueScreen(
+            profile: testTechnicianProfile,
+            complaintRepository: repo,
+          ),
+        ),
+      );
+
+      repo.emitError(
+        FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'unavailable',
+          message: 'Backend server dropped connection.',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ErrorState), findsOneWidget);
+      expect(
+        find.text(
+          'Complaint service is temporarily unavailable. Check your connection.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Backend server dropped connection.'), findsNothing);
+
+      repo.dispose();
+    });
+
+    testWidgets(
+      'narrow screen layouts (320px, 360px, 390px) render states without overflow',
+      (tester) async {
+        for (final width in [320.0, 360.0, 390.0]) {
+          await tester.binding.setSurfaceSize(Size(width, 640));
+          final repo = TestTechnicianComplaintRepository();
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: TechnicianQueueScreen(
+                key: ValueKey(width),
+                profile: testTechnicianProfile,
+                complaintRepository: repo,
+              ),
+            ),
+          );
+
+          // 1. Loading
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: 'loading width $width',
+          );
+          expect(find.byType(SkeletonList), findsOneWidget);
+
+          // 2. Empty
+          repo.emitData([]);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: 'empty width $width');
+          expect(find.byType(EmptyState), findsOneWidget);
+          expect(find.text("You're all caught up"), findsOneWidget);
+
+          // 3. Error
+          repo.emitError(Exception('raw failure'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: 'error width $width');
+          expect(find.byType(ErrorState), findsOneWidget);
+
+          repo.dispose();
+        }
+        await tester.binding.setSurfaceSize(null);
+      },
+    );
   });
 
   group('TechnicianQueueScreen - Navigation in AppShell', () {

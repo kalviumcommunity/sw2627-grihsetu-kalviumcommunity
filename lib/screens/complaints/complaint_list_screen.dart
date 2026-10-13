@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/enums/user_role.dart';
 import '../../core/models/complaint.dart';
 import '../../core/models/user.dart';
 import '../../repositories/complaint_repository.dart';
@@ -47,6 +48,10 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
   late ComplaintRepository _repository;
   late ComplaintReferenceResolver _resolver;
   late Stream<List<Complaint>> _complaintsStream;
+  bool _isRetrying = false;
+  bool _isResolvingReferences = false;
+
+  bool get _canCreateComplaint => widget.profile?.role != UserRole.technician;
 
   @override
   void initState() {
@@ -93,6 +98,7 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
 
   void _retry() {
     setState(() {
+      _isRetrying = true;
       _initStream();
     });
   }
@@ -110,6 +116,28 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
       };
     }
     return 'Unable to load complaints. Please check your connection and try again.';
+  }
+
+  void _resolveReferencesIfNeeded(List<Complaint> complaints) {
+    if (_isResolvingReferences) return;
+    _isResolvingReferences = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _isResolvingReferences = false;
+        return;
+      }
+      _resolver
+          .resolveForComplaints(complaints)
+          .then((updated) {
+            _isResolvingReferences = false;
+            if (updated && mounted) {
+              setState(() {});
+            }
+          })
+          .catchError((_) {
+            _isResolvingReferences = false;
+          });
+    });
   }
 
   void _openDetail(Complaint complaint) {
@@ -155,6 +183,7 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
                   child: ErrorState(
                     message: _userFriendlyErrorMessage(snapshot.error),
                     onRetry: _retry,
+                    isRetrying: _isRetrying,
                   ),
                 );
               }
@@ -168,6 +197,11 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
                 );
               }
 
+              // Reset retry state when data arrives
+              if (_isRetrying && snapshot.hasData) {
+                _isRetrying = false;
+              }
+
               final complaints = snapshot.data ?? [];
 
               // 3. Empty state: resolved with 0 records
@@ -178,18 +212,16 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
                     icon: Icons.assignment_outlined,
                     title: 'No complaints yet',
                     message: 'All clear! When complaints are submitted, they will appear here in real time.',
-                    actionLabel: 'Register complaint',
-                    onAction: _openCreateComplaint,
+                    actionLabel: _canCreateComplaint
+                        ? 'Register complaint'
+                        : null,
+                    onAction: _canCreateComplaint ? _openCreateComplaint : null,
                   ),
                 );
               }
 
-              // Asynchronously resolve unknown property/unit references
-              _resolver.resolveForComplaints(complaints).then((updated) {
-                if (updated && mounted) {
-                  setState(() {});
-                }
-              });
+              // Asynchronously resolve unknown property/unit references safely
+              _resolveReferencesIfNeeded(complaints);
 
               // 4. Populated data state
               return ListView.separated(
@@ -222,20 +254,23 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
           ? AppBar(
               title: const Text('Complaints'),
               actions: [
-                IconButton(
-                  tooltip: 'Register complaint',
-                  icon: const Icon(Icons.add),
-                  onPressed: _openCreateComplaint,
-                ),
+                if (_canCreateComplaint)
+                  IconButton(
+                    tooltip: 'Register complaint',
+                    icon: const Icon(Icons.add),
+                    onPressed: _openCreateComplaint,
+                  ),
               ],
             )
           : null,
       body: body,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openCreateComplaint,
-        icon: const Icon(Icons.add),
-        label: const Text('New complaint'),
-      ),
+      floatingActionButton: _canCreateComplaint
+          ? FloatingActionButton.extended(
+              onPressed: _openCreateComplaint,
+              icon: const Icon(Icons.add),
+              label: const Text('New complaint'),
+            )
+          : null,
     );
   }
 }

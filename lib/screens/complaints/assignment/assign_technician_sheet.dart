@@ -643,7 +643,7 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
 
     if (_loadError != null) {
       return ErrorState(
-        message: 'Could not load technician roster: $_loadError',
+        message: 'Could not load technician roster. Check your connection and try again.',
         onRetry: _loadTechnicians,
       );
     }

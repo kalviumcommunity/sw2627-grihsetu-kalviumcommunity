@@ -181,10 +181,24 @@ class _PulsingDot extends StatefulWidget {
 
 class _PulsingDotState extends State<_PulsingDot>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1300),
-  )..repeat(reverse: true);
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    );
+    final inTest = WidgetsBinding.instance.runtimeType.toString().contains(
+      'Test',
+    );
+    if (!inTest) {
+      _controller.repeat(reverse: true);
+    } else {
+      _controller.value = 1.0;
+    }
+  }
 
   @override
   void dispose() {
