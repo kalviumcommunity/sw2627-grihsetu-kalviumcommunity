@@ -206,7 +206,8 @@ class _TechnicianCardState extends State<TechnicianCard> {
                         ),
                       ],
                       // Off duty inline notice
-                      if (tech.availability == TechnicianAvailability.offDuty) ...[
+                      if (tech.availability ==
+                          TechnicianAvailability.offDuty) ...[
                         const SizedBox(height: AppSpacing.xs + 2),
                         Row(
                           children: [

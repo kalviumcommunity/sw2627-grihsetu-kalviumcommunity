@@ -204,6 +204,14 @@ New State
 Additional Details
 ```
 
+Complaint audit writes are centralized in `ComplaintAuditWriter`. Complaint
+creation and technician assignment/reassignment stage their audit event in the
+same Firestore transaction as the business mutation. Events are stored in the
+append-only `audit_events/{eventId}` collection with the authenticated actor,
+trusted role, structured metadata, and a server-generated timestamp. The
+timeline repository exposes complaint-scoped chronological reads; Firestore
+rules deny audit updates and deletes for normal clients.
+
 ### Response-Time Tracking
 
 The system records timestamps that can later be used to calculate metrics such as:

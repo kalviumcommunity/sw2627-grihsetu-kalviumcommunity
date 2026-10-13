@@ -44,8 +44,8 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
   String? _error;
   String _submissionId = '';
 
-  ComplaintRepository get _complaintRepository =>
-      _repository ??= widget.complaintRepository ??
+  ComplaintRepository get _complaintRepository => _repository ??=
+      widget.complaintRepository ??
       FirestoreComplaintRepository(identity: widget.authService);
 
   @override
@@ -81,9 +81,11 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
     if (_busy) return;
     final valid = _formKey.currentState?.validate() ?? false;
     if (!valid || _location == null) {
-      setState(() => _error = _location == null
-          ? 'Choose a property, unit, and tenant.'
-          : null);
+      setState(
+        () => _error = _location == null
+            ? 'Choose a property, unit, and tenant.'
+            : null,
+      );
       return;
     }
 
@@ -216,10 +218,7 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
               ),
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.md),
-                Text(
-                  _error!,
-                  style: TextStyle(color: context.palette.danger),
-                ),
+                Text(_error!, style: TextStyle(color: context.palette.danger)),
               ],
               const SizedBox(height: AppSpacing.lg),
               FilledButton.icon(

@@ -59,17 +59,16 @@ class TechnicianOption {
     TechnicianAvailability? availability,
     int? previousVisitsToUnit,
     bool? isBestMatch,
-  }) =>
-      TechnicianOption(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        phone: phone ?? this.phone,
-        specialties: specialties ?? this.specialties,
-        todayJobCount: todayJobCount ?? this.todayJobCount,
-        availability: availability ?? this.availability,
-        previousVisitsToUnit: previousVisitsToUnit ?? this.previousVisitsToUnit,
-        isBestMatch: isBestMatch ?? this.isBestMatch,
-      );
+  }) => TechnicianOption(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    phone: phone ?? this.phone,
+    specialties: specialties ?? this.specialties,
+    todayJobCount: todayJobCount ?? this.todayJobCount,
+    availability: availability ?? this.availability,
+    previousVisitsToUnit: previousVisitsToUnit ?? this.previousVisitsToUnit,
+    isBestMatch: isBestMatch ?? this.isBestMatch,
+  );
 }
 
 /// Request parameters for an assignment or reassignment.
@@ -136,10 +135,7 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
       id: 'usr_002',
       name: 'Aman Verma',
       phone: '+91 98111 22334',
-      specialties: [
-        ComplaintCategory.electrical,
-        ComplaintCategory.appliance,
-      ],
+      specialties: [ComplaintCategory.electrical, ComplaintCategory.appliance],
       todayJobCount: 2,
       availability: TechnicianAvailability.available,
     ),
@@ -147,10 +143,7 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
       id: 'tech_002',
       name: 'Ramesh Meena',
       phone: '+91 98765 01234',
-      specialties: [
-        ComplaintCategory.plumbing,
-        ComplaintCategory.structural,
-      ],
+      specialties: [ComplaintCategory.plumbing, ComplaintCategory.structural],
       todayJobCount: 1,
       availability: TechnicianAvailability.available,
     ),
@@ -158,10 +151,7 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
       id: 'tech_003',
       name: 'Suresh Patel',
       phone: '+91 98234 56789',
-      specialties: [
-        ComplaintCategory.plumbing,
-        ComplaintCategory.electrical,
-      ],
+      specialties: [ComplaintCategory.plumbing, ComplaintCategory.electrical],
       todayJobCount: 4,
       availability: TechnicianAvailability.onJob,
     ),
@@ -169,10 +159,7 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
       id: 'tech_004',
       name: 'Kavita Sundaram',
       phone: '+91 97654 32109',
-      specialties: [
-        ComplaintCategory.appliance,
-        ComplaintCategory.electrical,
-      ],
+      specialties: [ComplaintCategory.appliance, ComplaintCategory.electrical],
       todayJobCount: 3,
       availability: TechnicianAvailability.available,
     ),
@@ -180,10 +167,7 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
       id: 'tech_005',
       name: 'Dinesh Rawat',
       phone: '+91 96543 21098',
-      specialties: [
-        ComplaintCategory.structural,
-        ComplaintCategory.cleaning,
-      ],
+      specialties: [ComplaintCategory.structural, ComplaintCategory.cleaning],
       todayJobCount: 6,
       availability: TechnicianAvailability.available,
     ),
@@ -191,10 +175,7 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
       id: 'tech_006',
       name: 'Mohit Chawla',
       phone: '+91 95432 10987',
-      specialties: [
-        ComplaintCategory.security,
-        ComplaintCategory.electrical,
-      ],
+      specialties: [ComplaintCategory.security, ComplaintCategory.electrical],
       todayJobCount: 0,
       availability: TechnicianAvailability.offDuty,
     ),
@@ -303,7 +284,8 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
     final StringBuffer noteBuffer = StringBuffer();
 
     if (request.isReassignment) {
-      final prevName = request.previousTechnician?.name ?? 'previous technician';
+      final prevName =
+          request.previousTechnician?.name ?? 'previous technician';
       title = 'Technician reassigned';
       noteBuffer.write(
         'Reassigned from $prevName to ${tech.name}. Reason: ${request.reason?.label ?? "Not specified"}.',
@@ -313,7 +295,9 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
       }
     } else {
       title = 'Technician assigned';
-      noteBuffer.write('Assigned to ${tech.name} (${tech.specialties.map((s) => s.displayLabel).join(", ")}).');
+      noteBuffer.write(
+        'Assigned to ${tech.name} (${tech.specialties.map((s) => s.displayLabel).join(", ")}).',
+      );
     }
 
     if (request.visitDate != null) {

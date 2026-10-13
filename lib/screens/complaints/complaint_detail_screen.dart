@@ -55,7 +55,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     super.initState();
     _complaint = widget.complaint;
     _repository = widget.assignmentRepository ?? InMemoryAssignmentRepository();
-    _assignedTechnician = widget.initialTechnician ?? _defaultInitialTechnician();
+    _assignedTechnician =
+        widget.initialTechnician ?? _defaultInitialTechnician();
     _initAuditEvents();
   }
 
