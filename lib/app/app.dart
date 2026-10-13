@@ -49,6 +49,13 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   String? _currentUid;
   Future<AppUser>? _profileFuture;
+  late Stream<User?> _authStateChanges;
+
+  @override
+  void initState() {
+    super.initState();
+    _authStateChanges = widget.authService.authStateChanges;
+  }
 
   void _syncProfileFuture(User? firebaseUser) {
     if (firebaseUser == null) {
@@ -72,13 +79,14 @@ class _AuthGateState extends State<AuthGate> {
     if (oldWidget.authService != widget.authService) {
       _currentUid = null;
       _profileFuture = null;
+      _authStateChanges = widget.authService.authStateChanges;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: widget.authService.authStateChanges,
+      stream: _authStateChanges,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const _AuthLoadingScreen();
