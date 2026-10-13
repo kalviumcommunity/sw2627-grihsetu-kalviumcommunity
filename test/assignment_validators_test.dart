@@ -73,7 +73,10 @@ void main() {
         AssignmentValidators.validateVisitDate(fifteenDaysAhead, now: fixedNow),
         contains('cannot be more than 14 days ahead'),
       );
-      expect(AssignmentValidators.validateVisitDate(null, now: fixedNow), isNull);
+      expect(
+        AssignmentValidators.validateVisitDate(null, now: fixedNow),
+        isNull,
+      );
     });
 
     test('validateSlot requires slot when visit date is present', () {
@@ -89,26 +92,29 @@ void main() {
       expect(AssignmentValidators.validateSlot(null, null), isNull);
     });
 
-    test('validateNote checks 300 char boundary and mandatory note on other', () {
-      final valid299 = 'a' * 299;
-      final valid300 = 'a' * 300;
-      final invalid301 = 'a' * 301;
+    test(
+      'validateNote checks 300 char boundary and mandatory note on other',
+      () {
+        final valid299 = 'a' * 299;
+        final valid300 = 'a' * 300;
+        final invalid301 = 'a' * 301;
 
-      expect(AssignmentValidators.validateNote(valid299), isNull);
-      expect(AssignmentValidators.validateNote(valid300), isNull);
-      expect(
-        AssignmentValidators.validateNote(invalid301),
-        contains('300 characters or fewer'),
-      );
-      expect(
-        AssignmentValidators.validateNote('', isRequired: true),
-        contains('is required'),
-      );
-      expect(
-        AssignmentValidators.validateNote('Valid note', isRequired: true),
-        isNull,
-      );
-    });
+        expect(AssignmentValidators.validateNote(valid299), isNull);
+        expect(AssignmentValidators.validateNote(valid300), isNull);
+        expect(
+          AssignmentValidators.validateNote(invalid301),
+          contains('300 characters or fewer'),
+        );
+        expect(
+          AssignmentValidators.validateNote('', isRequired: true),
+          contains('is required'),
+        );
+        expect(
+          AssignmentValidators.validateNote('Valid note', isRequired: true),
+          isNull,
+        );
+      },
+    );
 
     test('validateReassignmentReason requires reason and note when Other', () {
       expect(
@@ -150,26 +156,29 @@ void main() {
       );
     });
 
-    test('generateWarnings checks off-duty, category mismatch, and load > 5', () {
-      final noWarnings = AssignmentValidators.generateWarnings(
-        isOffDuty: false,
-        matchesCategory: true,
-        todayJobCount: 3,
-        complaintCategory: ComplaintCategory.plumbing,
-      );
-      expect(noWarnings, isEmpty);
+    test(
+      'generateWarnings checks off-duty, category mismatch, and load > 5',
+      () {
+        final noWarnings = AssignmentValidators.generateWarnings(
+          isOffDuty: false,
+          matchesCategory: true,
+          todayJobCount: 3,
+          complaintCategory: ComplaintCategory.plumbing,
+        );
+        expect(noWarnings, isEmpty);
 
-      final allWarnings = AssignmentValidators.generateWarnings(
-        isOffDuty: true,
-        matchesCategory: false,
-        todayJobCount: 6,
-        complaintCategory: ComplaintCategory.plumbing,
-      );
-      expect(allWarnings.length, 3);
-      expect(allWarnings[0], contains('off duty'));
-      expect(allWarnings[1], contains('Specialty does not match Plumbing'));
-      expect(allWarnings[2], contains('currently assigned 6 jobs'));
-    });
+        final allWarnings = AssignmentValidators.generateWarnings(
+          isOffDuty: true,
+          matchesCategory: false,
+          todayJobCount: 6,
+          complaintCategory: ComplaintCategory.plumbing,
+        );
+        expect(allWarnings.length, 3);
+        expect(allWarnings[0], contains('off duty'));
+        expect(allWarnings[1], contains('Specialty does not match Plumbing'));
+        expect(allWarnings[2], contains('currently assigned 6 jobs'));
+      },
+    );
 
     test('validateAll combines checks and computes isValid and warnings', () {
       final invalidResult = AssignmentValidators.validateAll(

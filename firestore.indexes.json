@@ -34,6 +34,15 @@
         { "fieldPath": "currentTechnicianId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "audit_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "complaintId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

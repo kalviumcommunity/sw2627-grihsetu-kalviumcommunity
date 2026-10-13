@@ -110,10 +110,7 @@ class Complaint {
 
   /// Existing fixture-compatible map. Repository payloads should use
   /// [toFirestoreMap] so document IDs are not duplicated in the document.
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    ...toFirestoreMap(),
-  };
+  Map<String, dynamic> toMap() => {'id': id, ...toFirestoreMap()};
 
   /// Firestore payload without the document ID.
   Map<String, dynamic> toFirestoreMap() => {
@@ -185,28 +182,27 @@ class Complaint {
     DateTime? resolvedAt,
     DateTime? closedAt,
     DateTime? updatedAt,
-  }) =>
-      Complaint(
-        id: id ?? this.id,
-        tenantId: tenantId ?? this.tenantId,
-        propertyId: propertyId ?? this.propertyId,
-        unitId: unitId ?? this.unitId,
-        title: title ?? this.title,
-        description: description ?? this.description,
-        category: category ?? this.category,
-        priority: priority ?? this.priority,
-        status: status ?? this.status,
-        currentTechnicianId: currentTechnicianId ?? this.currentTechnicianId,
-        visitCount: visitCount ?? this.visitCount,
-        isRepeatVisit: isRepeatVisit ?? this.isRepeatVisit,
-        reopenCount: reopenCount ?? this.reopenCount,
-        createdBy: createdBy ?? this.createdBy,
-        createdAt: createdAt ?? this.createdAt,
-        firstAssignedAt: firstAssignedAt ?? this.firstAssignedAt,
-        resolvedAt: resolvedAt ?? this.resolvedAt,
-        closedAt: closedAt ?? this.closedAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-      );
+  }) => Complaint(
+    id: id ?? this.id,
+    tenantId: tenantId ?? this.tenantId,
+    propertyId: propertyId ?? this.propertyId,
+    unitId: unitId ?? this.unitId,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    category: category ?? this.category,
+    priority: priority ?? this.priority,
+    status: status ?? this.status,
+    currentTechnicianId: currentTechnicianId ?? this.currentTechnicianId,
+    visitCount: visitCount ?? this.visitCount,
+    isRepeatVisit: isRepeatVisit ?? this.isRepeatVisit,
+    reopenCount: reopenCount ?? this.reopenCount,
+    createdBy: createdBy ?? this.createdBy,
+    createdAt: createdAt ?? this.createdAt,
+    firstAssignedAt: firstAssignedAt ?? this.firstAssignedAt,
+    resolvedAt: resolvedAt ?? this.resolvedAt,
+    closedAt: closedAt ?? this.closedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 
   @override
   bool operator ==(Object other) =>

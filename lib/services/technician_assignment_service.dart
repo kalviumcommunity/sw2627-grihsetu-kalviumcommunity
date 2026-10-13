@@ -1,12 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants/firestore_collections.dart';
+import '../core/enums/complaint_audit_event_type.dart';
 import '../core/enums/complaint_status.dart';
 import '../core/enums/user_role.dart';
 import '../core/models/complaint.dart';
 import '../core/models/technician_assignment.dart';
 import '../core/models/user.dart';
 import 'auth_service.dart';
+import 'complaint_audit_service.dart';
 
 const String technicianAssignedEventType = 'TECHNICIAN_ASSIGNED';
 const String technicianReassignedEventType = 'TECHNICIAN_REASSIGNED';
@@ -172,20 +174,22 @@ abstract final class TechnicianAssignmentFirestorePayloads {
     required String newTechnicianId,
     required TechnicianAssignmentType assignmentType,
     required String operationId,
-  }) => {
-    'complaintId': complaintId,
-    'eventType': assignmentType == TechnicianAssignmentType.initialAssignment
-        ? technicianAssignedEventType
-        : technicianReassignedEventType,
-    'actorId': actorId,
-    'createdAt': FieldValue.serverTimestamp(),
-    'metadata': {
+    UserRole? actorRole,
+  }) => ComplaintAuditWriter.buildPayload(
+    complaintId: complaintId,
+    eventType: assignmentType == TechnicianAssignmentType.initialAssignment
+        ? ComplaintAuditEventType.technicianAssigned
+        : ComplaintAuditEventType.technicianReassigned,
+    actorId: actorId,
+    actorRole: actorRole?.value,
+    details: {
       'previousTechnicianId': previousTechnicianId,
       'newTechnicianId': newTechnicianId,
       'assignmentType': assignmentType.value,
       'operationId': operationId,
     },
-  };
+    schemaVersion: actorRole == null ? null : 1,
+  );
 }
 
 /// Atomically changes complaint responsibility, appends history, and appends
@@ -199,6 +203,10 @@ class TechnicianAssignmentService {
 
   final FirebaseFirestore _firestore;
   final AuthenticatedUserProvider _identity;
+  late final ComplaintAuditWriter _auditWriter = ComplaintAuditWriter(
+    firestore: _firestore,
+    identity: _identity,
+  );
 
   Future<Complaint> assignTechnician({
     required String complaintId,
@@ -337,8 +345,12 @@ class TechnicianAssignmentService {
             TechnicianAssignmentFailureCode.unauthorized,
           );
         }
-        final actor = _profileFromSnapshot(actorSnapshot);
-        TechnicianAssignmentPolicy.validateActor(actor);
+        final actorProfile = _profileFromSnapshot(actorSnapshot);
+        TechnicianAssignmentPolicy.validateActor(actorProfile);
+        final actor = AuditActorContext.fromProfile(
+          profile: actorProfile,
+          authenticatedUid: user.uid,
+        );
         if (!technicianSnapshot.exists || technicianSnapshot.data() == null) {
           throw const TechnicianAssignmentFailure(
             TechnicianAssignmentFailureCode.technicianNotFound,
@@ -419,16 +431,23 @@ class TechnicianAssignmentService {
             reason: reason,
           ),
         );
-        transaction.set(
-          auditRef,
-          TechnicianAssignmentFirestorePayloads.audit(
-            complaintId: normalizedComplaintId,
-            actorId: user.uid,
-            previousTechnicianId: previousTechnicianId,
-            newTechnicianId: normalizedTechnicianId,
-            assignmentType: assignmentType,
-            operationId: normalizedOperationId,
-          ),
+        _auditWriter.appendEventInTransaction(
+          transaction,
+          eventId: auditRef.id,
+          complaintId: normalizedComplaintId,
+          eventType:
+              assignmentType == TechnicianAssignmentType.initialAssignment
+              ? ComplaintAuditEventType.technicianAssigned
+              : ComplaintAuditEventType.technicianReassigned,
+          actor: actor,
+          details: {
+            'previousTechnicianId': previousTechnicianId,
+            'newTechnicianId': normalizedTechnicianId,
+            'assignmentType': assignmentType.value,
+            'operationId': normalizedOperationId,
+          },
+          reason: reason,
+          eventWasAbsent: !auditSnapshot.exists,
         );
 
         return complaint.copyWith(
