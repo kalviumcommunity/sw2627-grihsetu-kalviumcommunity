@@ -113,14 +113,13 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
   }
 
   void _openDetail(Complaint complaint) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ComplaintDetailScreen(
-          complaint: complaint,
-          propertyName: _resolver.getPropertyName(complaint.propertyId),
-          unitNumber: _resolver.getUnitNumber(complaint.unitId),
-        ),
-      ),
+    ComplaintDetailScreen.open(
+      context,
+      complaint.id,
+      complaint: complaint,
+      propertyName: _resolver.getPropertyName(complaint.propertyId),
+      unitNumber: _resolver.getUnitNumber(complaint.unitId),
+      complaintRepository: _repository,
     );
   }
 

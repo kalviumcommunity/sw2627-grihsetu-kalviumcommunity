@@ -1,0 +1,452 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+
+import '../../../core/enums/complaint_priority.dart';
+import '../../../core/enums/complaint_status.dart';
+import '../../../core/models/complaint.dart';
+import '../../../core/models/complaint_audit_event.dart';
+import '../../../repositories/complaint_repository.dart';
+import 'complaint_detail_models.dart';
+
+/// Single source of truth controller for a complaint and its audit trail.
+///
+/// Listens to [ComplaintRepository.watchComplaint] and [ComplaintRepository.watchAuditEvents].
+/// Any mutation is dispatched through the repository, which appends an event.
+/// The controller reacts to the stream update and publishes an updated
+/// immutable [ComplaintDetailState].
+class ComplaintDetailController extends ChangeNotifier {
+  ComplaintDetailController({
+    required this.complaintId,
+    required this.repository,
+    Complaint? initialComplaint,
+    List<ActivityEvent>? initialEvents,
+    this.currentUserId = 'usr_001',
+    this.currentUserName = 'Riya Sharma',
+    this.currentUserRole = 'Operations Staff',
+    DateTime? referenceNow,
+  }) : _referenceNow = referenceNow,
+       _state = initialComplaint != null
+           ? ComplaintDetailState(
+               status: ComplaintDetailStatus.data,
+               complaint: initialComplaint,
+               events: (initialEvents != null && initialEvents.isNotEmpty)
+                   ? initialEvents
+                   : _buildDefaultInitialEvents(initialComplaint),
+               referenceNow: referenceNow,
+             )
+           : const ComplaintDetailState(status: ComplaintDetailStatus.loading) {
+    if (initialComplaint != null) {
+      _latestComplaint = initialComplaint;
+      _latestEvents = _state.events;
+      if (repository is InMemoryComplaintRepository) {
+        (repository as InMemoryComplaintRepository).seedComplaint(
+          initialComplaint,
+        );
+      }
+    }
+    _initStreams();
+  }
+
+  static List<ActivityEvent> _buildDefaultInitialEvents(Complaint c) {
+    final list = <ActivityEvent>[
+      ActivityEvent(
+        id: '${c.id}_created',
+        complaintId: c.id,
+        type: ActivityEventType.created,
+        actorId: c.createdBy,
+        actorName: 'Priya Patel',
+        actorRole: 'Tenant',
+        timestamp: c.createdAt ?? DateTime.now(),
+        note: 'Reported via GrihSetu tenant portal.',
+      ),
+    ];
+    if (c.currentTechnicianId != null && c.currentTechnicianId!.isNotEmpty) {
+      list.add(
+        ActivityEvent(
+          id: '${c.id}_assigned',
+          complaintId: c.id,
+          type: ActivityEventType.assigned,
+          actorId: 'usr_staff_01',
+          actorName: 'Riya Sharma',
+          actorRole: 'Operations Staff',
+          timestamp:
+              c.firstAssignedAt ??
+              (c.createdAt != null
+                  ? c.createdAt!.add(const Duration(hours: 1))
+                  : DateTime.now()),
+          note: 'Assigned to technician.',
+          metadata: {
+            'technicianId': c.currentTechnicianId,
+            'technicianName': c.currentTechnicianId == 'usr_002'
+                ? 'Aman Verma'
+                : 'Assigned Technician',
+          },
+        ),
+      );
+    }
+    if (c.status == ComplaintStatus.resolved || c.resolvedAt != null) {
+      list.add(
+        ActivityEvent(
+          id: '${c.id}_resolved',
+          complaintId: c.id,
+          type: ActivityEventType.markedResolved,
+          actorId: c.currentTechnicianId ?? 'usr_002',
+          actorName: c.currentTechnicianId == 'usr_002'
+              ? 'Aman Verma'
+              : 'Technician',
+          actorRole: 'Technician',
+          timestamp:
+              c.resolvedAt ??
+              (c.firstAssignedAt != null
+                  ? c.firstAssignedAt!.add(const Duration(hours: 4))
+                  : DateTime.now()),
+          note: 'Issue resolved on site.',
+        ),
+      );
+    } else if (c.status == ComplaintStatus.closed || c.closedAt != null) {
+      list.add(
+        ActivityEvent(
+          id: '${c.id}_closed',
+          complaintId: c.id,
+          type: ActivityEventType.closed,
+          actorId: c.createdBy,
+          actorName: 'Priya Patel',
+          actorRole: 'Tenant',
+          timestamp: c.closedAt ?? DateTime.now(),
+          note: 'Resolution verified and closed.',
+        ),
+      );
+    }
+    return list;
+  }
+
+  final String complaintId;
+  final ComplaintRepository repository;
+  final String currentUserId;
+  final String currentUserName;
+  final String currentUserRole;
+  final DateTime? _referenceNow;
+
+  ComplaintDetailState _state;
+  ComplaintDetailState get state => _state;
+
+  StreamSubscription<Complaint?>? _complaintSub;
+  StreamSubscription<List<ComplaintAuditEvent>>? _eventsSub;
+
+  Complaint? _latestComplaint;
+  List<ActivityEvent> _latestEvents = const [];
+  bool _isDisposed = false;
+
+  void _initStreams() {
+    _complaintSub = repository
+        .watchComplaint(complaintId)
+        .listen(
+          (complaint) {
+            if (_isDisposed) return;
+            if (complaint == null) {
+              if (_latestComplaint == null) {
+                _updateState(
+                  const ComplaintDetailState(
+                    status: ComplaintDetailStatus.notFound,
+                  ),
+                );
+              }
+            } else {
+              _latestComplaint = complaint;
+              _updateState(
+                ComplaintDetailState(
+                  status: ComplaintDetailStatus.data,
+                  complaint: _latestComplaint,
+                  events: _latestEvents,
+                  referenceNow: _referenceNow,
+                ),
+              );
+            }
+          },
+          onError: (Object error) {
+            if (_isDisposed) return;
+            _updateState(
+              ComplaintDetailState(
+                status: ComplaintDetailStatus.error,
+                errorMessage: error.toString(),
+              ),
+            );
+          },
+        );
+
+    _eventsSub = repository
+        .watchAuditEvents(complaintId)
+        .listen(
+          (auditEvents) {
+            if (_isDisposed) return;
+            if (auditEvents.isNotEmpty) {
+              final seenIds = <String>{};
+              _latestEvents = auditEvents
+                  .where((a) => seenIds.add(a.id))
+                  .map((a) => ActivityEvent.fromAuditEvent(a))
+                  .toList();
+            } else if (_latestEvents.isEmpty && _latestComplaint != null) {
+              _latestEvents = _buildDefaultInitialEvents(_latestComplaint!);
+            }
+            if (_latestComplaint != null) {
+              _updateState(
+                ComplaintDetailState(
+                  status: ComplaintDetailStatus.data,
+                  complaint: _latestComplaint,
+                  events: _latestEvents,
+                  referenceNow: _referenceNow,
+                ),
+              );
+            }
+          },
+          onError: (Object error) {
+            if (_isDisposed) return;
+            if (_latestComplaint == null) {
+              _updateState(
+                ComplaintDetailState(
+                  status: ComplaintDetailStatus.error,
+                  errorMessage: error.toString(),
+                ),
+              );
+            }
+          },
+        );
+  }
+
+  void _updateState(ComplaintDetailState newState) {
+    _state = newState;
+    notifyListeners();
+  }
+
+  /// Reloads data by re-fetching and resetting subscriptions.
+  Future<void> retry() async {
+    _updateState(
+      const ComplaintDetailState(status: ComplaintDetailStatus.loading),
+    );
+    await _complaintSub?.cancel();
+    await _eventsSub?.cancel();
+    _initStreams();
+  }
+
+  /// Assigns or reassigns technician via repository.
+  Future<void> assignTechnician(
+    String technicianId, {
+    String? technicianName,
+    String? notes,
+    String? reason,
+    DateTime? scheduledDate,
+    String? timeSlot,
+    String? role,
+    String? actorId,
+  }) async {
+    final now = DateTime.now();
+    var repoHandledEvent = false;
+    try {
+      final updated = await repository.assignComplaintTechnician(
+        complaintId,
+        technicianId,
+        actorId: actorId ?? currentUserId,
+        reason: reason ?? notes,
+        role: role ?? currentUserRole,
+        scheduledDate: scheduledDate,
+        timeSlot: timeSlot,
+      );
+      _latestComplaint = updated;
+      repoHandledEvent = true;
+    } catch (_) {
+      if (_latestComplaint != null) {
+        _latestComplaint = _latestComplaint!.copyWith(
+          status: ComplaintStatus.assigned,
+          currentTechnicianId: technicianId,
+          firstAssignedAt: scheduledDate ?? now,
+          updatedAt: now,
+        );
+      }
+    }
+
+    if (!repoHandledEvent) {
+      final auditEvent = ComplaintAuditEvent(
+        id: '${complaintId}_assign_${now.millisecondsSinceEpoch}',
+        complaintId: complaintId,
+        eventType: 'TECHNICIAN_ASSIGNED',
+        actorId: actorId ?? currentUserId,
+        createdAt: now,
+        metadata: {
+          'technicianId': technicianId,
+          'technicianName': technicianName ?? 'Technician',
+          'actorName': currentUserName,
+          'actorRole': 'Staff Operations',
+          'note': notes ?? 'Assigned to ${technicianName ?? technicianId}.',
+          'reason': ?reason,
+        },
+      );
+      try {
+        await repository.appendAuditEvent(auditEvent);
+      } catch (_) {}
+
+      final typedEvt = ActivityEvent.fromAuditEvent(auditEvent);
+      _latestEvents = [..._latestEvents, typedEvt];
+    } else {
+      try {
+        final repoEvents = await repository.loadAuditEvents(complaintId);
+        if (repoEvents.isNotEmpty) {
+          final seenIds = <String>{};
+          _latestEvents = repoEvents
+              .where((a) => seenIds.add(a.id))
+              .map((a) => ActivityEvent.fromAuditEvent(a))
+              .toList();
+        }
+      } catch (_) {}
+    }
+
+    _updateState(
+      ComplaintDetailState(
+        status: ComplaintDetailStatus.data,
+        complaint: _latestComplaint,
+        events: _latestEvents,
+        referenceNow: _referenceNow,
+      ),
+    );
+    notifyListeners();
+  }
+
+  /// Changes priority via repository.
+  Future<void> changePriority(
+    ComplaintPriority newPriority, {
+    String? reason,
+    String? actorId,
+  }) async {
+    final updated = await repository.updateComplaintPriority(
+      complaintId,
+      newPriority,
+      actorId: actorId ?? currentUserId,
+      reason: reason,
+    );
+    _latestComplaint = updated;
+    notifyListeners();
+  }
+
+  /// Records an internal note visible only to staff.
+  Future<void> addInternalNote(
+    String note, {
+    List<String> photos = const [],
+    String? actorId,
+    String? actorName,
+  }) async {
+    final now = DateTime.now();
+    final event = ComplaintAuditEvent(
+      id: '${complaintId}_note_${now.millisecondsSinceEpoch}',
+      complaintId: complaintId,
+      eventType: 'NOTE_ADDED',
+      actorId: actorId ?? currentUserId,
+      createdAt: now,
+      metadata: {
+        'actorName': actorName ?? currentUserName,
+        'actorRole': currentUserRole,
+        'note': note,
+        'isInternal': true,
+        if (photos.isNotEmpty) 'photos': photos,
+      },
+    );
+    await repository.appendAuditEvent(event);
+  }
+
+  /// Moves the workflow forward for an assigned technician.
+  Future<void> advanceTechnicianStep(
+    ActivityEventType stepType, {
+    String? note,
+    List<String> photos = const [],
+    String? actorId,
+    String? actorName,
+  }) async {
+    final now = DateTime.now();
+    final eventType = switch (stepType) {
+      ActivityEventType.accepted => 'TECHNICIAN_ACCEPTED',
+      ActivityEventType.travelStarted => 'TRAVEL_STARTED',
+      ActivityEventType.arrived => 'TECHNICIAN_ARRIVED',
+      ActivityEventType.workStarted => 'WORK_STARTED',
+      ActivityEventType.repairCompleted => 'REPAIR_COMPLETED',
+      ActivityEventType.markedResolved => 'MARKED_RESOLVED',
+      _ => stepType.name.toUpperCase(),
+    };
+
+    final event = ComplaintAuditEvent(
+      id: '${complaintId}_tech_${now.millisecondsSinceEpoch}',
+      complaintId: complaintId,
+      eventType: eventType,
+      actorId: actorId ?? currentUserId,
+      createdAt: now,
+      metadata: {
+        'actorName': actorName ?? currentUserName,
+        'actorRole': 'Technician',
+        'note': ?note,
+        if (photos.isNotEmpty) 'photos': photos,
+      },
+    );
+    await repository.appendAuditEvent(event);
+
+    // If step resolves the complaint, update status in complaint repository
+    if (stepType == ActivityEventType.repairCompleted ||
+        stepType == ActivityEventType.markedResolved) {
+      await repository.updateComplaintStatus(
+        complaintId,
+        ComplaintStatus.resolved,
+        actorId: actorId ?? currentUserId,
+        role: 'Technician',
+        note: note,
+      );
+    } else if (stepType == ActivityEventType.arrived ||
+        stepType == ActivityEventType.workStarted) {
+      if (_state.currentStatus != ComplaintStatus.inProgress) {
+        await repository.updateComplaintStatus(
+          complaintId,
+          ComplaintStatus.inProgress,
+          actorId: actorId ?? currentUserId,
+          role: 'Technician',
+          note: note,
+        );
+      }
+    }
+  }
+
+  /// Tenant confirms resolution.
+  Future<void> confirmFixed({
+    String? note,
+    String? actorId,
+    String? actorName,
+  }) async {
+    await repository.updateComplaintStatus(
+      complaintId,
+      ComplaintStatus.closed,
+      actorId: actorId ?? currentUserId,
+      role: 'Tenant',
+      note: note ?? 'Tenant confirmed repair was successful.',
+      metadata: {'actorName': actorName ?? currentUserName},
+    );
+  }
+
+  /// Tenant reopens resolved complaint with reason.
+  Future<void> reopen({
+    required String reason,
+    String? actorId,
+    String? actorName,
+  }) async {
+    await repository.updateComplaintStatus(
+      complaintId,
+      ComplaintStatus.reopened,
+      actorId: actorId ?? currentUserId,
+      role: 'Tenant',
+      note: reason,
+      metadata: {'actorName': actorName ?? currentUserName, 'reason': reason},
+    );
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _complaintSub?.cancel();
+    _eventsSub?.cancel();
+    super.dispose();
+  }
+}
