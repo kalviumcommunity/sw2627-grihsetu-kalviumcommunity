@@ -5,7 +5,11 @@ import '../../../services/media_picker.dart';
 import '../../../theme/app_palette.dart';
 import '../../../utils/visit_validators.dart';
 import '../../../widgets/app_card.dart';
+import '../../../widgets/app_dropdown.dart';
+import '../../../widgets/app_loading_button.dart';
 import '../../../widgets/app_spacing.dart';
+import '../../../widgets/app_switch.dart';
+import '../../../widgets/app_text_field.dart';
 import 'visit_models.dart';
 import 'visit_success_screen.dart';
 
@@ -392,6 +396,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
   }
 
   Future<void> _submitForm() async {
+    if (_isSubmitting) return;
     if (!_validateForm()) return;
 
     final palette = context.palette;
@@ -473,6 +478,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
     );
 
     if (confirmed != true) return;
+    if (!mounted || _isSubmitting) return;
 
     setState(() {
       _isSubmitting = true;
@@ -803,7 +809,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
-              TextField(
+              AppTextField(
                 key: const Key('what_was_found_field'),
                 controller: _foundController,
                 maxLines: 3,
@@ -820,12 +826,9 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                     setState(() => _errors.remove('found'));
                   }
                 },
-                decoration: InputDecoration(
-                  hintText:
-                      'Describe root cause identified during inspection...',
-                  errorText: _errors['found'],
-                  border: const OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+                hintText: 'Describe root cause identified during inspection...',
+                errorText: _errors['found'],
               ),
             ],
           ),
@@ -867,7 +870,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
-              TextField(
+              AppTextField(
                 key: const Key('what_was_repaired_field'),
                 controller: _repairedController,
                 maxLines: 3,
@@ -884,11 +887,9 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                     setState(() => _errors.remove('repaired'));
                   }
                 },
-                decoration: InputDecoration(
-                  hintText: 'Detail actions taken to resolve the problem...',
-                  errorText: _errors['repaired'],
-                  border: const OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+                hintText: 'Detail actions taken to resolve the problem...',
+                errorText: _errors['repaired'],
               ),
             ],
           ),
@@ -1023,14 +1024,12 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SwitchListTile(
-                key: const Key('additional_work_switch'),
+              AppSwitch(
+                switchKey: const Key('additional_work_switch'),
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Additional work recommended'),
-                subtitle: const Text(
-                  'Flags a follow-up recommendation for operations staff',
-                  style: TextStyle(fontSize: 12),
-                ),
+                title: 'Additional work recommended',
+                subtitle:
+                    'Flags a follow-up recommendation for operations staff',
                 value: _additionalWorkRecommended,
                 onChanged: (val) {
                   setState(() => _additionalWorkRecommended = val);
@@ -1039,15 +1038,15 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
               ),
               if (_additionalWorkRecommended) ...[
                 const SizedBox(height: AppSpacing.xs),
-                TextField(
+                AppTextField(
                   key: const Key('additional_work_notes_field'),
                   controller: _additionalWorkNotesController,
                   maxLines: 2,
                   onChanged: (_) => _saveDraft(),
                   decoration: const InputDecoration(
-                    hintText: 'Notes for staff regarding preventative or future work...',
                     border: OutlineInputBorder(),
                   ),
+                  hintText: 'Notes for staff regarding preventative or future work...',
                 ),
               ],
             ],
@@ -1095,7 +1094,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                 style: TextStyle(color: palette.muted, fontSize: 12),
               ),
               const SizedBox(height: AppSpacing.xs),
-              TextField(
+              AppTextField(
                 key: const Key('tenant_resolution_notes_field'),
                 controller: _tenantNotesController,
                 maxLines: 3,
@@ -1112,12 +1111,10 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                     setState(() => _errors.remove('tenantNotes'));
                   }
                 },
-                decoration: InputDecoration(
-                  hintText:
-                      'Explain how the issue was fixed so tenant can verify...',
-                  errorText: _errors['tenantNotes'],
-                  border: const OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+                hintText:
+                    'Explain how the issue was fixed so tenant can verify...',
+                errorText: _errors['tenantNotes'],
               ),
             ],
           ),
@@ -1260,17 +1257,17 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
-              DropdownButtonFormField<FollowUpReason>(
+              AppDropdown<FollowUpReason>(
                 key: const Key('follow_up_reason_dropdown'),
                 isExpanded: true,
-                initialValue: _followUpReason,
+                value: _followUpReason,
                 decoration: InputDecoration(
                   border: const OutlineInputBorder(),
                   errorText: _followUpReason == FollowUpReason.other
                       ? null
                       : _errors['reason'],
                 ),
-                hint: const Text('Select a reason...'),
+                hintText: 'Select a reason...',
                 items: FollowUpReason.values.map((reason) {
                   return DropdownMenuItem(
                     value: reason,
@@ -1287,7 +1284,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
               ),
               if (_followUpReason == FollowUpReason.other) ...[
                 const SizedBox(height: AppSpacing.sm),
-                TextField(
+                AppTextField(
                   key: const Key('other_reason_details_field'),
                   controller: _otherReasonController,
                   maxLength: 500,
@@ -1297,10 +1294,10 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                       setState(() => _errors.remove('reason'));
                     }
                   },
-                  decoration: InputDecoration(
-                    labelText: 'Specify other reason * (min 10 characters)',
-                    errorText: _errors['reason'],
-                    border: const OutlineInputBorder(),
+                  label: 'Specify other reason * (min 10 characters)',
+                  errorText: _errors['reason'],
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
                   ),
                 ),
               ],
@@ -1344,7 +1341,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
-              TextField(
+              AppTextField(
                 key: const Key('follow_up_details_field'),
                 controller: _detailsController,
                 maxLines: 3,
@@ -1361,11 +1358,9 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                     setState(() => _errors.remove('details'));
                   }
                 },
-                decoration: InputDecoration(
-                  hintText: 'Explain why another visit is needed and what was accomplished so far...',
-                  errorText: _errors['details'],
-                  border: const OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+                hintText: 'Explain why another visit is needed and what was accomplished so far...',
+                errorText: _errors['details'],
               ),
             ],
           ),
@@ -1419,15 +1414,15 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
-                    child: DropdownButtonFormField<String>(
+                    child: AppDropdown<String>(
                       key: const Key('suggested_slot_dropdown'),
                       isExpanded: true,
-                      initialValue: _suggestedSlot,
+                      value: _suggestedSlot,
                       decoration: const InputDecoration(
                         isDense: true,
                         border: OutlineInputBorder(),
-                        hintText: 'Slot',
                       ),
+                      hintText: 'Slot',
                       items: const [
                         DropdownMenuItem(
                           value: 'Morning (9am - 12pm)',
@@ -1558,8 +1553,18 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
         child: SizedBox(
           width: double.infinity,
           height: 56, // Large 56px primary button
-          child: FilledButton.icon(
+          child: AppLoadingButton(
             key: const Key('submit_visit_button'),
+            label: isResolved
+                ? 'Submit & Mark Resolved'
+                : 'Request Follow-up Visit',
+            loadingLabel: 'Submitting...',
+            isLoading: _isSubmitting,
+            icon: Icon(isResolved ? Icons.check : Icons.send, size: 20),
+            onPressed: _isSubmitting ? null : _submitForm,
+            isFullWidth: true,
+            height: 56,
+            progressIndicatorColor: Colors.white,
             style: FilledButton.styleFrom(
               minimumSize: const Size(double.infinity, 56),
               backgroundColor: isResolved ? palette.success : palette.accent,
@@ -1567,26 +1572,6 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-            ),
-            // The Submit button is NEVER silently disabled
-            onPressed: _isSubmitting ? null : _submitForm,
-            icon: _isSubmitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Icon(isResolved ? Icons.check : Icons.send, size: 20),
-            label: Text(
-              _isSubmitting
-                  ? 'Submitting...'
-                  : (isResolved
-                        ? 'Submit & Mark Resolved'
-                        : 'Request Follow-up Visit'),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ),

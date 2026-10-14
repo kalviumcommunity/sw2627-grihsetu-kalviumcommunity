@@ -8,7 +8,10 @@ import '../../repositories/complaint_repository.dart';
 import '../../repositories/property_repository.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_palette.dart';
+import '../../widgets/app_dropdown.dart';
+import '../../widgets/app_loading_button.dart';
 import '../../widgets/app_spacing.dart';
+import '../../widgets/app_text_field.dart';
 import '../property/property_selection_flow.dart';
 
 /// Minimal complaint creation surface for the GRIH-013 write workflow.
@@ -166,71 +169,65 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              TextFormField(
+              AppTextField(
                 controller: _titleController,
                 enabled: !_busy,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Complaint title'),
+                label: 'Complaint title',
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Complaint title is required.'
                     : null,
               ),
               const SizedBox(height: AppSpacing.md),
-              TextFormField(
+              AppTextField(
                 controller: _descriptionController,
                 enabled: !_busy,
                 minLines: 4,
                 maxLines: 7,
-                decoration: const InputDecoration(labelText: 'Description'),
+                label: 'Description',
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Complaint description is required.'
                     : null,
               ),
               const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<ComplaintCategory>(
-                initialValue: _category,
-                decoration: const InputDecoration(labelText: 'Category'),
+              AppDropdown<ComplaintCategory>(
+                value: _category,
+                label: 'Category',
+                enabled: !_busy,
                 items: [
                   for (final category in ComplaintCategory.values)
-                    DropdownMenuItem(
+                    AppDropdown.item(
                       value: category,
-                      child: Text(category.displayLabel),
+                      label: category.displayLabel,
                     ),
                 ],
-                onChanged: _busy
-                    ? null
-                    : (value) => setState(() => _category = value!),
+                onChanged: (value) => setState(() => _category = value!),
               ),
               const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<ComplaintPriority>(
-                initialValue: _priority,
-                decoration: const InputDecoration(labelText: 'Priority'),
+              AppDropdown<ComplaintPriority>(
+                value: _priority,
+                label: 'Priority',
+                enabled: !_busy,
                 items: [
                   for (final priority in ComplaintPriority.values)
-                    DropdownMenuItem(
+                    AppDropdown.item(
                       value: priority,
-                      child: Text(priority.displayLabel),
+                      label: priority.displayLabel,
                     ),
                 ],
-                onChanged: _busy
-                    ? null
-                    : (value) => setState(() => _priority = value!),
+                onChanged: (value) => setState(() => _priority = value!),
               ),
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 Text(_error!, style: TextStyle(color: context.palette.danger)),
               ],
               const SizedBox(height: AppSpacing.lg),
-              FilledButton.icon(
+              AppLoadingButton(
                 onPressed: _busy ? null : _submit,
-                icon: _busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send_outlined),
-                label: Text(_busy ? 'Submitting…' : 'Submit complaint'),
+                isLoading: _busy,
+                loadingLabel: 'Submitting…',
+                icon: const Icon(Icons.send_outlined),
+                label: 'Submit complaint',
               ),
             ],
           ),
