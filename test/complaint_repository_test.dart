@@ -306,4 +306,349 @@ void main() {
       },
     );
   });
+
+  group('Technician assigned complaints stream', () {
+    test('rejects empty or whitespace technician identity', () {
+      final repo = InMemoryComplaintRepository(initialComplaints: []);
+
+      expect(
+        () => repo.watchAssignedComplaints(technicianId: ''),
+        throwsA(isA<ComplaintValidationException>()),
+      );
+      expect(
+        () => repo.watchAssignedComplaints(technicianId: '   '),
+        throwsA(isA<ComplaintValidationException>()),
+      );
+
+      repo.dispose();
+    });
+
+    test('filters by technicianId and excludes other technicians and terminal statuses', () async {
+      const techA = 'tech_A';
+      const techB = 'tech_B';
+
+      final activeTechA = Complaint(
+        id: 'c_active_a',
+        title: 'Active Tech A',
+        description: 'Desc',
+        category: ComplaintCategory.plumbing,
+        priority: ComplaintPriority.high,
+        status: ComplaintStatus.assigned,
+        currentTechnicianId: techA,
+        propertyId: 'prop_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 5),
+      );
+
+      final inProgressTechA = Complaint(
+        id: 'c_prog_a',
+        title: 'In Progress Tech A',
+        description: 'Desc',
+        category: ComplaintCategory.electrical,
+        priority: ComplaintPriority.urgent,
+        status: ComplaintStatus.inProgress,
+        currentTechnicianId: techA,
+        propertyId: 'prop_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 4),
+      );
+
+      final resolvedTechA = Complaint(
+        id: 'c_res_a',
+        title: 'Resolved Tech A',
+        description: 'Desc',
+        category: ComplaintCategory.plumbing,
+        priority: ComplaintPriority.high,
+        status: ComplaintStatus.resolved,
+        currentTechnicianId: techA,
+        propertyId: 'prop_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 1),
+      );
+
+      final closedTechA = Complaint(
+        id: 'c_closed_a',
+        title: 'Closed Tech A',
+        description: 'Desc',
+        category: ComplaintCategory.plumbing,
+        priority: ComplaintPriority.low,
+        status: ComplaintStatus.closed,
+        currentTechnicianId: techA,
+        propertyId: 'prop_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 2),
+      );
+
+      final cancelledTechA = Complaint(
+        id: 'c_canc_a',
+        title: 'Cancelled Tech A',
+        description: 'Desc',
+        category: ComplaintCategory.plumbing,
+        priority: ComplaintPriority.medium,
+        status: ComplaintStatus.cancelled,
+        currentTechnicianId: techA,
+        propertyId: 'prop_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 3),
+      );
+
+      final activeTechB = Complaint(
+        id: 'c_active_b',
+        title: 'Active Tech B',
+        description: 'Desc',
+        category: ComplaintCategory.structural,
+        priority: ComplaintPriority.urgent,
+        status: ComplaintStatus.assigned,
+        currentTechnicianId: techB,
+        propertyId: 'prop_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 6),
+      );
+
+      final unassignedActive = Complaint(
+        id: 'c_unassigned',
+        title: 'Unassigned Active',
+        description: 'Desc',
+        category: ComplaintCategory.structural,
+        priority: ComplaintPriority.urgent,
+        status: ComplaintStatus.open,
+        currentTechnicianId: null,
+        propertyId: 'prop_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 7),
+      );
+
+      final repo = InMemoryComplaintRepository(
+        initialComplaints: [
+          activeTechA,
+          inProgressTechA,
+          resolvedTechA,
+          closedTechA,
+          cancelledTechA,
+          activeTechB,
+          unassignedActive,
+        ],
+      );
+
+      final techAResults = await repo
+          .watchAssignedComplaints(technicianId: techA)
+          .first;
+
+      expect(techAResults, hasLength(2));
+      final ids = techAResults.map((c) => c.id).toList();
+      expect(ids, containsAll(['c_active_a', 'c_prog_a']));
+      expect(ids, isNot(contains('c_res_a')));
+      expect(ids, isNot(contains('c_closed_a')));
+      expect(ids, isNot(contains('c_canc_a')));
+      expect(ids, isNot(contains('c_active_b')));
+      expect(ids, isNot(contains('c_unassigned')));
+
+      repo.dispose();
+    });
+
+    test('empty results emit an empty list', () async {
+      final repo = InMemoryComplaintRepository(initialComplaints: []);
+      final stream = repo.watchAssignedComplaints(technicianId: 'tech_none');
+
+      final first = await stream.first;
+      expect(first, isEmpty);
+
+      repo.dispose();
+    });
+
+    test('stream updates reactively when new complaints are added', () async {
+      const techId = 'tech_live';
+      final repo = InMemoryComplaintRepository(initialComplaints: []);
+
+      final emissions = <List<Complaint>>[];
+      final sub = repo
+          .watchAssignedComplaints(technicianId: techId)
+          .listen(emissions.add);
+
+      await pumpEventQueue();
+      expect(emissions, hasLength(1));
+      expect(emissions.first, isEmpty);
+
+      final newAssigned = Complaint(
+        id: 'c_live_1',
+        title: 'New assignment',
+        description: 'Details',
+        category: ComplaintCategory.cleaning,
+        priority: ComplaintPriority.medium,
+        status: ComplaintStatus.assigned,
+        currentTechnicianId: techId,
+        propertyId: 'p_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 8),
+      );
+
+      repo.addComplaint(newAssigned);
+      await pumpEventQueue();
+
+      expect(emissions, hasLength(2));
+      expect(emissions.last, hasLength(1));
+      expect(emissions.last.first.id, 'c_live_1');
+
+      await sub.cancel();
+      repo.dispose();
+    });
+
+    test('stream errors propagate correctly', () async {
+      final repo = InMemoryComplaintRepository(initialComplaints: []);
+      final stream = repo.watchAssignedComplaints(technicianId: 'tech_err');
+
+      var receivedError = false;
+      final sub = stream.listen(
+        (_) {},
+        onError: (e) {
+          receivedError = true;
+        },
+      );
+
+      repo.emitError(const ComplaintFailure(ComplaintFailureCode.network));
+      await pumpEventQueue();
+
+      expect(receivedError, isTrue);
+
+      await sub.cancel();
+      repo.dispose();
+    });
+
+    test('deterministically sorts urgent -> high -> in-progress -> other active, and oldest date first', () async {
+      const techId = 'tech_sort';
+
+      final lowOther = Complaint(
+        id: 'c_low_assigned',
+        title: 'Low Assigned',
+        description: 'Desc',
+        category: ComplaintCategory.other,
+        priority: ComplaintPriority.low,
+        status: ComplaintStatus.assigned,
+        currentTechnicianId: techId,
+        propertyId: 'p_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 1),
+      );
+
+      final medOtherOld = Complaint(
+        id: 'c_med_assigned_old',
+        title: 'Medium Assigned Old',
+        description: 'Desc',
+        category: ComplaintCategory.other,
+        priority: ComplaintPriority.medium,
+        status: ComplaintStatus.assigned,
+        currentTechnicianId: techId,
+        propertyId: 'p_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 2),
+      );
+
+      final medOtherNew = Complaint(
+        id: 'c_med_assigned_new',
+        title: 'Medium Assigned New',
+        description: 'Desc',
+        category: ComplaintCategory.other,
+        priority: ComplaintPriority.medium,
+        status: ComplaintStatus.assigned,
+        currentTechnicianId: techId,
+        propertyId: 'p_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 5),
+      );
+
+      final inProgressLow = Complaint(
+        id: 'c_prog_low',
+        title: 'In Progress Low Priority',
+        description: 'Desc',
+        category: ComplaintCategory.other,
+        priority: ComplaintPriority.low,
+        status: ComplaintStatus.inProgress,
+        currentTechnicianId: techId,
+        propertyId: 'p_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 3),
+      );
+
+      final highAssigned = Complaint(
+        id: 'c_high',
+        title: 'High Assigned',
+        description: 'Desc',
+        category: ComplaintCategory.other,
+        priority: ComplaintPriority.high,
+        status: ComplaintStatus.assigned,
+        currentTechnicianId: techId,
+        propertyId: 'p_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 4),
+      );
+
+      final urgentAssigned = Complaint(
+        id: 'c_urgent',
+        title: 'Urgent Assigned',
+        description: 'Desc',
+        category: ComplaintCategory.other,
+        priority: ComplaintPriority.urgent,
+        status: ComplaintStatus.assigned,
+        currentTechnicianId: techId,
+        propertyId: 'p_1',
+        unitId: 'u_1',
+        tenantId: 't_1',
+        createdBy: 'user_1',
+        createdAt: DateTime.utc(2026, 10, 6),
+      );
+
+      final repo = InMemoryComplaintRepository(
+        initialComplaints: [
+          lowOther,
+          medOtherNew,
+          medOtherOld,
+          inProgressLow,
+          highAssigned,
+          urgentAssigned,
+        ],
+      );
+
+      final results = await repo
+          .watchAssignedComplaints(technicianId: techId)
+          .first;
+
+      final ids = results.map((c) => c.id).toList();
+      expect(ids, [
+        'c_urgent', // Tier 0: Urgent
+        'c_high', // Tier 1: High
+        'c_prog_low', // Tier 2: In-progress
+        'c_med_assigned_old', // Tier 3: Medium (older: Oct 2)
+        'c_med_assigned_new', // Tier 3: Medium (newer: Oct 5)
+        'c_low_assigned', // Tier 4: Low
+      ]);
+
+      repo.dispose();
+    });
+  });
 }

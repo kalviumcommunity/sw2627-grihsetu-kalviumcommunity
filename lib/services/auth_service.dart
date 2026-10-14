@@ -33,10 +33,12 @@ class AuthService implements AuthenticatedUserProvider {
   @override
   User? get currentUser => _auth.currentUser;
 
-  Future<AppUser> signIn({
-    required String email,
-    required String password,
-  }) async {
+  /// Signs in to Firebase Authentication.
+  ///
+  /// Profile/role resolution is intentionally owned by [AuthGate] through
+  /// the auth-state stream. Keeping it out of this method prevents a second
+  /// profile read and avoids racing navigation with authorization errors.
+  Future<void> signIn({required String email, required String password}) async {
     final normalizedEmail = email.trim();
     if (normalizedEmail.isEmpty || password.isEmpty) {
       throw const AuthFailure(AuthFailureCode.invalidInput);
@@ -55,18 +57,9 @@ class AuthService implements AuthenticatedUserProvider {
         throw const AuthFailure(AuthFailureCode.unknown);
       }
       _log('Firebase sign-in succeeded; uid=${firebaseUser.uid}');
-
-      try {
-        _log('Firestore profile fetch begins; uid=${firebaseUser.uid}');
-        return await loadProfile(firebaseUser.uid);
-      } on AuthFailure catch (error, stackTrace) {
-        _log('Firestore profile/role resolution failed: ${error.code.name}');
-        if (kDebugMode) debugPrintStack(stackTrace: stackTrace);
-        // Authentication succeeded, but authorization did not. Do not leave
-        // an unusable authenticated session active in the client.
-        await _signOutSafely();
-        rethrow;
-      }
+      // AuthGate observes this session change and resolves the trusted
+      // users/{uid} profile exactly once for this UID.
+      return;
     } on AuthFailure {
       rethrow;
     } on FirebaseAuthException catch (error) {

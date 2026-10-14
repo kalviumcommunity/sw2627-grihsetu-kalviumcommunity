@@ -113,7 +113,12 @@ service cloud.firestore {
     }
 
     match /complaints/{complaintId} {
-      allow read: if isOperationsStaff();
+      allow read: if isOperationsStaff()
+        || (
+          hasRole('technician')
+          && resource.data.currentTechnicianId == request.auth.uid
+          && resource.data.status in ['open', 'assigned', 'in_progress', 'waiting_for_parts', 'reopened']
+        );
       allow create: if isOperationsStaff()
         && request.resource.data.keys().hasOnly([
           'tenantId', 'propertyId', 'unitId', 'title', 'description',
@@ -219,24 +224,47 @@ service cloud.firestore {
       allow read: if isOperationsStaff();
       allow create: if isOperationsStaff()
         && request.resource.data.keys().hasOnly([
-          'complaintId', 'eventType', 'actorId', 'createdAt', 'metadata'
+          'complaintId', 'eventType', 'actorId', 'actorRole', 'createdAt',
+          'metadata', 'previousValue', 'newValue', 'reason', 'schemaVersion'
         ])
         && request.resource.data.keys().hasAll([
-          'complaintId', 'eventType', 'actorId', 'createdAt', 'metadata'
+          'complaintId', 'eventType', 'actorId', 'actorRole', 'createdAt',
+          'metadata', 'schemaVersion'
         ])
+        && request.resource.data.complaintId is string
+        && request.resource.data.eventType in [
+          'COMPLAINT_CREATED', 'COMPLAINT_UPDATED',
+          'TECHNICIAN_ASSIGNED', 'TECHNICIAN_REASSIGNED',
+          'COMPLAINT_STATUS_CHANGED', 'COMPLAINT_RESOLVED',
+          'COMPLAINT_REOPENED', 'COMPLAINT_CLOSED',
+          'COMPLAINT_CANCELLED', 'COMPLAINT_WAITING_FOR_PARTS',
+          'PRIORITY_CHANGED', 'VISIT_STARTED', 'VISIT_COMPLETED',
+          'FOLLOW_UP_REQUESTED'
+        ]
         && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.actorRole == get(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data.role
+        && request.resource.data.actorRole in [
+          'property_operations', 'complaint_operations', 'technician',
+          'property_owner', 'tenant'
+        ]
         && request.resource.data.createdAt == request.time
+        && request.resource.data.metadata is map
+        && request.resource.data.schemaVersion == 1
         && (
           (
             request.resource.data.eventType == 'COMPLAINT_CREATED'
             && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.createdBy == request.auth.uid
             && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == 'open'
+            && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.createdAt == request.time
           )
           ||
           (
             request.resource.data.eventType in ['TECHNICIAN_ASSIGNED', 'TECHNICIAN_REASSIGNED']
             && request.resource.data.metadata.keys().hasOnly([
-              'previousTechnicianId', 'newTechnicianId', 'assignmentType', 'operationId'
+              'previousTechnicianId', 'newTechnicianId', 'assignmentType',
+              'operationId', 'reason'
             ])
             && request.resource.data.metadata.keys().hasAll([
               'previousTechnicianId', 'newTechnicianId', 'assignmentType', 'operationId'
@@ -248,12 +276,17 @@ service cloud.firestore {
                 && request.resource.data.metadata.assignmentType == 'INITIAL_ASSIGNMENT'
                 && request.resource.data.metadata.previousTechnicianId == null
                 && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == 'assigned'
+                && (
+                  !get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.keys().hasAny(['currentTechnicianId'])
+                  || get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.currentTechnicianId == null
+                )
               )
               ||
               (
                 request.resource.data.eventType == 'TECHNICIAN_REASSIGNED'
                 && request.resource.data.metadata.assignmentType == 'REASSIGNMENT'
                 && request.resource.data.metadata.previousTechnicianId is string
+                && get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.currentTechnicianId == request.resource.data.metadata.previousTechnicianId
                 && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status
               )
             )

@@ -248,12 +248,13 @@ class _UnitListPanelState extends State<UnitListPanel> {
           return queryMatches && filterMatches;
         })
         .toList(growable: false);
-    final floors = filtered
-        .map((item) => item.unit.floor)
-        .whereType<int>()
-        .toSet()
-        .toList()
-      ..sort((a, b) => b.compareTo(a));
+    final floors =
+        filtered
+            .map((item) => item.unit.floor)
+            .whereType<int>()
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
