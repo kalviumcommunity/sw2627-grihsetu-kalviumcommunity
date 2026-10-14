@@ -361,7 +361,10 @@ service cloud.firestore {
           'COMPLAINT_STATUS_CHANGED', 'COMPLAINT_RESOLVED',
           'COMPLAINT_REOPENED', 'COMPLAINT_CLOSED',
           'COMPLAINT_CANCELLED', 'COMPLAINT_WAITING_FOR_PARTS',
-          'PRIORITY_CHANGED', 'VISIT_STARTED', 'VISIT_COMPLETED',
+          'PRIORITY_CHANGED', 'TECHNICIAN_ACCEPTED', 'TRAVEL_STARTED',
+          'TECHNICIAN_ARRIVED', 'INSPECTION_STARTED', 'REPAIR_STARTED',
+          'PHOTO_UPLOADED', 'PART_ADDED', 'NEEDS_ANOTHER_VISIT',
+          'TENANT_NOTIFIED', 'VISIT_STARTED', 'VISIT_COMPLETED',
           'FOLLOW_UP_REQUESTED'
         ]
         && request.resource.data.actorId == request.auth.uid
@@ -476,6 +479,27 @@ service cloud.firestore {
             && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.technicianId == request.auth.uid
             && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.completedAt == request.time
             && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.followUpRequired == true
+          )
+          ||
+          (
+            request.resource.data.eventType in [
+              'TECHNICIAN_ACCEPTED', 'TRAVEL_STARTED',
+              'TECHNICIAN_ARRIVED', 'INSPECTION_STARTED', 'REPAIR_STARTED',
+              'PHOTO_UPLOADED', 'PART_ADDED', 'NEEDS_ANOTHER_VISIT',
+              'TENANT_NOTIFIED'
+            ]
+            && request.resource.data.metadata.keys().hasOnly([
+              'visitId', 'technicianId', 'step', 'note', 'photos',
+              'photoUrl', 'group', 'name', 'quantity', 'cost'
+            ])
+            && request.resource.data.metadata.keys().hasAll([
+              'visitId', 'technicianId'
+            ])
+            && request.resource.data.metadata.technicianId == request.auth.uid
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.complaintId == request.resource.data.complaintId
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.technicianId == request.auth.uid
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.completedAt == null
+            && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.activeVisitId == request.resource.data.metadata.visitId
           )
         );
       allow update, delete: if false;

@@ -173,8 +173,9 @@ class _VisitScreenState extends State<VisitScreen> {
   bool _isAssignedToCurrentTechnician() {
     if (_complaint == null) return false;
     final assigned = _complaint!.currentTechnicianId;
-    if (assigned == null || assigned.isEmpty) return true;
-    return assigned == widget.technicianId;
+    return assigned != null &&
+        assigned.isNotEmpty &&
+        assigned == widget.technicianId;
   }
 
   Future<void> _advanceStep(VisitWorkflowStep step) async {

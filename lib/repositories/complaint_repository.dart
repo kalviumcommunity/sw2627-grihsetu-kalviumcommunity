@@ -6,6 +6,7 @@ import '../core/constants/firestore_collections.dart';
 import '../core/enums/complaint_audit_event_type.dart';
 import '../core/enums/complaint_priority.dart';
 import '../core/enums/complaint_status.dart';
+import '../core/enums/maintenance_visit_outcome.dart';
 import '../core/enums/user_role.dart';
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/complaint.dart';
@@ -13,6 +14,8 @@ import '../core/models/complaint_audit_event.dart';
 import '../core/models/user.dart';
 import '../services/auth_service.dart';
 import '../services/complaint_audit_service.dart';
+import '../services/maintenance_visit_service.dart';
+import '../services/technician_assignment_service.dart';
 import '../screens/technician/visit/visit_models.dart';
 import '../utils/visit_validators.dart';
 
@@ -280,6 +283,10 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   final FirebaseFirestore _firestore;
   final AuthenticatedUserProvider _identity;
   late final ComplaintAuditWriter _auditWriter = ComplaintAuditWriter(
+    firestore: _firestore,
+    identity: _identity,
+  );
+  late final MaintenanceVisitService _visitService = MaintenanceVisitService(
     firestore: _firestore,
     identity: _identity,
   );
@@ -728,47 +735,31 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     DateTime? scheduledDate,
     String? timeSlot,
   }) async {
-    final complaintRef = _firestore
-        .collection(FirestoreCollections.complaints)
-        .doc(complaintId.trim());
-    final auditRef = _firestore
-        .collection(FirestoreCollections.auditEvents)
-        .doc();
-
-    final event = ComplaintAuditEvent(
-      id: auditRef.id,
-      complaintId: complaintId,
-      eventType: ComplaintAuditEventType.technicianAssigned,
-      rawEventType: 'TECHNICIAN_ASSIGNED',
-      actorId: actorId,
-      timestamp: DateTime.now(),
-      metadata: {
-        'technicianId': technicianId,
-        'reason': ?reason,
-        'actorRole': ?role,
-        'scheduledDate': ?scheduledDate?.toIso8601String(),
-        'timeSlot': ?timeSlot,
-      },
+    final current = await loadComplaint(complaintId.trim());
+    if (current == null) {
+      throw const ComplaintFailure(ComplaintFailureCode.notFound);
+    }
+    final service = TechnicianAssignmentService(
+      firestore: _firestore,
+      identity: _identity,
     );
-
-    await _firestore.runTransaction((tx) async {
-      final snap = await tx.get(complaintRef);
-      if (!snap.exists) {
-        throw const ComplaintFailure(ComplaintFailureCode.notFound);
+    try {
+      if (current.currentTechnicianId == null ||
+          current.currentTechnicianId!.trim().isEmpty) {
+        return await service.assignTechnician(
+          complaintId: current.id,
+          technicianId: technicianId,
+          reason: reason,
+        );
       }
-      final currentTech = snap.data()?['currentTechnicianId'] as String?;
-      tx.update(complaintRef, {
-        'currentTechnicianId': technicianId,
-        'status': ComplaintStatus.assigned.value,
-        'updatedAt': FieldValue.serverTimestamp(),
-        if (currentTech == null)
-          'firstAssignedAt': FieldValue.serverTimestamp(),
-      });
-      tx.set(auditRef, event.toFirestoreMap());
-    });
-
-    final updated = await loadComplaint(complaintId);
-    return updated!;
+      return await service.reassignTechnician(
+        complaintId: current.id,
+        newTechnicianId: technicianId,
+        reason: reason,
+      );
+    } on TechnicianAssignmentFailure catch (error) {
+      throw ComplaintFailure(ComplaintFailureCode.write, error.message);
+    }
   }
 
   @override
@@ -780,10 +771,68 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     String? note,
     List<String>? photos,
   }) async {
-    // TODO: Implement Firestore write for technician visit workflow steps.
-    throw UnimplementedError(
-      'Firestore advanceVisitStep is not yet implemented.',
-    );
+    final normalizedComplaintId = _validId(complaintId, 'Complaint ID');
+    final authenticatedActorId = _requireActorId(actorId);
+
+    try {
+      // Accepting a job is the user-facing start of the visit. The atomic
+      // service creates the visit, links it to the complaint, and records the
+      // canonical VISIT_STARTED event before the step event is appended.
+      if (step == VisitWorkflowStep.accepted) {
+        await _visitService.startMaintenanceVisit(
+          complaintId: normalizedComplaintId,
+        );
+      }
+
+      final eventType = switch (step) {
+        VisitWorkflowStep.accepted =>
+          ComplaintAuditEventType.technicianAccepted,
+        VisitWorkflowStep.travelling => ComplaintAuditEventType.travelStarted,
+        VisitWorkflowStep.arrived => ComplaintAuditEventType.technicianArrived,
+        VisitWorkflowStep.inspection =>
+          ComplaintAuditEventType.inspectionStarted,
+        VisitWorkflowStep.repairing => ComplaintAuditEventType.repairStarted,
+        // Completion is submitted through completeVisit so required fields
+        // and the outcome cannot be bypassed.
+        VisitWorkflowStep.completed =>
+          throw const ComplaintValidationException(
+            'Complete the visit using the completion form.',
+          ),
+      };
+
+      await _appendVisitAuditEvent(
+        complaintId: normalizedComplaintId,
+        actorId: authenticatedActorId,
+        eventType: eventType,
+        metadata: {
+          'step': step.name,
+          'note': note ?? 'Step advanced to ${step.label}',
+          if (photos != null && photos.isNotEmpty) 'photos': photos,
+        },
+      );
+      return (await loadComplaint(normalizedComplaintId))!;
+    } on ComplaintFailure {
+      rethrow;
+    } on MaintenanceVisitFailure catch (error) {
+      throw ComplaintFailure(
+        switch (error.code) {
+          MaintenanceVisitFailureCode.unauthenticated =>
+            ComplaintFailureCode.unauthenticated,
+          MaintenanceVisitFailureCode.unauthorized =>
+            ComplaintFailureCode.permissionDenied,
+          MaintenanceVisitFailureCode.complaintNotFound =>
+            ComplaintFailureCode.notFound,
+          MaintenanceVisitFailureCode.validation ||
+          MaintenanceVisitFailureCode.invalidStatus ||
+          MaintenanceVisitFailureCode.duplicateActiveVisit ||
+          MaintenanceVisitFailureCode.conflict => ComplaintFailureCode.conflict,
+          _ => ComplaintFailureCode.write,
+        },
+        error.message,
+      );
+    } on FirebaseException catch (error) {
+      throw _fromFirebaseException(error);
+    }
   }
 
   @override
@@ -794,8 +843,23 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     required String actorId,
     String? role,
   }) async {
-    // TODO: Implement Firestore write for visit photos.
-    throw UnimplementedError('Firestore addVisitPhoto is not yet implemented.');
+    final normalizedComplaintId = _validId(complaintId, 'Complaint ID');
+    final normalizedUrl = photoUrl.trim();
+    final normalizedGroup = group.trim().toLowerCase();
+    if (normalizedUrl.isEmpty ||
+        !{'before', 'after'}.contains(normalizedGroup)) {
+      throw const ComplaintValidationException('Photo evidence is invalid.');
+    }
+    await _appendVisitAuditEvent(
+      complaintId: normalizedComplaintId,
+      actorId: _requireActorId(actorId),
+      eventType: ComplaintAuditEventType.photoUploaded,
+      metadata: {
+        'photoUrl': normalizedUrl,
+        'group': normalizedGroup,
+        'note': 'Photo uploaded ($normalizedGroup evidence)',
+      },
+    );
   }
 
   @override
@@ -805,8 +869,26 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     required String actorId,
     String? role,
   }) async {
-    // TODO: Implement Firestore write for parts used.
-    throw UnimplementedError('Firestore addPart is not yet implemented.');
+    final normalizedComplaintId = _validId(complaintId, 'Complaint ID');
+    final nameError = VisitValidators.validatePartName(part.name);
+    final quantityError = VisitValidators.validatePartQuantity(part.quantity);
+    final costError = VisitValidators.validatePartCost(part.cost);
+    if (nameError != null || quantityError != null || costError != null) {
+      throw ComplaintValidationException(
+        nameError ?? quantityError ?? costError ?? 'Part is invalid.',
+      );
+    }
+    await _appendVisitAuditEvent(
+      complaintId: normalizedComplaintId,
+      actorId: _requireActorId(actorId),
+      eventType: ComplaintAuditEventType.partAdded,
+      metadata: {
+        'name': part.name.trim(),
+        'quantity': part.quantity,
+        if (part.cost != null) 'cost': part.cost,
+        'note': 'Part added: ${part.name.trim()} (x${part.quantity})',
+      },
+    );
   }
 
   @override
@@ -816,8 +898,35 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     required String actorId,
     String? role,
   }) async {
-    // TODO: Implement Firestore transaction for visit completion.
-    throw UnimplementedError('Firestore completeVisit is not yet implemented.');
+    final normalizedComplaintId = _validId(complaintId, 'Complaint ID');
+    final actor = _requireActorId(actorId);
+    try {
+      // Persist part entries before completion because the completion form
+      // submits them as one input object rather than calling addPart itself.
+      for (final part in completion.parts) {
+        await addPart(
+          normalizedComplaintId,
+          part,
+          actorId: actor,
+          role: role,
+        );
+      }
+      await _visitService.completeMaintenanceVisit(
+        complaintId: normalizedComplaintId,
+        visitId: await _activeVisitId(normalizedComplaintId),
+        observation: completion.whatWasFound,
+        actionTaken: completion.whatWasRepaired,
+        outcome: MaintenanceVisitOutcome.resolved,
+        isResolved: true,
+        followUpRequired: false,
+        resolutionSummary: completion.tenantResolutionNotes,
+      );
+      return (await loadComplaint(normalizedComplaintId))!;
+    } on MaintenanceVisitFailure catch (error) {
+      throw ComplaintFailure(ComplaintFailureCode.write, error.message);
+    } on FirebaseException catch (error) {
+      throw _fromFirebaseException(error);
+    }
   }
 
   @override
@@ -827,10 +936,148 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     required String actorId,
     String? role,
   }) async {
-    // TODO: Implement Firestore transaction for follow-up visit request.
-    throw UnimplementedError(
-      'Firestore requestFollowUpVisit is not yet implemented.',
-    );
+    final normalizedComplaintId = _validId(complaintId, 'Complaint ID');
+    _requireActorId(actorId);
+    final followUpNotes = [
+      request.reason.label,
+      request.otherReasonDetails,
+      request.details,
+      if (request.suggestedDate != null)
+        'Suggested date: ${request.suggestedDate!.toIso8601String()}',
+      if (request.suggestedSlot != null) 'Suggested slot: ${request.suggestedSlot}',
+      if (request.partsToBring.isNotEmpty)
+        'Parts to bring: ${request.partsToBring.join(', ')}',
+    ].whereType<String>().where((item) => item.trim().isNotEmpty).join('\n');
+    try {
+      await _visitService.completeMaintenanceVisit(
+        complaintId: normalizedComplaintId,
+        visitId: await _activeVisitId(normalizedComplaintId),
+        observation: request.details,
+        actionTaken: 'Follow-up required: ${request.reason.label}',
+        outcome: request.reason == FollowUpReason.partNotAvailable
+            ? MaintenanceVisitOutcome.waitingForParts
+            : MaintenanceVisitOutcome.unresolved,
+        isResolved: false,
+        followUpRequired: true,
+        followUpNotes: followUpNotes,
+        resolutionSummary: request.details,
+      );
+      return (await loadComplaint(normalizedComplaintId))!;
+    } on MaintenanceVisitFailure catch (error) {
+      throw ComplaintFailure(ComplaintFailureCode.write, error.message);
+    } on FirebaseException catch (error) {
+      throw _fromFirebaseException(error);
+    }
+  }
+
+  String _requireActorId(String actorId) {
+    final authenticatedId = _identity.currentUser?.uid.trim();
+    final requestedId = actorId.trim();
+    if (authenticatedId == null || authenticatedId.isEmpty) {
+      throw const ComplaintAuthenticationException();
+    }
+    if (requestedId.isEmpty || requestedId != authenticatedId) {
+      throw const ComplaintPermissionException();
+    }
+    return authenticatedId;
+  }
+
+  Future<String> _activeVisitId(String complaintId) async {
+    final complaint = await loadComplaint(complaintId);
+    final visitId = complaint?.activeVisitId?.trim();
+    if (visitId == null || visitId.isEmpty) {
+      throw const ComplaintFailure(
+        ComplaintFailureCode.conflict,
+        'There is no active maintenance visit for this complaint.',
+      );
+    }
+    return visitId;
+  }
+
+  Future<void> _appendVisitAuditEvent({
+    required String complaintId,
+    required String actorId,
+    required ComplaintAuditEventType eventType,
+    required Map<String, dynamic> metadata,
+  }) async {
+    await _firestore.runTransaction<void>((transaction) async {
+      final complaintRef = _firestore
+          .collection(FirestoreCollections.complaints)
+          .doc(complaintId);
+      final actorRef = _firestore
+          .collection(FirestoreCollections.users)
+          .doc(actorId);
+      final complaintSnapshot = await transaction.get(complaintRef);
+      final actorSnapshot = await transaction.get(actorRef);
+      final complaintData = complaintSnapshot.data();
+      if (!complaintSnapshot.exists || complaintData == null) {
+        throw const ComplaintNotFoundException();
+      }
+      final activeVisitId = (complaintData['activeVisitId'] as String?)?.trim();
+      if (activeVisitId == null || activeVisitId.isEmpty) {
+        throw const ComplaintFailure(
+          ComplaintFailureCode.conflict,
+          'There is no active maintenance visit for this complaint.',
+        );
+      }
+      final visitSnapshot = await transaction.get(
+        _firestore
+            .collection(FirestoreCollections.maintenanceVisits)
+            .doc(activeVisitId),
+      );
+      final visitData = visitSnapshot.data();
+      if (!visitSnapshot.exists ||
+          visitData == null ||
+          visitData['technicianId'] != actorId ||
+          visitData['completedAt'] != null) {
+        throw const ComplaintPermissionException();
+      }
+      final actorProfile = _actorProfile(actorSnapshot, actorId);
+      final actor = AuditActorContext.fromProfile(
+        profile: actorProfile,
+        authenticatedUid: actorId,
+      );
+      final auditRef = _firestore
+          .collection(FirestoreCollections.auditEvents)
+          .doc();
+      _auditWriter.appendEventInTransaction(
+        transaction,
+        eventId: auditRef.id,
+        complaintId: complaintId,
+        eventType: eventType,
+        actor: actor,
+        details: {
+          'visitId': activeVisitId,
+          'technicianId': actorId,
+          ...metadata,
+        },
+      );
+    });
+  }
+
+  static AppUser _actorProfile(
+    DocumentSnapshot<Map<String, dynamic>> snapshot,
+    String actorId,
+  ) {
+    final data = snapshot.data();
+    if (!snapshot.exists || data == null) {
+      throw const ComplaintPermissionException();
+    }
+    final profile = AppUser.fromMap(data, id: snapshot.id);
+    if (profile.id != actorId ||
+        !profile.isAuthorized ||
+        profile.role != UserRole.technician) {
+      throw const ComplaintPermissionException();
+    }
+    return profile;
+  }
+
+  static String _validId(String value, String label) {
+    final normalized = value.trim();
+    if (normalized.isEmpty || normalized.contains('/') || normalized.length > 128) {
+      throw ComplaintValidationException('$label is invalid.');
+    }
+    return normalized;
   }
 }
 
@@ -1225,6 +1472,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       priority: current.priority,
       status: newStatus,
       currentTechnicianId: current.currentTechnicianId,
+      activeVisitId: current.activeVisitId,
       visitCount: current.visitCount,
       isRepeatVisit: current.isRepeatVisit,
       reopenCount: newStatus == ComplaintStatus.reopened
@@ -1310,6 +1558,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       priority: newPriority,
       status: current.status,
       currentTechnicianId: current.currentTechnicianId,
+      activeVisitId: current.activeVisitId,
       visitCount: current.visitCount,
       isRepeatVisit: current.isRepeatVisit,
       reopenCount: current.reopenCount,
@@ -1374,6 +1623,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       priority: current.priority,
       status: ComplaintStatus.assigned,
       currentTechnicianId: technicianId,
+      activeVisitId: current.activeVisitId,
       visitCount: current.visitCount,
       isRepeatVisit: current.isRepeatVisit,
       reopenCount: current.reopenCount,
@@ -1518,6 +1768,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       priority: current.priority,
       status: newStatus,
       currentTechnicianId: current.currentTechnicianId ?? actorId,
+      activeVisitId: current.activeVisitId,
       visitCount: current.visitCount,
       isRepeatVisit: current.isRepeatVisit,
       reopenCount: current.reopenCount,
@@ -1662,6 +1913,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       priority: current.priority,
       status: ComplaintStatus.resolved,
       currentTechnicianId: current.currentTechnicianId ?? actorId,
+      activeVisitId: current.activeVisitId,
       visitCount: current.visitCount,
       isRepeatVisit: current.isRepeatVisit,
       reopenCount: current.reopenCount,
@@ -1766,6 +2018,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       priority: current.priority,
       status: ComplaintStatus.assigned,
       currentTechnicianId: current.currentTechnicianId ?? actorId,
+      activeVisitId: current.activeVisitId,
       visitCount: current.visitCount + 1,
       isRepeatVisit: true,
       reopenCount: current.reopenCount,

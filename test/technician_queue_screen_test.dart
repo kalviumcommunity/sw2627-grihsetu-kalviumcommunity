@@ -21,10 +21,14 @@ class TestTechnicianComplaintRepository implements ComplaintRepository {
 
   final StreamController<List<Complaint>> _controller =
       StreamController<List<Complaint>>.broadcast();
+  List<Complaint> _latest = const [];
 
   String? lastRequestedTechnicianId;
 
-  void emitData(List<Complaint> data) => _controller.add(data);
+  void emitData(List<Complaint> data) {
+    _latest = List<Complaint>.of(data);
+    _controller.add(data);
+  }
   void emitError(Object error) => _controller.addError(error);
 
   @override
@@ -46,6 +50,26 @@ class TestTechnicianComplaintRepository implements ComplaintRepository {
   Future<Complaint> createComplaint(CreateComplaintInput input) async {
     throw UnimplementedError();
   }
+
+  @override
+  Stream<Complaint?> watchComplaint(String id) => Stream.value(
+    _latest.where((complaint) => complaint.id == id).firstOrNull,
+  );
+
+  @override
+  Future<Complaint?> loadComplaint(String id) async =>
+      _latest.where((complaint) => complaint.id == id).firstOrNull;
+
+  @override
+  Stream<List<ComplaintAuditEvent>> watchAuditEvents(String complaintId) =>
+      Stream.value(const []);
+
+  @override
+  Future<List<ComplaintAuditEvent>> loadAuditEvents(String complaintId) async =>
+      const [];
+
+  @override
+  Future<void> appendAuditEvent(ComplaintAuditEvent event) async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

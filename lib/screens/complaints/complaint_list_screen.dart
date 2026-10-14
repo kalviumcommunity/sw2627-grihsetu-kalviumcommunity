@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../app/user_role.dart' as app;
 import '../../core/enums/user_role.dart';
 import '../../core/models/complaint.dart';
 import '../../core/models/user.dart';
@@ -148,6 +149,16 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
       propertyName: _resolver.getPropertyName(complaint.propertyId),
       unitNumber: _resolver.getUnitNumber(complaint.unitId),
       complaintRepository: _repository,
+      userRole: switch (widget.profile?.role) {
+        UserRole.technician => app.UserRole.technician,
+        UserRole.tenant => app.UserRole.tenant,
+        UserRole.propertyOwner => app.UserRole.owner,
+        UserRole.propertyOperations || UserRole.complaintOperations =>
+          app.UserRole.staff,
+        null => app.UserRole.staff,
+      },
+      currentUserId: widget.profile?.id,
+      currentUserName: widget.profile?.name,
     );
   }
 

@@ -12,6 +12,7 @@ import '../../widgets/app_spacing.dart';
 import '../../widgets/audit_timeline.dart' as legacy_audit;
 import '../../widgets/complaint_card.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/skeleton_box.dart';
 import '../../widgets/status_badge.dart';
@@ -43,6 +44,8 @@ class ComplaintDetailScreen extends StatefulWidget {
     this.initialAuditEvents,
     this.controller,
     this.referenceNow,
+    this.currentUserId,
+    this.currentUserName,
   }) : complaintId = complaintId ?? (complaint != null ? complaint.id : '');
 
   final String complaintId;
@@ -56,6 +59,8 @@ class ComplaintDetailScreen extends StatefulWidget {
   final List<legacy_audit.AuditEvent>? initialAuditEvents;
   final ComplaintDetailController? controller;
   final DateTime? referenceNow;
+  final String? currentUserId;
+  final String? currentUserName;
 
   /// Canonical navigation helper to open a complaint detail view.
   static Future<void> open(
@@ -68,6 +73,8 @@ class ComplaintDetailScreen extends StatefulWidget {
     ComplaintRepository? complaintRepository,
     AssignmentRepository? assignmentRepository,
     DateTime? referenceNow,
+    String? currentUserId,
+    String? currentUserName,
   }) {
     return Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -80,6 +87,8 @@ class ComplaintDetailScreen extends StatefulWidget {
           complaintRepository: complaintRepository,
           assignmentRepository: assignmentRepository,
           referenceNow: referenceNow,
+          currentUserId: currentUserId,
+          currentUserName: currentUserName,
         ),
       ),
     );
@@ -131,6 +140,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
         initialComplaint: widget.complaint,
         initialEvents: initialEvents,
         currentUserRole: widget.userRole.name,
+        currentUserId: widget.currentUserId ?? 'usr_001',
+        currentUserName: widget.currentUserName ?? 'Riya Sharma',
         referenceNow: widget.referenceNow,
       );
       _ownsController = true;
@@ -405,7 +416,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     final theme = Theme.of(context);
     final c = state.complaint!;
 
-    final techName = state.assignedTechnicianName ?? 'Unassigned';
+    final techName =
+        state.assignedTechnicianName ?? 'No technician currently assigned.';
     final hasTech = state.assignedTechnicianId != null;
 
     return AppCard(
@@ -436,41 +448,45 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        techName,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: palette.ink,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          techName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: TextStyle(
+                            color: palette.ink,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
-                    ),
-                    if (hasTech) ...[
-                      const SizedBox(width: 6),
-                      InkWell(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Calling technician +91 98111 22334...',
+                      if (hasTech) ...[
+                        const SizedBox(width: 6),
+                        InkWell(
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Calling technician +91 98111 22334...',
+                                ),
+                                behavior: SnackBarBehavior.floating,
                               ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        child: Icon(
-                          Icons.phone_outlined,
-                          size: 16,
-                          color: palette.accent,
+                            );
+                          },
+                          child: Icon(
+                            Icons.phone_outlined,
+                            size: 16,
+                            color: palette.accent,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -657,6 +673,29 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     BuildContext context,
     ComplaintDetailState state,
   ) {
+    // Keep the legacy constructor contract working for callers that provide
+    // prebuilt AuditEvent objects. Live Firestore-backed screens use the
+    // richer ActivityTimeline below.
+    if (widget.initialAuditEvents != null) {
+      if (widget.initialAuditEvents!.isEmpty) {
+        return AppCard(
+          padding: EdgeInsets.all(AppSpacing.lg),
+          child: EmptyState(
+            title: 'No activity recorded yet',
+            message:
+                'Timeline events will appear here as the complaint progresses.',
+            icon: Icons.history_toggle_off_outlined,
+          ),
+        );
+      }
+      return AppCard(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: legacy_audit.AuditTimeline(
+          events: widget.initialAuditEvents!,
+        ),
+      );
+    }
+
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -732,7 +771,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Complaint detail placeholder',
+                  'Complaint workflow connected',
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: palette.ink,
                     fontWeight: FontWeight.bold,
@@ -740,7 +779,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Full workflow actions (technician assignment, visit logs, resolution, and audit history) will be introduced in subsequent updates.',
+                  'Use the actions panel to assign technicians, record visits, resolve complaints, and review the audit timeline.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: palette.muted,
                   ),
