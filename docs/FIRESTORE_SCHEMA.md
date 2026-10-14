@@ -179,10 +179,14 @@ Future operational documents should store IDs rather than copied entity maps:
 
 ```text
 complaints/{complaintId}
-  propertyId, unitId, tenantId, createdBy, currentTechnicianId
+  propertyId, unitId, tenantId, createdBy, currentTechnicianId, activeVisitId
+
+  visitCount, isRepeatVisit
 
 maintenance_visits/{visitId}
-  complaintId, technicianId, visitNumber
+  complaintId, technicianId, visitNumber, startedAt, completedAt
+  observation, actionTaken, outcome, isResolved, followUpRequired
+  followUpNotes, resolutionSummary, operationId
 
 rent_records/{rentRecordId}
   propertyId, unitId, tenantId, tenancyId (when tenancy history exists)

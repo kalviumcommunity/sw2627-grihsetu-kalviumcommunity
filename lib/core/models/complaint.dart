@@ -61,6 +61,7 @@ class Complaint {
   final ComplaintStatus status;
 
   final String? currentTechnicianId;
+  final String? activeVisitId;
 
   final int visitCount;
   final bool isRepeatVisit;
@@ -85,6 +86,7 @@ class Complaint {
     required this.priority,
     this.status = ComplaintStatus.open,
     this.currentTechnicianId,
+    this.activeVisitId,
     this.visitCount = 0,
     bool? isRepeatVisit,
     this.reopenCount = 0,
@@ -123,6 +125,7 @@ class Complaint {
     'priority': priority.value,
     'status': status.value,
     if (currentTechnicianId != null) 'currentTechnicianId': currentTechnicianId,
+    if (activeVisitId != null) 'activeVisitId': activeVisitId,
     'visitCount': visitCount,
     'isRepeatVisit': isRepeatVisit,
     'reopenCount': reopenCount,
@@ -148,6 +151,7 @@ class Complaint {
       priority: ComplaintPriority.fromValue(map['priority'] as String?),
       status: ComplaintStatus.fromValue(map['status'] as String?),
       currentTechnicianId: map['currentTechnicianId'] as String?,
+      activeVisitId: map['activeVisitId'] as String?,
       visitCount: visitCount,
       isRepeatVisit:
           map['isRepeatVisit'] as bool? ??
@@ -173,6 +177,7 @@ class Complaint {
     ComplaintPriority? priority,
     ComplaintStatus? status,
     String? currentTechnicianId,
+    String? activeVisitId,
     int? visitCount,
     bool? isRepeatVisit,
     int? reopenCount,
@@ -193,6 +198,7 @@ class Complaint {
     priority: priority ?? this.priority,
     status: status ?? this.status,
     currentTechnicianId: currentTechnicianId ?? this.currentTechnicianId,
+    activeVisitId: activeVisitId ?? this.activeVisitId,
     visitCount: visitCount ?? this.visitCount,
     isRepeatVisit: isRepeatVisit ?? this.isRepeatVisit,
     reopenCount: reopenCount ?? this.reopenCount,
@@ -216,6 +222,8 @@ class Complaint {
           category == other.category &&
           priority == other.priority &&
           status == other.status &&
+          currentTechnicianId == other.currentTechnicianId &&
+          activeVisitId == other.activeVisitId &&
           visitCount == other.visitCount &&
           isRepeatVisit == other.isRepeatVisit &&
           reopenCount == other.reopenCount;
@@ -229,6 +237,8 @@ class Complaint {
     title,
     category,
     priority,
+    currentTechnicianId,
+    activeVisitId,
     status,
     visitCount,
     isRepeatVisit,
