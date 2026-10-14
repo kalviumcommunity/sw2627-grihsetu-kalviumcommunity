@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grihsetu/app/user_role.dart';
+import 'package:grihsetu/core/enums/complaint_audit_event_type.dart';
 import 'package:grihsetu/core/enums/complaint_category.dart';
 import 'package:grihsetu/core/enums/complaint_priority.dart';
 import 'package:grihsetu/core/enums/complaint_status.dart';
@@ -245,9 +246,10 @@ void main() {
           ComplaintAuditEvent(
             id: 'audit_private_note',
             complaintId: testComplaint.id,
-            eventType: 'NOTE_ADDED',
+            eventType: ComplaintAuditEventType.unknown,
+            rawEventType: 'NOTE_ADDED',
             actorId: 'usr_staff_01',
-            createdAt: DateTime(2026, 10, 10, 10, 0),
+            timestamp: DateTime(2026, 10, 10, 10, 0),
             metadata: {
               'note':
                   'Confidential staff assessment: potential pipe replacement.',

@@ -589,12 +589,25 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       ComplaintStatus.cancelled => 'COMPLAINT_CANCELLED',
     };
 
+    final eventTypeEnum = switch (newStatus) {
+      ComplaintStatus.open => ComplaintAuditEventType.complaintCreated,
+      ComplaintStatus.assigned => ComplaintAuditEventType.technicianAssigned,
+      ComplaintStatus.inProgress => ComplaintAuditEventType.visitStarted,
+      ComplaintStatus.waitingForParts =>
+        ComplaintAuditEventType.complaintWaitingForParts,
+      ComplaintStatus.resolved => ComplaintAuditEventType.complaintResolved,
+      ComplaintStatus.closed => ComplaintAuditEventType.complaintClosed,
+      ComplaintStatus.reopened => ComplaintAuditEventType.complaintReopened,
+      ComplaintStatus.cancelled => ComplaintAuditEventType.complaintCancelled,
+    };
+
     final event = ComplaintAuditEvent(
       id: auditRef.id,
       complaintId: complaintId,
-      eventType: eventType,
+      eventType: eventTypeEnum,
+      rawEventType: eventType,
       actorId: actorId,
-      createdAt: DateTime.now(),
+      timestamp: DateTime.now(),
       metadata: {
         'status': newStatus.value,
         'note': ?note,
@@ -642,9 +655,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     final event = ComplaintAuditEvent(
       id: auditRef.id,
       complaintId: complaintId,
-      eventType: 'PRIORITY_CHANGED',
+      eventType: ComplaintAuditEventType.priorityChanged,
       actorId: actorId,
-      createdAt: DateTime.now(),
+      timestamp: DateTime.now(),
       metadata: {'priority': newPriority.value, 'reason': ?reason},
     );
 
@@ -680,9 +693,10 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     final event = ComplaintAuditEvent(
       id: auditRef.id,
       complaintId: complaintId,
-      eventType: 'TECHNICIAN_ASSIGNED',
+      eventType: ComplaintAuditEventType.technicianAssigned,
+      rawEventType: 'TECHNICIAN_ASSIGNED',
       actorId: actorId,
-      createdAt: DateTime.now(),
+      timestamp: DateTime.now(),
       metadata: {
         'technicianId': technicianId,
         'reason': ?reason,
@@ -747,9 +761,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
           ComplaintAuditEvent(
             id: '${c.id}_evt_created',
             complaintId: c.id,
-            eventType: complaintCreatedEventType,
+            eventType: ComplaintAuditEventType.complaintCreated,
             actorId: c.createdBy,
-            createdAt: c.createdAt ?? DateTime(2026, 10, 1, 10, 0),
+            timestamp: c.createdAt ?? DateTime(2026, 10, 1, 10, 0),
             metadata: {
               'category': c.category.displayLabel,
               'priority': c.priority.displayLabel,
@@ -764,9 +778,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
             ComplaintAuditEvent(
               id: '${c.id}_evt_assigned',
               complaintId: c.id,
-              eventType: 'TECHNICIAN_ASSIGNED',
+              eventType: ComplaintAuditEventType.technicianAssigned,
               actorId: 'usr_001',
-              createdAt: c.firstAssignedAt,
+              timestamp: c.firstAssignedAt,
               metadata: {
                 'technicianId': c.currentTechnicianId,
                 'actorName': 'Riya Sharma',
@@ -785,9 +799,10 @@ class InMemoryComplaintRepository implements ComplaintRepository {
             ComplaintAuditEvent(
               id: '${c.id}_evt_arrived',
               complaintId: c.id,
-              eventType: 'TECHNICIAN_ARRIVED',
+              eventType: ComplaintAuditEventType.unknown,
+              rawEventType: 'TECHNICIAN_ARRIVED',
               actorId: c.currentTechnicianId ?? 'usr_002',
-              createdAt: visitDate,
+              timestamp: visitDate,
               metadata: {
                 'actorName': 'Aman Verma',
                 'actorRole': 'Technician',
@@ -801,9 +816,10 @@ class InMemoryComplaintRepository implements ComplaintRepository {
             ComplaintAuditEvent(
               id: '${c.id}_evt_resolved',
               complaintId: c.id,
-              eventType: 'REPAIR_COMPLETED',
+              eventType: ComplaintAuditEventType.complaintResolved,
+              rawEventType: 'REPAIR_COMPLETED',
               actorId: c.currentTechnicianId ?? 'usr_002',
-              createdAt: c.resolvedAt,
+              timestamp: c.resolvedAt,
               metadata: {
                 'actorName': 'Aman Verma',
                 'actorRole': 'Technician',
@@ -817,9 +833,10 @@ class InMemoryComplaintRepository implements ComplaintRepository {
             ComplaintAuditEvent(
               id: '${c.id}_evt_closed',
               complaintId: c.id,
-              eventType: 'TENANT_CONFIRMED',
+              eventType: ComplaintAuditEventType.complaintClosed,
+              rawEventType: 'TENANT_CONFIRMED',
               actorId: c.tenantId,
-              createdAt: c.closedAt,
+              timestamp: c.closedAt,
               metadata: {
                 'actorName': 'Tenant',
                 'actorRole': 'Tenant',
@@ -916,9 +933,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     final initialEvent = ComplaintAuditEvent(
       id: '${id}_evt_created',
       complaintId: id,
-      eventType: complaintCreatedEventType,
+      eventType: ComplaintAuditEventType.complaintCreated,
       actorId: 'in_memory_user',
-      createdAt: now,
+      timestamp: now,
       metadata: {
         'category': input.category.displayLabel,
         'priority': input.priority.displayLabel,
@@ -1126,12 +1143,25 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       ComplaintStatus.cancelled => 'COMPLAINT_CANCELLED',
     };
 
+    final eventTypeEnum = switch (newStatus) {
+      ComplaintStatus.open => ComplaintAuditEventType.complaintCreated,
+      ComplaintStatus.assigned => ComplaintAuditEventType.technicianAssigned,
+      ComplaintStatus.inProgress => ComplaintAuditEventType.visitStarted,
+      ComplaintStatus.waitingForParts =>
+        ComplaintAuditEventType.complaintWaitingForParts,
+      ComplaintStatus.resolved => ComplaintAuditEventType.complaintResolved,
+      ComplaintStatus.closed => ComplaintAuditEventType.complaintClosed,
+      ComplaintStatus.reopened => ComplaintAuditEventType.complaintReopened,
+      ComplaintStatus.cancelled => ComplaintAuditEventType.complaintCancelled,
+    };
+
     final event = ComplaintAuditEvent(
       id: '${complaintId}_evt_${now.millisecondsSinceEpoch}',
       complaintId: complaintId,
-      eventType: eventType,
+      eventType: eventTypeEnum,
+      rawEventType: eventType,
       actorId: actorId,
-      createdAt: now,
+      timestamp: now,
       metadata: {
         'status': newStatus.value,
         'note': ?note,
@@ -1186,9 +1216,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     final event = ComplaintAuditEvent(
       id: '${complaintId}_evt_${now.millisecondsSinceEpoch}',
       complaintId: complaintId,
-      eventType: 'PRIORITY_CHANGED',
+      eventType: ComplaintAuditEventType.priorityChanged,
       actorId: actorId,
-      createdAt: now,
+      timestamp: now,
       metadata: {
         'priority': newPriority.value,
         'reason': ?reason,
@@ -1250,9 +1280,13 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     final event = ComplaintAuditEvent(
       id: '${complaintId}_evt_${now.millisecondsSinceEpoch}',
       complaintId: complaintId,
-      eventType: isReassign ? 'TECHNICIAN_REASSIGNED' : 'TECHNICIAN_ASSIGNED',
+      eventType: isReassign
+          ? ComplaintAuditEventType.technicianReassigned
+          : ComplaintAuditEventType.technicianAssigned,
+      rawEventType:
+          isReassign ? 'TECHNICIAN_REASSIGNED' : 'TECHNICIAN_ASSIGNED',
       actorId: actorId,
-      createdAt: now,
+      timestamp: now,
       metadata: {
         'technicianId': technicianId,
         'fromTechnicianId': current.currentTechnicianId,

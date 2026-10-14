@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/enums/complaint_audit_event_type.dart';
 import '../../../core/enums/complaint_priority.dart';
 import '../../../core/enums/complaint_status.dart';
 import '../../../core/models/complaint.dart';
@@ -100,7 +101,7 @@ class ActivityEvent {
 
   factory ActivityEvent.fromAuditEvent(ComplaintAuditEvent audit) {
     final meta = audit.metadata;
-    final type = ActivityEventType.fromRaw(audit.eventType);
+    final type = ActivityEventType.fromRaw(audit.eventTypeValue);
     final rawPhotos = meta['photos'];
     final photoList = <String>[];
     if (rawPhotos is List) {
@@ -120,7 +121,7 @@ class ActivityEvent {
     final isInternal =
         meta['isInternal'] == true ||
         meta['internal'] == true ||
-        audit.eventType.toUpperCase() == 'INTERNAL_NOTE';
+        audit.eventTypeValue.toUpperCase() == 'INTERNAL_NOTE';
 
     return ActivityEvent(
       id: audit.id,
@@ -151,9 +152,11 @@ class ActivityEvent {
   ComplaintAuditEvent toAuditEvent() => ComplaintAuditEvent(
     id: id,
     complaintId: complaintId,
-    eventType: type.name.toUpperCase(),
+    eventType: ComplaintAuditEventType.tryFromValue(type.name.toUpperCase()) ??
+        ComplaintAuditEventType.unknown,
+    rawEventType: type.name.toUpperCase(),
     actorId: actorId,
-    createdAt: timestamp,
+    timestamp: timestamp,
     metadata: {
       'actorName': actorName,
       'actorRole': actorRole,

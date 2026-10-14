@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/enums/complaint_audit_event_type.dart';
 import '../../../core/enums/complaint_priority.dart';
 import '../../../core/enums/complaint_status.dart';
 import '../../../core/models/complaint.dart';
@@ -269,9 +270,9 @@ class ComplaintDetailController extends ChangeNotifier {
       final auditEvent = ComplaintAuditEvent(
         id: '${complaintId}_assign_${now.millisecondsSinceEpoch}',
         complaintId: complaintId,
-        eventType: 'TECHNICIAN_ASSIGNED',
+        eventType: ComplaintAuditEventType.technicianAssigned,
         actorId: actorId ?? currentUserId,
-        createdAt: now,
+        timestamp: now,
         metadata: {
           'technicianId': technicianId,
           'technicianName': technicianName ?? 'Technician',
@@ -338,9 +339,10 @@ class ComplaintDetailController extends ChangeNotifier {
     final event = ComplaintAuditEvent(
       id: '${complaintId}_note_${now.millisecondsSinceEpoch}',
       complaintId: complaintId,
-      eventType: 'NOTE_ADDED',
+      eventType: ComplaintAuditEventType.unknown,
+      rawEventType: 'NOTE_ADDED',
       actorId: actorId ?? currentUserId,
-      createdAt: now,
+      timestamp: now,
       metadata: {
         'actorName': actorName ?? currentUserName,
         'actorRole': currentUserRole,
@@ -374,9 +376,11 @@ class ComplaintDetailController extends ChangeNotifier {
     final event = ComplaintAuditEvent(
       id: '${complaintId}_tech_${now.millisecondsSinceEpoch}',
       complaintId: complaintId,
-      eventType: eventType,
+      eventType: ComplaintAuditEventType.tryFromValue(eventType) ??
+          ComplaintAuditEventType.unknown,
+      rawEventType: eventType,
       actorId: actorId ?? currentUserId,
-      createdAt: now,
+      timestamp: now,
       metadata: {
         'actorName': actorName ?? currentUserName,
         'actorRole': 'Technician',
