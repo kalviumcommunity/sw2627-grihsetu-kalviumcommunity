@@ -145,7 +145,10 @@ class VisitSuccessScreen extends StatelessWidget {
                         children: [
                           Text(
                             'Parts recorded:',
-                            style: TextStyle(color: palette.muted, fontSize: 13),
+                            style: TextStyle(
+                              color: palette.muted,
+                              fontSize: 13,
+                            ),
                           ),
                           Text(
                             '$partsCount parts used',

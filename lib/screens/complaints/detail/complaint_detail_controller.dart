@@ -377,7 +377,8 @@ class ComplaintDetailController extends ChangeNotifier {
     final event = ComplaintAuditEvent(
       id: '${complaintId}_tech_${now.millisecondsSinceEpoch}',
       complaintId: complaintId,
-      eventType: ComplaintAuditEventType.tryFromValue(eventType) ??
+      eventType:
+          ComplaintAuditEventType.tryFromValue(eventType) ??
           ComplaintAuditEventType.unknown,
       rawEventType: eventType,
       actorId: actorId ?? currentUserId,

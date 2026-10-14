@@ -58,11 +58,7 @@ enum FollowUpReason {
 
 /// Lightweight part input representation for validation and UI.
 class VisitPartInput {
-  const VisitPartInput({
-    required this.name,
-    required this.quantity,
-    this.cost,
-  });
+  const VisitPartInput({required this.name, required this.quantity, this.cost});
 
   final String name;
   final int quantity;
@@ -114,7 +110,10 @@ abstract final class VisitValidators {
   }
 
   /// Returns true if [target] is the immediately allowed next step after [current].
-  static bool canAdvanceTo(VisitWorkflowStep? current, VisitWorkflowStep target) {
+  static bool canAdvanceTo(
+    VisitWorkflowStep? current,
+    VisitWorkflowStep target,
+  ) {
     return validateStepTransition(current, target) == null;
   }
 

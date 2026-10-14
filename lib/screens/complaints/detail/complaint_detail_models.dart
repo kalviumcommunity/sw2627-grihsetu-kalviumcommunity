@@ -152,7 +152,8 @@ class ActivityEvent {
   ComplaintAuditEvent toAuditEvent() => ComplaintAuditEvent(
     id: id,
     complaintId: complaintId,
-    eventType: ComplaintAuditEventType.tryFromValue(type.name.toUpperCase()) ??
+    eventType:
+        ComplaintAuditEventType.tryFromValue(type.name.toUpperCase()) ??
         ComplaintAuditEventType.unknown,
     rawEventType: type.name.toUpperCase(),
     actorId: actorId,

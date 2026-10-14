@@ -781,7 +781,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     List<String>? photos,
   }) async {
     // TODO: Implement Firestore write for technician visit workflow steps.
-    throw UnimplementedError('Firestore advanceVisitStep is not yet implemented.');
+    throw UnimplementedError(
+      'Firestore advanceVisitStep is not yet implemented.',
+    );
   }
 
   @override
@@ -826,7 +828,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     String? role,
   }) async {
     // TODO: Implement Firestore transaction for follow-up visit request.
-    throw UnimplementedError('Firestore requestFollowUpVisit is not yet implemented.');
+    throw UnimplementedError(
+      'Firestore requestFollowUpVisit is not yet implemented.',
+    );
   }
 }
 
@@ -1388,8 +1392,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       eventType: isReassign
           ? ComplaintAuditEventType.technicianReassigned
           : ComplaintAuditEventType.technicianAssigned,
-      rawEventType:
-          isReassign ? 'TECHNICIAN_REASSIGNED' : 'TECHNICIAN_ASSIGNED',
+      rawEventType: isReassign
+          ? 'TECHNICIAN_REASSIGNED'
+          : 'TECHNICIAN_ASSIGNED',
       actorId: actorId,
       timestamp: now,
       metadata: {
@@ -1480,7 +1485,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     List<String>? photos,
   }) async {
     if (simulateFailure) {
-      throw const ComplaintWriteException('Simulated repository write failure.');
+      throw const ComplaintWriteException(
+        'Simulated repository write failure.',
+      );
     }
     if (operationDelay > Duration.zero) {
       await Future<void>.delayed(operationDelay);
@@ -1495,7 +1502,8 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     final now = DateTime.now();
 
     ComplaintStatus newStatus = current.status;
-    if (step == VisitWorkflowStep.inspection || step == VisitWorkflowStep.repairing) {
+    if (step == VisitWorkflowStep.inspection ||
+        step == VisitWorkflowStep.repairing) {
       newStatus = ComplaintStatus.inProgress;
     }
 
@@ -1554,7 +1562,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     String? role,
   }) async {
     if (simulateFailure) {
-      throw const ComplaintWriteException('Simulated repository write failure.');
+      throw const ComplaintWriteException(
+        'Simulated repository write failure.',
+      );
     }
     if (operationDelay > Duration.zero) {
       await Future<void>.delayed(operationDelay);
@@ -1588,7 +1598,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     String? role,
   }) async {
     if (simulateFailure) {
-      throw const ComplaintWriteException('Simulated repository write failure.');
+      throw const ComplaintWriteException(
+        'Simulated repository write failure.',
+      );
     }
     if (operationDelay > Duration.zero) {
       await Future<void>.delayed(operationDelay);
@@ -1623,7 +1635,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     String? role,
   }) async {
     if (simulateFailure) {
-      throw const ComplaintWriteException('Simulated repository write failure.');
+      throw const ComplaintWriteException(
+        'Simulated repository write failure.',
+      );
     }
     if (operationDelay > Duration.zero) {
       await Future<void>.delayed(operationDelay);
@@ -1725,7 +1739,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     String? role,
   }) async {
     if (simulateFailure) {
-      throw const ComplaintWriteException('Simulated repository write failure.');
+      throw const ComplaintWriteException(
+        'Simulated repository write failure.',
+      );
     }
     if (operationDelay > Duration.zero) {
       await Future<void>.delayed(operationDelay);
@@ -1782,7 +1798,8 @@ class InMemoryComplaintRepository implements ComplaintRepository {
           'partsToBring': request.partsToBring,
         'flaggedForStaff': true,
         'actorRole': role ?? 'technician',
-        'note': 'Needs another visit: ${request.reason.label} - ${request.details}',
+        'note':
+            'Needs another visit: ${request.reason.label} - ${request.details}',
       },
     );
     await appendAuditEvent(followUpEvent);

@@ -99,7 +99,8 @@ class VisitWorkLog {
         arrival ??= time;
       } else if (raw.contains('INSPECTION') || note.contains('INSPECTION')) {
         inspection ??= time;
-      } else if (raw.contains('REPAIR_STARTED') || note.contains('START REPAIR')) {
+      } else if (raw.contains('REPAIR_STARTED') ||
+          note.contains('START REPAIR')) {
         repair ??= time;
       } else if (raw.contains('REPAIR_COMPLETED') ||
           raw.contains('MARKED_RESOLVED') ||
@@ -141,7 +142,8 @@ class PreviousVisitSummary {
     for (final event in events) {
       final raw = (event.rawEventType ?? event.eventType.name).toUpperCase();
       final time = event.createdAt ?? event.timestamp ?? DateTime.now();
-      final tech = event.metadata['actorName']?.toString() ??
+      final tech =
+          event.metadata['actorName']?.toString() ??
           event.metadata['technicianId']?.toString() ??
           'Technician';
       final note = event.metadata['note']?.toString();
@@ -156,7 +158,8 @@ class PreviousVisitSummary {
           ),
         );
       } else if (raw.contains('NEEDS_ANOTHER_VISIT')) {
-        final reason = event.metadata['reason']?.toString() ?? 'Needs follow-up';
+        final reason =
+            event.metadata['reason']?.toString() ?? 'Needs follow-up';
         list.add(
           PreviousVisitSummary(
             date: time,
@@ -296,4 +299,3 @@ VisitWorkflowStep? resolveNextVisitStepFromEvents(
   if (!hasRepairing) return VisitWorkflowStep.repairing;
   return VisitWorkflowStep.completed;
 }
-

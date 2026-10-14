@@ -226,14 +226,20 @@ class ComplaintActionBar extends StatelessWidget {
     final hasAccepted = state.events.any(
       (e) =>
           e.type == ActivityEventType.accepted ||
-          (e.metadata['rawEventType'] ?? '').toString().contains('JOB_ACCEPTED') ||
-          (e.metadata['rawEventType'] ?? '').toString().contains('TECHNICIAN_ACCEPTED'),
+          (e.metadata['rawEventType'] ?? '').toString().contains(
+            'JOB_ACCEPTED',
+          ) ||
+          (e.metadata['rawEventType'] ?? '').toString().contains(
+            'TECHNICIAN_ACCEPTED',
+          ),
     );
     final hasTravelStarted = state.events.any(
       (e) =>
           e.type == ActivityEventType.travelStarted ||
           (e.metadata['rawEventType'] ?? '').toString().contains('TRAVELL') ||
-          (e.metadata['rawEventType'] ?? '').toString().contains('TRAVEL_STARTED'),
+          (e.metadata['rawEventType'] ?? '').toString().contains(
+            'TRAVEL_STARTED',
+          ),
     );
     final hasArrived = state.events.any(
       (e) =>
@@ -242,14 +248,20 @@ class ComplaintActionBar extends StatelessWidget {
     );
     final hasInspection = state.events.any(
       (e) =>
-          (e.metadata['rawEventType'] ?? '').toString().contains('INSPECTION') ||
+          (e.metadata['rawEventType'] ?? '').toString().contains(
+            'INSPECTION',
+          ) ||
           (e.note ?? '').toUpperCase().contains('INSPECTION'),
     );
     final hasWorkStarted = state.events.any(
       (e) =>
           e.type == ActivityEventType.workStarted ||
-          (e.metadata['rawEventType'] ?? '').toString().contains('REPAIR_STARTED') ||
-          (e.metadata['rawEventType'] ?? '').toString().contains('WORK_STARTED'),
+          (e.metadata['rawEventType'] ?? '').toString().contains(
+            'REPAIR_STARTED',
+          ) ||
+          (e.metadata['rawEventType'] ?? '').toString().contains(
+            'WORK_STARTED',
+          ),
     );
 
     final visitScreenButton = OutlinedButton.icon(
@@ -283,9 +295,8 @@ class ComplaintActionBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          onPressed: () => controller.advanceVisitWorkflowStep(
-            VisitWorkflowStep.accepted,
-          ),
+          onPressed: () =>
+              controller.advanceVisitWorkflowStep(VisitWorkflowStep.accepted),
           icon: const Icon(Icons.thumb_up_alt_outlined, size: 18),
           label: const Text('Accept job'),
         ),
@@ -305,9 +316,8 @@ class ComplaintActionBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          onPressed: () => controller.advanceVisitWorkflowStep(
-            VisitWorkflowStep.travelling,
-          ),
+          onPressed: () =>
+              controller.advanceVisitWorkflowStep(VisitWorkflowStep.travelling),
           icon: const Icon(Icons.directions_car_outlined, size: 18),
           label: const Text('Start travel'),
         ),
@@ -327,9 +337,8 @@ class ComplaintActionBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          onPressed: () => controller.advanceVisitWorkflowStep(
-            VisitWorkflowStep.arrived,
-          ),
+          onPressed: () =>
+              controller.advanceVisitWorkflowStep(VisitWorkflowStep.arrived),
           icon: const Icon(Icons.location_on_outlined, size: 18),
           label: const Text("I've arrived"),
         ),
@@ -349,9 +358,8 @@ class ComplaintActionBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          onPressed: () => controller.advanceVisitWorkflowStep(
-            VisitWorkflowStep.inspection,
-          ),
+          onPressed: () =>
+              controller.advanceVisitWorkflowStep(VisitWorkflowStep.inspection),
           icon: const Icon(Icons.search_outlined, size: 18),
           label: const Text('Start inspection'),
         ),
@@ -371,9 +379,8 @@ class ComplaintActionBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          onPressed: () => controller.advanceVisitWorkflowStep(
-            VisitWorkflowStep.repairing,
-          ),
+          onPressed: () =>
+              controller.advanceVisitWorkflowStep(VisitWorkflowStep.repairing),
           icon: const Icon(Icons.build_outlined, size: 18),
           label: const Text('Start repair'),
         ),

@@ -107,38 +107,42 @@ class _VisitScreenState extends State<VisitScreen> {
     _complaintSub?.cancel();
     _eventsSub?.cancel();
 
-    _complaintSub = _repository.watchComplaint(widget.complaintId).listen(
-      (c) {
-        if (!mounted) return;
-        setState(() {
-          _complaint = c;
-          _isLoading = false;
-        });
-      },
-      onError: (err) {
-        if (!mounted) return;
-        setState(() {
-          _error = err;
-          _isLoading = false;
-        });
-      },
-    );
+    _complaintSub = _repository
+        .watchComplaint(widget.complaintId)
+        .listen(
+          (c) {
+            if (!mounted) return;
+            setState(() {
+              _complaint = c;
+              _isLoading = false;
+            });
+          },
+          onError: (err) {
+            if (!mounted) return;
+            setState(() {
+              _error = err;
+              _isLoading = false;
+            });
+          },
+        );
 
-    _eventsSub = _repository.watchAuditEvents(widget.complaintId).listen(
-      (events) {
-        if (!mounted) return;
-        _populatePhotosFromEvents(events);
-        setState(() {
-          _events = events;
-        });
-      },
-      onError: (err) {
-        if (!mounted) return;
-        setState(() {
-          _error = err;
-        });
-      },
-    );
+    _eventsSub = _repository
+        .watchAuditEvents(widget.complaintId)
+        .listen(
+          (events) {
+            if (!mounted) return;
+            _populatePhotosFromEvents(events);
+            setState(() {
+              _events = events;
+            });
+          },
+          onError: (err) {
+            if (!mounted) return;
+            setState(() {
+              _error = err;
+            });
+          },
+        );
   }
 
   void _populatePhotosFromEvents(List<ComplaintAuditEvent> events) {
@@ -185,9 +189,8 @@ class _VisitScreenState extends State<VisitScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update step: $e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to update step: $e')));
       }
     } finally {
       if (mounted) {
@@ -202,9 +205,8 @@ class _VisitScreenState extends State<VisitScreen> {
       currentList.length + 1,
     );
     if (countErr != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(countErr)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(countErr)));
       return;
     }
 
@@ -229,9 +231,9 @@ class _VisitScreenState extends State<VisitScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not upload photo: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not upload photo: $e')));
       }
     }
   }
@@ -313,7 +315,11 @@ class _VisitScreenState extends State<VisitScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.lock_person_outlined, size: 48, color: palette.danger),
+                  Icon(
+                    Icons.lock_person_outlined,
+                    size: 48,
+                    color: palette.danger,
+                  ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     'Access Restricted',
@@ -354,7 +360,10 @@ class _VisitScreenState extends State<VisitScreen> {
       appBar: AppBar(
         title: Text(
           'Visit #${c.id}',
-          style: const TextStyle(fontFamily: 'Fraunces', fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontFamily: 'Fraunces',
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: SafeArea(
@@ -456,24 +465,33 @@ class _VisitScreenState extends State<VisitScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.spaceBetween,
             children: [
-              StatusBadge(
-                label: c.priority.displayLabel,
-                tone: c.priority.value == 'urgent'
-                    ? StatusBadgeTone.danger
-                    : c.priority.value == 'high'
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  StatusBadge(
+                    label: c.priority.displayLabel,
+                    tone: c.priority.value == 'urgent'
+                        ? StatusBadgeTone.danger
+                        : c.priority.value == 'high'
                         ? StatusBadgeTone.warning
                         : StatusBadgeTone.neutral,
+                  ),
+                  StatusBadge(
+                    label: c.status.displayLabel,
+                    tone: c.status == ComplaintStatus.resolved
+                        ? StatusBadgeTone.success
+                        : StatusBadgeTone.accent,
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.xs),
-              StatusBadge(
-                label: c.status.displayLabel,
-                tone: c.status == ComplaintStatus.resolved
-                    ? StatusBadgeTone.success
-                    : StatusBadgeTone.accent,
-              ),
-              const Spacer(),
               Text(
                 '#${c.id}',
                 style: TextStyle(
@@ -499,9 +517,12 @@ class _VisitScreenState extends State<VisitScreen> {
             children: [
               Icon(Icons.home_work_outlined, size: 16, color: palette.muted),
               const SizedBox(width: 4),
-              Text(
-                'Unit ${c.unitId} · Property ${c.propertyId}',
-                style: TextStyle(color: palette.muted, fontSize: 13),
+              Expanded(
+                child: Text(
+                  'Unit ${c.unitId} · Property ${c.propertyId}',
+                  style: TextStyle(color: palette.muted, fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -513,7 +534,11 @@ class _VisitScreenState extends State<VisitScreen> {
               CircleAvatar(
                 radius: 14,
                 backgroundColor: palette.accent.withValues(alpha: 0.15),
-                child: Icon(Icons.person_outline, size: 16, color: palette.accent),
+                child: Icon(
+                  Icons.person_outline,
+                  size: 16,
+                  color: palette.accent,
+                ),
               ),
               const SizedBox(width: AppSpacing.xs + 2),
               Expanded(
@@ -613,7 +638,11 @@ class _VisitScreenState extends State<VisitScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.event_note, size: 18, color: palette.muted),
+                            Icon(
+                              Icons.event_note,
+                              size: 18,
+                              color: palette.muted,
+                            ),
                             const SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: Column(
@@ -649,7 +678,8 @@ class _VisitScreenState extends State<VisitScreen> {
                                       fontSize: 12,
                                     ),
                                   ),
-                                  if (v.notes != null && v.notes!.isNotEmpty) ...[
+                                  if (v.notes != null &&
+                                      v.notes!.isNotEmpty) ...[
                                     const SizedBox(height: 4),
                                     Text(
                                       v.notes!,
@@ -679,10 +709,7 @@ class _VisitScreenState extends State<VisitScreen> {
   // -------------------------------------------------------------
   // VISIT WORKFLOW STEPPER
   // -------------------------------------------------------------
-  Widget _buildStepperCard(
-    BuildContext context,
-    VisitWorkflowStep? nextStep,
-  ) {
+  Widget _buildStepperCard(BuildContext context, VisitWorkflowStep? nextStep) {
     final palette = context.palette;
     final workLog = VisitWorkLog.fromEvents(_events);
 
@@ -702,8 +729,11 @@ class _VisitScreenState extends State<VisitScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
             children: [
               Text(
                 'Visit Stepper',
@@ -731,7 +761,8 @@ class _VisitScreenState extends State<VisitScreen> {
               step: step,
               timestamp: getStepTime(step),
               isNext: nextStep == step,
-              isCompleted: getStepTime(step) != null ||
+              isCompleted:
+                  getStepTime(step) != null ||
                   (nextStep != null && step.index < nextStep.index),
               onTapNext: () {
                 if (step == VisitWorkflowStep.completed) {
@@ -887,8 +918,11 @@ class _VisitScreenState extends State<VisitScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
             children: [
               Text(
                 'Work Log',
@@ -917,6 +951,7 @@ class _VisitScreenState extends State<VisitScreen> {
                   icon: Icons.login,
                 ),
               ),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: _buildLogItem(
                   context,
@@ -938,6 +973,7 @@ class _VisitScreenState extends State<VisitScreen> {
                   icon: Icons.done_all,
                 ),
               ),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: _buildLogItem(
                   context,
@@ -969,34 +1005,39 @@ class _VisitScreenState extends State<VisitScreen> {
             ? palette.accent.withValues(alpha: 0.08)
             : palette.canvas,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: highlight ? palette.accent : palette.border,
-        ),
+        border: Border.all(color: highlight ? palette.accent : palette.border),
       ),
       child: Row(
         children: [
           Icon(
             icon,
-            size: 18,
+            size: 16,
             color: highlight ? palette.accent : palette.muted,
           ),
-          const SizedBox(width: AppSpacing.xs + 2),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(color: palette.muted, fontSize: 11),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: highlight ? palette.accent : palette.ink,
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: palette.muted, fontSize: 11),
                 ),
-              ),
-            ],
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: highlight ? palette.accent : palette.ink,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1015,8 +1056,11 @@ class _VisitScreenState extends State<VisitScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
             children: [
               Text(
                 'Evidence Photos',
@@ -1046,8 +1090,11 @@ class _VisitScreenState extends State<VisitScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.photo_camera_back_outlined,
-                      size: 24, color: palette.muted),
+                  Icon(
+                    Icons.photo_camera_back_outlined,
+                    size: 24,
+                    color: palette.muted,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
@@ -1089,8 +1136,11 @@ class _VisitScreenState extends State<VisitScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
           children: [
             Text(
               '$groupTitle (${photos.length}/6)',
@@ -1133,7 +1183,10 @@ class _VisitScreenState extends State<VisitScreen> {
                 decoration: BoxDecoration(
                   color: palette.canvas,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: palette.border, style: BorderStyle.solid),
+                  border: Border.all(
+                    color: palette.border,
+                    style: BorderStyle.solid,
+                  ),
                 ),
                 child: Center(
                   child: Text(
@@ -1223,7 +1276,9 @@ class _VisitScreenState extends State<VisitScreen> {
         child: OutlinedButton(
           style: OutlinedButton.styleFrom(
             minimumSize: const Size.fromHeight(56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Back to queue', style: TextStyle(fontSize: 16)),
@@ -1245,10 +1300,12 @@ class _VisitScreenState extends State<VisitScreen> {
           width: double.infinity,
           height: 56, // 56px large primary buttons
           child: FilledButton.icon(
-            key: Key('visit_primary_action_${nextStep.name}'),
+            key: const Key('sticky_bottom_action_button'),
             style: FilledButton.styleFrom(
               minimumSize: const Size(double.infinity, 56),
-              backgroundColor: isCompleteAction ? palette.success : palette.accent,
+              backgroundColor: isCompleteAction
+                  ? palette.success
+                  : palette.accent,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -1280,10 +1337,7 @@ class _VisitScreenState extends State<VisitScreen> {
                   ),
             label: Text(
               _isActionInProgress ? 'Saving...' : nextStep.actionLabel,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ),

@@ -6,7 +6,10 @@ void main() {
   group('VisitValidators - Step Order Transitions', () {
     test('allowed transitions proceed one step at a time', () {
       expect(
-        VisitValidators.validateStepTransition(null, VisitWorkflowStep.accepted),
+        VisitValidators.validateStepTransition(
+          null,
+          VisitWorkflowStep.accepted,
+        ),
         isNull,
       );
       expect(
@@ -268,10 +271,7 @@ void main() {
         VisitValidators.validateTenantResolutionNotes('12345678901234567890'),
         isNull,
       );
-      expect(
-        VisitValidators.validateTenantResolutionNotes('B' * 500),
-        isNull,
-      );
+      expect(VisitValidators.validateTenantResolutionNotes('B' * 500), isNull);
       expect(
         VisitValidators.validateTenantResolutionNotes('B' * 501),
         isNotNull,
@@ -294,7 +294,10 @@ void main() {
         isNull,
       );
       expect(
-        VisitValidators.validateFollowUpReason(FollowUpReason.other, otherNote: ''),
+        VisitValidators.validateFollowUpReason(
+          FollowUpReason.other,
+          otherNote: '',
+        ),
         isNotNull,
       );
       expect(
@@ -323,10 +326,7 @@ void main() {
 
     test('suggested date (today to +14 days)', () {
       final today = DateTime(2026, 10, 14);
-      expect(
-        VisitValidators.validateSuggestedDate(null, today: today),
-        isNull,
-      );
+      expect(VisitValidators.validateSuggestedDate(null, today: today), isNull);
       expect(
         VisitValidators.validateSuggestedDate(
           DateTime(2026, 10, 13),

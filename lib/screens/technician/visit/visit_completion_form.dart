@@ -260,8 +260,9 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
         firstErrorKey ??= _foundKey;
       }
 
-      final repairedErr =
-          VisitValidators.validateRepaired(_repairedController.text);
+      final repairedErr = VisitValidators.validateRepaired(
+        _repairedController.text,
+      );
       if (repairedErr != null) {
         errors['repaired'] = repairedErr;
         firstErrorKey ??= _repairedKey;
@@ -345,11 +346,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
 
     if (nameErr != null || qtyErr != null || costErr != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            nameErr ?? qtyErr ?? costErr ?? 'Invalid part',
-          ),
-        ),
+        SnackBar(content: Text(nameErr ?? qtyErr ?? costErr ?? 'Invalid part')),
       );
       return;
     }
@@ -370,15 +367,15 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
       _afterPhotos.length + 1,
     );
     if (countErr != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(countErr)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(countErr)));
       return;
     }
 
     final picked = await _mediaPicker.pick();
     if (picked != null) {
-      final name = 'after_${picked.name}_${DateTime.now().millisecondsSinceEpoch}';
+      final name =
+          'after_${picked.name}_${DateTime.now().millisecondsSinceEpoch}';
       await widget.repository.addVisitPhoto(
         widget.complaintId,
         photoUrl: name,
@@ -568,7 +565,10 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
         appBar: AppBar(
           title: const Text(
             'Complete Visit',
-            style: TextStyle(fontFamily: 'Fraunces', fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontFamily: 'Fraunces',
+              fontWeight: FontWeight.bold,
+            ),
           ),
           actions: [
             IconButton(
@@ -594,7 +594,11 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                   padding: const EdgeInsets.all(AppSpacing.sm),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, color: palette.danger, size: 20),
+                      Icon(
+                        Icons.error_outline,
+                        color: palette.danger,
+                        size: 20,
+                      ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
@@ -772,16 +776,18 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'What was found *',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: palette.ink,
+                  Expanded(
+                    child: Text(
+                      'What was found *',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: palette.ink,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: AppSpacing.xs),
                   ValueListenableBuilder<TextEditingValue>(
                     valueListenable: _foundController,
                     builder: (_, val, _) => Text(
@@ -802,8 +808,12 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                 controller: _foundController,
                 maxLines: 3,
                 maxLength: 500,
-                buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
-                    null,
+                buildCounter: (
+                  _, {
+                  required currentLength,
+                  required isFocused,
+                  maxLength,
+                }) => null,
                 onChanged: (_) {
                   _saveDraft();
                   if (_errors.containsKey('found')) {
@@ -811,7 +821,8 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                   }
                 },
                 decoration: InputDecoration(
-                  hintText: 'Describe root cause identified during inspection...',
+                  hintText:
+                      'Describe root cause identified during inspection...',
                   errorText: _errors['found'],
                   border: const OutlineInputBorder(),
                 ),
@@ -829,16 +840,18 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'What was repaired *',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: palette.ink,
+                  Expanded(
+                    child: Text(
+                      'What was repaired *',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: palette.ink,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: AppSpacing.xs),
                   ValueListenableBuilder<TextEditingValue>(
                     valueListenable: _repairedController,
                     builder: (_, val, _) => Text(
@@ -859,8 +872,12 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                 controller: _repairedController,
                 maxLines: 3,
                 maxLength: 500,
-                buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
-                    null,
+                buildCounter: (
+                  _, {
+                  required currentLength,
+                  required isFocused,
+                  maxLength,
+                }) => null,
                 onChanged: (_) {
                   _saveDraft();
                   if (_errors.containsKey('repaired')) {
@@ -939,8 +956,11 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                           ),
                         ),
                         IconButton(
-                          icon: Icon(Icons.delete_outline,
-                              size: 18, color: palette.danger),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: palette.danger,
+                          ),
                           onPressed: () {
                             setState(() => _parts.removeAt(i));
                             _saveDraft();
@@ -983,7 +1003,9 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                     const SizedBox(width: AppSpacing.xs),
                     IconButton.filled(
                       key: const Key('add_part_button'),
-                      style: IconButton.styleFrom(backgroundColor: palette.accent),
+                      style: IconButton.styleFrom(
+                        backgroundColor: palette.accent,
+                      ),
                       onPressed: _addPartRow,
                       icon: const Icon(Icons.add, size: 20),
                     ),
@@ -1041,16 +1063,18 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Resolution notes for tenant *',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: palette.ink,
+                  Expanded(
+                    child: Text(
+                      'Resolution notes for tenant *',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: palette.ink,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: AppSpacing.xs),
                   ValueListenableBuilder<TextEditingValue>(
                     valueListenable: _tenantNotesController,
                     builder: (_, val, _) => Text(
@@ -1076,8 +1100,12 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                 controller: _tenantNotesController,
                 maxLines: 3,
                 maxLength: 500,
-                buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
-                    null,
+                buildCounter: (
+                  _, {
+                  required currentLength,
+                  required isFocused,
+                  maxLength,
+                }) => null,
                 onChanged: (_) {
                   _saveDraft();
                   if (_errors.containsKey('tenantNotes')) {
@@ -1085,7 +1113,8 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                   }
                 },
                 decoration: InputDecoration(
-                  hintText: 'Explain how the issue was fixed so tenant can verify...',
+                  hintText:
+                      'Explain how the issue was fixed so tenant can verify...',
                   errorText: _errors['tenantNotes'],
                   border: const OutlineInputBorder(),
                 ),
@@ -1102,8 +1131,11 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
                 children: [
                   Text(
                     'After Photos (${_afterPhotos.length}/6) *',
@@ -1149,8 +1181,11 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                             border: Border.all(color: palette.border),
                           ),
                           child: Center(
-                            child: Icon(Icons.image,
-                                size: 20, color: palette.accent),
+                            child: Icon(
+                              Icons.image,
+                              size: 20,
+                              color: palette.accent,
+                            ),
                           ),
                         ),
                         Positioned(
@@ -1167,8 +1202,11 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                                 color: palette.surface,
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(Icons.close,
-                                  size: 12, color: palette.danger),
+                              child: Icon(
+                                Icons.close,
+                                size: 12,
+                                color: palette.danger,
+                              ),
                             ),
                           ),
                         ),
@@ -1224,16 +1262,19 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
               const SizedBox(height: AppSpacing.xs),
               DropdownButtonFormField<FollowUpReason>(
                 key: const Key('follow_up_reason_dropdown'),
+                isExpanded: true,
                 initialValue: _followUpReason,
                 decoration: InputDecoration(
                   border: const OutlineInputBorder(),
-                  errorText: _errors['reason'],
+                  errorText: _followUpReason == FollowUpReason.other
+                      ? null
+                      : _errors['reason'],
                 ),
                 hint: const Text('Select a reason...'),
                 items: FollowUpReason.values.map((reason) {
                   return DropdownMenuItem(
                     value: reason,
-                    child: Text(reason.label),
+                    child: Text(reason.label, overflow: TextOverflow.ellipsis),
                   );
                 }).toList(),
                 onChanged: (val) {
@@ -1256,9 +1297,10 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                       setState(() => _errors.remove('reason'));
                     }
                   },
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Specify other reason * (min 10 characters)',
-                    border: OutlineInputBorder(),
+                    errorText: _errors['reason'],
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ],
@@ -1275,16 +1317,18 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Details note *',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: palette.ink,
+                  Expanded(
+                    child: Text(
+                      'Details note *',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: palette.ink,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: AppSpacing.xs),
                   ValueListenableBuilder<TextEditingValue>(
                     valueListenable: _detailsController,
                     builder: (_, val, _) => Text(
@@ -1305,8 +1349,12 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                 controller: _detailsController,
                 maxLines: 3,
                 maxLength: 500,
-                buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
-                    null,
+                buildCounter: (
+                  _, {
+                  required currentLength,
+                  required isFocused,
+                  maxLength,
+                }) => null,
                 onChanged: (_) {
                   _saveDraft();
                   if (_errors.containsKey('details')) {
@@ -1373,6 +1421,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       key: const Key('suggested_slot_dropdown'),
+                      isExpanded: true,
                       initialValue: _suggestedSlot,
                       decoration: const InputDecoration(
                         isDense: true,
@@ -1381,14 +1430,26 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                       ),
                       items: const [
                         DropdownMenuItem(
-                            value: 'Morning (9am - 12pm)',
-                            child: Text('Morning')),
+                          value: 'Morning (9am - 12pm)',
+                          child: Text(
+                            'Morning',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         DropdownMenuItem(
-                            value: 'Afternoon (12pm - 4pm)',
-                            child: Text('Afternoon')),
+                          value: 'Afternoon (12pm - 4pm)',
+                          child: Text(
+                            'Afternoon',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         DropdownMenuItem(
-                            value: 'Evening (4pm - 7pm)',
-                            child: Text('Evening')),
+                          value: 'Evening (4pm - 7pm)',
+                          child: Text(
+                            'Evening',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                       onChanged: (val) {
                         setState(() => _suggestedSlot = val);
@@ -1455,7 +1516,9 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                   const SizedBox(width: AppSpacing.xs),
                   IconButton.filled(
                     key: const Key('add_part_to_bring_button'),
-                    style: IconButton.styleFrom(backgroundColor: palette.accent),
+                    style: IconButton.styleFrom(
+                      backgroundColor: palette.accent,
+                    ),
                     onPressed: () {
                       final item = _partToBringController.text.trim();
                       if (item.isNotEmpty) {
@@ -1516,20 +1579,14 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
                       color: Colors.white,
                     ),
                   )
-                : Icon(
-                    isResolved ? Icons.check : Icons.send,
-                    size: 20,
-                  ),
+                : Icon(isResolved ? Icons.check : Icons.send, size: 20),
             label: Text(
               _isSubmitting
                   ? 'Submitting...'
                   : (isResolved
-                      ? 'Submit & Mark Resolved'
-                      : 'Request Follow-up Visit'),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+                        ? 'Submit & Mark Resolved'
+                        : 'Request Follow-up Visit'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ),
