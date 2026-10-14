@@ -242,64 +242,23 @@ class ComplaintDetailController extends ChangeNotifier {
     String? role,
     String? actorId,
   }) async {
-    final now = DateTime.now();
-    var repoHandledEvent = false;
-    try {
-      final updated = await repository.assignComplaintTechnician(
-        complaintId,
-        technicianId,
-        actorId: actorId ?? currentUserId,
-        reason: reason ?? notes,
-        role: role ?? currentUserRole,
-        scheduledDate: scheduledDate,
-        timeSlot: timeSlot,
-      );
-      _latestComplaint = updated;
-      repoHandledEvent = true;
-    } catch (_) {
-      if (_latestComplaint != null) {
-        _latestComplaint = _latestComplaint!.copyWith(
-          status: ComplaintStatus.assigned,
-          currentTechnicianId: technicianId,
-          firstAssignedAt: scheduledDate ?? now,
-          updatedAt: now,
-        );
-      }
-    }
-
-    if (!repoHandledEvent) {
-      final auditEvent = ComplaintAuditEvent(
-        id: '${complaintId}_assign_${now.millisecondsSinceEpoch}',
-        complaintId: complaintId,
-        eventType: ComplaintAuditEventType.technicianAssigned,
-        actorId: actorId ?? currentUserId,
-        timestamp: now,
-        metadata: {
-          'technicianId': technicianId,
-          'technicianName': technicianName ?? 'Technician',
-          'actorName': currentUserName,
-          'actorRole': 'Staff Operations',
-          'note': notes ?? 'Assigned to ${technicianName ?? technicianId}.',
-          'reason': ?reason,
-        },
-      );
-      try {
-        await repository.appendAuditEvent(auditEvent);
-      } catch (_) {}
-
-      final typedEvt = ActivityEvent.fromAuditEvent(auditEvent);
-      _latestEvents = [..._latestEvents, typedEvt];
-    } else {
-      try {
-        final repoEvents = await repository.loadAuditEvents(complaintId);
-        if (repoEvents.isNotEmpty) {
-          final seenIds = <String>{};
-          _latestEvents = repoEvents
-              .where((a) => seenIds.add(a.id))
-              .map((a) => ActivityEvent.fromAuditEvent(a))
-              .toList();
-        }
-      } catch (_) {}
+    final updated = await repository.assignComplaintTechnician(
+      complaintId,
+      technicianId,
+      actorId: actorId ?? currentUserId,
+      reason: reason ?? notes,
+      role: role ?? currentUserRole,
+      scheduledDate: scheduledDate,
+      timeSlot: timeSlot,
+    );
+    _latestComplaint = updated;
+    final repoEvents = await repository.loadAuditEvents(complaintId);
+    if (repoEvents.isNotEmpty) {
+      final seenIds = <String>{};
+      _latestEvents = repoEvents
+          .where((a) => seenIds.add(a.id))
+          .map((a) => ActivityEvent.fromAuditEvent(a))
+          .toList();
     }
 
     _updateState(

@@ -148,6 +148,26 @@ class AuthService implements AuthenticatedUserProvider {
     }
   }
 
+  /// Sends Firebase's password-reset email without revealing whether the
+  /// address exists. The UI can therefore show the same confirmation for both
+  /// existing and unknown accounts.
+  Future<void> sendPasswordResetEmail(String email) async {
+    final normalizedEmail = email.trim();
+    if (normalizedEmail.isEmpty) {
+      throw const AuthFailure(AuthFailureCode.invalidInput);
+    }
+
+    try {
+      await _auth.sendPasswordResetEmail(email: normalizedEmail);
+    } on FirebaseAuthException catch (error) {
+      throw AuthFailure.fromAuthException(error);
+    } on FirebaseException catch (error) {
+      throw AuthFailure.fromFirestoreException(error);
+    } catch (_) {
+      throw const AuthFailure(AuthFailureCode.unknown);
+    }
+  }
+
   /// Loads and validates the profile for a Firebase UID.
   ///
   /// Missing documents, missing roles, unsupported roles, permission errors,

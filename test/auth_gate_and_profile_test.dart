@@ -111,6 +111,9 @@ class FakeAuthService implements AuthService {
     );
   }
 
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {}
+
   void dispose() {
     _authStateController.close();
   }

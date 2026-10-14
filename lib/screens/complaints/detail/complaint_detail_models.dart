@@ -48,7 +48,7 @@ enum ActivityEventType {
       'TRAVEL_STARTED' => ActivityEventType.travelStarted,
       'TECHNICIAN_ARRIVED' || 'ARRIVED' => ActivityEventType.arrived,
       'INSPECTION_STARTED' => ActivityEventType.inspectionStarted,
-      'WORK_STARTED' => ActivityEventType.workStarted,
+      'WORK_STARTED' || 'REPAIR_STARTED' => ActivityEventType.workStarted,
       'PHOTO_UPLOADED' => ActivityEventType.photoUploaded,
       'PART_ADDED' || 'PART_NEEDED' => ActivityEventType.partAdded,
       'REPAIR_COMPLETED' => ActivityEventType.repairCompleted,

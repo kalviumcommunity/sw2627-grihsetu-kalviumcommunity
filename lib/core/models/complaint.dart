@@ -49,6 +49,8 @@ class CreateComplaintInput {
 /// and supplies server timestamps. [createdAt] is nullable because a freshly
 /// acknowledged write may still contain a pending server timestamp locally.
 class Complaint {
+  static const Object _copyWithUnset = Object();
+
   final String id;
   final String tenantId;
   final String propertyId;
@@ -176,17 +178,17 @@ class Complaint {
     ComplaintCategory? category,
     ComplaintPriority? priority,
     ComplaintStatus? status,
-    String? currentTechnicianId,
-    String? activeVisitId,
+    Object? currentTechnicianId = _copyWithUnset,
+    Object? activeVisitId = _copyWithUnset,
     int? visitCount,
     bool? isRepeatVisit,
     int? reopenCount,
     String? createdBy,
-    DateTime? createdAt,
-    DateTime? firstAssignedAt,
-    DateTime? resolvedAt,
-    DateTime? closedAt,
-    DateTime? updatedAt,
+    Object? createdAt = _copyWithUnset,
+    Object? firstAssignedAt = _copyWithUnset,
+    Object? resolvedAt = _copyWithUnset,
+    Object? closedAt = _copyWithUnset,
+    Object? updatedAt = _copyWithUnset,
   }) => Complaint(
     id: id ?? this.id,
     tenantId: tenantId ?? this.tenantId,
@@ -197,16 +199,31 @@ class Complaint {
     category: category ?? this.category,
     priority: priority ?? this.priority,
     status: status ?? this.status,
-    currentTechnicianId: currentTechnicianId ?? this.currentTechnicianId,
+    currentTechnicianId: identical(currentTechnicianId, _copyWithUnset)
+        ? this.currentTechnicianId
+        : currentTechnicianId as String?,
+    activeVisitId: identical(activeVisitId, _copyWithUnset)
+        ? this.activeVisitId
+        : activeVisitId as String?,
     visitCount: visitCount ?? this.visitCount,
     isRepeatVisit: isRepeatVisit ?? this.isRepeatVisit,
     reopenCount: reopenCount ?? this.reopenCount,
     createdBy: createdBy ?? this.createdBy,
-    createdAt: createdAt ?? this.createdAt,
-    firstAssignedAt: firstAssignedAt ?? this.firstAssignedAt,
-    resolvedAt: resolvedAt ?? this.resolvedAt,
-    closedAt: closedAt ?? this.closedAt,
-    updatedAt: updatedAt ?? this.updatedAt,
+    createdAt: identical(createdAt, _copyWithUnset)
+        ? this.createdAt
+        : createdAt as DateTime?,
+    firstAssignedAt: identical(firstAssignedAt, _copyWithUnset)
+        ? this.firstAssignedAt
+        : firstAssignedAt as DateTime?,
+    resolvedAt: identical(resolvedAt, _copyWithUnset)
+        ? this.resolvedAt
+        : resolvedAt as DateTime?,
+    closedAt: identical(closedAt, _copyWithUnset)
+        ? this.closedAt
+        : closedAt as DateTime?,
+    updatedAt: identical(updatedAt, _copyWithUnset)
+        ? this.updatedAt
+        : updatedAt as DateTime?,
   );
 
   @override

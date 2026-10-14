@@ -105,7 +105,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ? null
                     : () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const ForgotPasswordScreen(),
+                          builder: (_) => ForgotPasswordScreen(
+                            authService: widget.authService,
+                          ),
                         ),
                       ),
                 child: const Text('Forgot password?'),

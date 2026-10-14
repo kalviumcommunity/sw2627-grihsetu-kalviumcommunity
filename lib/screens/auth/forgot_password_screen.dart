@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../services/auth_failure.dart';
+import '../../services/auth_service.dart';
 import '../../utils/validators.dart';
 import 'auth_layout.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key});
+  const ForgotPasswordScreen({super.key, this.authService});
+
+  final AuthService? authService;
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -16,6 +20,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   bool _busy = false;
   bool _sent = false;
 
+  AuthService get _authService => widget.authService ?? AuthService.firebase();
+
   @override
   void dispose() {
     _email.dispose();
@@ -26,9 +32,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
-      // TODO(auth): call FirebaseAuth.instance.sendPasswordResetEmail(email: _email.text.trim()).
-      await Future<void>.delayed(const Duration(milliseconds: 350));
+      await _authService.sendPasswordResetEmail(_email.text);
       if (mounted) setState(() => _sent = true);
+    } on AuthFailure catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

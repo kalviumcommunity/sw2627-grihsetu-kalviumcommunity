@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../app/user_role.dart' as app;
 import '../../core/enums/complaint_priority.dart';
 import '../../core/enums/complaint_status.dart';
 import '../../core/enums/user_role.dart';
@@ -190,6 +191,10 @@ class _TechnicianQueueScreenState extends State<TechnicianQueueScreen> {
           complaint: complaint,
           propertyName: _resolver.getPropertyName(complaint.propertyId),
           unitNumber: _resolver.getUnitNumber(complaint.unitId),
+          userRole: app.UserRole.technician,
+          complaintRepository: _repository,
+          currentUserId: widget.profile?.id ?? _technicianId,
+          currentUserName: widget.profile?.name,
         ),
       ),
     );
