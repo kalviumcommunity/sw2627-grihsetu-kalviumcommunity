@@ -2,6 +2,7 @@ export 'complaint_category.dart';
 export 'complaint_audit_event_type.dart';
 export 'complaint_priority.dart';
 export 'complaint_status.dart';
+export 'maintenance_visit_outcome.dart';
 export 'rent_status.dart';
 export 'property_status.dart';
 export 'tenant_status.dart';
