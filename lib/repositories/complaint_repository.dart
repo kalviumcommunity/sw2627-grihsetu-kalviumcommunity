@@ -5,10 +5,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/constants/firestore_collections.dart';
 import '../core/enums/complaint_priority.dart';
 import '../core/enums/complaint_status.dart';
+import '../core/enums/user_role.dart';
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/complaint.dart';
 import '../core/models/complaint_audit_event.dart';
 import '../services/auth_service.dart';
+import '../services/complaint_audit_service.dart';
 
 const String complaintCreatedEventType = 'COMPLAINT_CREATED';
 
@@ -39,12 +41,16 @@ abstract final class ComplaintFirestorePayloads {
     required String actorId,
     required String category,
     required String priority,
+    UserRole? actorRole,
   }) => {
-    'complaintId': complaintId,
-    'eventType': complaintCreatedEventType,
-    'actorId': actorId,
-    'createdAt': FieldValue.serverTimestamp(),
-    'metadata': {'category': category, 'priority': priority},
+    ...ComplaintAuditWriter.buildPayload(
+      complaintId: complaintId,
+      eventType: ComplaintAuditEventType.complaintCreated,
+      actorId: actorId,
+      actorRole: actorRole?.value,
+      details: {'category': category, 'priority': priority},
+      schemaVersion: actorRole == null ? null : 1,
+    ),
   };
 }
 
@@ -184,6 +190,10 @@ class FirestoreComplaintRepository implements ComplaintRepository {
 
   final FirebaseFirestore _firestore;
   final AuthenticatedUserProvider _identity;
+  late final ComplaintAuditWriter _auditWriter = ComplaintAuditWriter(
+    firestore: _firestore,
+    identity: _identity,
+  );
 
   @override
   Stream<List<Complaint>> watchComplaints({
@@ -231,6 +241,32 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   }
 
   @override
+  Stream<List<Complaint>> watchAssignedComplaints({
+    required String technicianId,
+  }) {
+    final tid = technicianId.trim();
+    if (tid.isEmpty) {
+      throw const ComplaintValidationException(
+        'Technician ID cannot be empty.',
+      );
+    }
+
+    final query = _firestore
+        .collection(FirestoreCollections.complaints)
+        .where('currentTechnicianId', isEqualTo: tid)
+        .where('status', whereIn: ComplaintStatus.activeStatusValues);
+
+    return query.snapshots().map((snapshot) {
+      final complaints = snapshot.docs.map((doc) {
+        return Complaint.fromMap(doc.data(), id: doc.id);
+      }).toList();
+
+      sortTechnicianQueue(complaints);
+      return complaints;
+    });
+  }
+
+  @override
   Future<Complaint> createComplaint(CreateComplaintInput input) async {
     final user = _identity.currentUser;
     if (user == null || user.uid.trim().isEmpty) {
@@ -256,12 +292,28 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         .collection(FirestoreCollections.auditEvents)
         .doc('${complaintRef.id}_created');
     final actorId = user.uid;
+    final actorRef = _firestore
+        .collection(FirestoreCollections.users)
+        .doc(actorId);
 
     try {
       return await _firestore.runTransaction<Complaint>((transaction) async {
         // All reads occur before either write so retries remain transaction-safe.
         final existingComplaint = await transaction.get(complaintRef);
         final existingAudit = await transaction.get(auditRef);
+        final actorSnapshot = await transaction.get(actorRef);
+
+        if (!actorSnapshot.exists || actorSnapshot.data() == null) {
+          throw const ComplaintPermissionException();
+        }
+        final actorProfile = AppUser.fromMap(
+          actorSnapshot.data()!,
+          id: actorSnapshot.id,
+        );
+        final actor = AuditActorContext.fromProfile(
+          profile: actorProfile,
+          authenticatedUid: actorId,
+        );
 
         if (existingComplaint.exists) {
           final existingData = existingComplaint.data();
@@ -287,14 +339,17 @@ class FirestoreComplaintRepository implements ComplaintRepository {
           }
 
           // Repairs an interrupted legacy pair while keeping the same IDs.
-          transaction.set(
-            auditRef,
-            ComplaintFirestorePayloads.auditForComplaintCreate(
-              complaintId: existing.id,
-              actorId: actorId,
-              category: existing.category.value,
-              priority: existing.priority.value,
-            ),
+          _auditWriter.appendEventInTransaction(
+            transaction,
+            complaintId: existing.id,
+            eventId: auditRef.id,
+            eventType: ComplaintAuditEventType.complaintCreated,
+            actor: actor,
+            details: {
+              'category': existing.category.value,
+              'priority': existing.priority.value,
+            },
+            eventWasAbsent: !existingAudit.exists,
           );
           return existing;
         }
@@ -306,14 +361,17 @@ class FirestoreComplaintRepository implements ComplaintRepository {
           actorId,
         );
         transaction.set(complaintRef, complaintPayload);
-        transaction.set(
-          auditRef,
-          ComplaintFirestorePayloads.auditForComplaintCreate(
-            complaintId: complaintRef.id,
-            actorId: actorId,
-            category: input.category.value,
-            priority: input.priority.value,
-          ),
+        _auditWriter.appendEventInTransaction(
+          transaction,
+          complaintId: complaintRef.id,
+          eventId: auditRef.id,
+          eventType: ComplaintAuditEventType.complaintCreated,
+          actor: actor,
+          details: {
+            'category': input.category.value,
+            'priority': input.priority.value,
+          },
+          eventWasAbsent: !existingAudit.exists,
         );
 
         // Server timestamps are unresolved until Firestore acknowledges the

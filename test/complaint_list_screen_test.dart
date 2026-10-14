@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grihsetu/app/app_shell.dart';
@@ -27,6 +28,11 @@ class TestStreamComplaintRepository implements ComplaintRepository {
     String? propertyId,
     String? unitId,
     String? tenantId,
+  }) => _controller.stream;
+
+  @override
+  Stream<List<Complaint>> watchAssignedComplaints({
+    required String technicianId,
   }) => _controller.stream;
 
   @override
@@ -235,7 +241,7 @@ void main() {
       expect(find.text('Complaint details'), findsOneWidget);
       expect(find.text('Ceiling leakage in hall'), findsOneWidget);
       expect(find.text('Dripping from corner of ceiling.'), findsOneWidget);
-      expect(find.text('Complaint detail placeholder'), findsOneWidget);
+      expect(find.text('Record details'), findsOneWidget);
 
       // Back navigation
       final backButton = find.byType(BackButton);
@@ -283,5 +289,112 @@ void main() {
 
       repo.dispose();
     });
+
+    testWidgets(
+      'empty state hides complaint registration action for technician role',
+      (tester) async {
+        final repo = TestStreamComplaintRepository();
+        const techProfile = AppUser(
+          id: 'u_tech',
+          name: 'Field Tech',
+          email: 'tech@grihsetu.com',
+          role: UserRole.technician,
+          createdAt: null,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ComplaintListScreen(
+              profile: techProfile,
+              complaintRepository: repo,
+            ),
+          ),
+        );
+
+        repo.emitData([]);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(EmptyState), findsOneWidget);
+        expect(find.text('No complaints yet'), findsOneWidget);
+        // Technician should NOT see complaint registration
+        expect(find.text('Register complaint'), findsNothing);
+        expect(find.byType(FloatingActionButton), findsNothing);
+
+        repo.dispose();
+      },
+    );
+
+    testWidgets('maps Firebase permission-denied to user-friendly message', (
+      tester,
+    ) async {
+      final repo = TestStreamComplaintRepository();
+
+      await tester.pumpWidget(
+        MaterialApp(home: ComplaintListScreen(complaintRepository: repo)),
+      );
+
+      repo.emitError(
+        FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'permission-denied',
+          message: 'Missing or insufficient permissions.',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ErrorState), findsOneWidget);
+      expect(
+        find.text('You do not have permission to view complaints.'),
+        findsOneWidget,
+      );
+      // Raw internal text must not leak
+      expect(find.text('Missing or insufficient permissions.'), findsNothing);
+      expect(find.text('cloud_firestore'), findsNothing);
+
+      repo.dispose();
+    });
+
+    testWidgets(
+      'narrow screen layouts (320px, 360px, 390px) render states without overflow',
+      (tester) async {
+        for (final width in [320.0, 360.0, 390.0]) {
+          await tester.binding.setSurfaceSize(Size(width, 640));
+          final repo = TestStreamComplaintRepository();
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: ComplaintListScreen(
+                key: ValueKey(width),
+                complaintRepository: repo,
+              ),
+            ),
+          );
+
+          // 1. Loading
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: 'loading width $width',
+          );
+          expect(find.byType(SkeletonList), findsOneWidget);
+
+          // 2. Empty
+          repo.emitData([]);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: 'empty width $width');
+          expect(find.byType(EmptyState), findsOneWidget);
+
+          // 3. Error
+          repo.emitError(Exception('internal error string'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: 'error width $width');
+          expect(find.byType(ErrorState), findsOneWidget);
+          expect(find.text('internal error string'), findsNothing);
+
+          repo.dispose();
+        }
+        await tester.binding.setSurfaceSize(null);
+      },
+    );
   });
 }

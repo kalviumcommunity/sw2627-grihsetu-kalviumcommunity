@@ -51,9 +51,13 @@ class FakeAuthService implements AuthService {
   AppUser? profileToReturn;
   Object? profileErrorToThrow;
   Completer<AppUser>? profileCompleter;
+  int profileLoadCalls = 0;
+  final List<String> profileLoadUids = <String>[];
 
   @override
   Future<AppUser> loadProfile(String uid) async {
+    profileLoadCalls++;
+    profileLoadUids.add(uid);
     if (profileCompleter != null) {
       return profileCompleter!.future;
     }
@@ -83,23 +87,12 @@ class FakeAuthService implements AuthService {
   }
 
   @override
-  Future<AppUser> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signIn({required String email, required String password}) async {
     if (profileErrorToThrow != null) {
       throw profileErrorToThrow!;
     }
     final user = FakeFirebaseUser(uid: 'signed-in-uid', email: email);
     emitUser(user);
-    return profileToReturn ??
-        AppUser(
-          id: 'signed-in-uid',
-          name: 'Signed In User',
-          email: email,
-          role: UserRole.propertyOperations,
-          createdAt: null,
-        );
   }
 
   @override
@@ -175,6 +168,40 @@ void main() {
         expect(find.text('Riya Sharma'), findsOneWidget);
         expect(find.text('Property Operations'), findsWidgets);
         expect(find.byType(LoginScreen), findsNothing);
+        expect(authService.profileLoadCalls, 1);
+      },
+    );
+
+    testWidgets(
+      'repeated auth-state emissions for one UID reuse the in-flight profile',
+      (tester) async {
+        final completer = Completer<AppUser>();
+        authService.profileCompleter = completer;
+
+        await tester.pumpWidget(
+          MaterialApp(home: AuthGate(authService: authService)),
+        );
+
+        final user = FakeFirebaseUser(uid: 'same-user');
+        authService.emitUser(user);
+        await tester.pump();
+        authService.emitUser(FakeFirebaseUser(uid: 'same-user'));
+        await tester.pump();
+
+        expect(authService.profileLoadCalls, 1);
+        expect(authService.profileLoadUids, ['same-user']);
+
+        completer.complete(
+          const AppUser(
+            id: 'same-user',
+            name: 'Same User',
+            email: 'same@example.com',
+            role: UserRole.technician,
+            createdAt: null,
+          ),
+        );
+        await tester.pump();
+        expect(find.byType(AppShell), findsOneWidget);
       },
     );
 

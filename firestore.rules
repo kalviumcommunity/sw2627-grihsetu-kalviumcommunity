@@ -21,6 +21,10 @@ service cloud.firestore {
       return hasRole('property_operations');
     }
 
+    function isTechnician() {
+      return hasRole('technician');
+    }
+
     match /users/{userId} {
       // A client may create only its own UID-keyed, unassigned profile.
       // Role assignment is intentionally left to a trusted backend/admin
@@ -113,7 +117,12 @@ service cloud.firestore {
     }
 
     match /complaints/{complaintId} {
-      allow read: if isOperationsStaff();
+      allow read: if isOperationsStaff()
+        || (
+          hasRole('technician')
+          && resource.data.currentTechnicianId == request.auth.uid
+          && resource.data.status in ['open', 'assigned', 'in_progress', 'waiting_for_parts', 'reopened']
+        );
       allow create: if isOperationsStaff()
         && request.resource.data.keys().hasOnly([
           'tenantId', 'propertyId', 'unitId', 'title', 'description',
@@ -138,48 +147,163 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/units/$(request.resource.data.unitId)).data.propertyId == request.resource.data.propertyId
         && get(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId)).data.propertyId == request.resource.data.propertyId
         && get(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId)).data.unitId == request.resource.data.unitId;
-      // Assignment writes are intentionally narrow. The client transaction
-      // also writes one history and one audit document, but rules cannot
-      // require the presence of an arbitrary paired document from this match.
-      allow update: if isOperationsStaff()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'currentTechnicianId', 'firstAssignedAt', 'status', 'updatedAt'
-        ])
-        && request.resource.data.updatedAt == request.time
-        && request.resource.data.currentTechnicianId is string
-        && exists(/databases/$(database)/documents/users/$(request.resource.data.currentTechnicianId))
-        && get(/databases/$(database)/documents/users/$(request.resource.data.currentTechnicianId)).data.role == 'technician'
-        && get(/databases/$(database)/documents/users/$(request.resource.data.currentTechnicianId)).data.isActive != false
-        && (
-          (
-            resource.data.status == 'open'
-            && request.resource.data.status == 'assigned'
-            && (!resource.data.keys().hasAny(['currentTechnicianId'])
-              || resource.data.currentTechnicianId == null)
-            && (
-              (!resource.data.keys().hasAny(['firstAssignedAt'])
-                && request.resource.data.keys().hasAny(['firstAssignedAt'])
-                && request.resource.data.firstAssignedAt == request.time)
-              || (resource.data.keys().hasAny(['firstAssignedAt'])
-                && request.resource.data.keys().hasAny(['firstAssignedAt'])
-                && request.resource.data.firstAssignedAt == resource.data.firstAssignedAt)
+      // Assignment writes remain narrow. Visit writes are separately guarded
+      // below so technicians cannot mutate arbitrary complaint fields.
+      allow update: if (
+          isOperationsStaff()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'currentTechnicianId', 'firstAssignedAt', 'status', 'updatedAt'
+          ])
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.currentTechnicianId is string
+          && exists(/databases/$(database)/documents/users/$(request.resource.data.currentTechnicianId))
+          && get(/databases/$(database)/documents/users/$(request.resource.data.currentTechnicianId)).data.role == 'technician'
+          && get(/databases/$(database)/documents/users/$(request.resource.data.currentTechnicianId)).data.isActive != false
+          && (
+            (
+              resource.data.status == 'open'
+              && request.resource.data.status == 'assigned'
+              && (!resource.data.keys().hasAny(['currentTechnicianId'])
+                || resource.data.currentTechnicianId == null)
+              && (
+                (!resource.data.keys().hasAny(['firstAssignedAt'])
+                  && request.resource.data.keys().hasAny(['firstAssignedAt'])
+                  && request.resource.data.firstAssignedAt == request.time)
+                || (resource.data.keys().hasAny(['firstAssignedAt'])
+                  && request.resource.data.keys().hasAny(['firstAssignedAt'])
+                  && request.resource.data.firstAssignedAt == resource.data.firstAssignedAt)
+              )
+            )
+            ||
+            (
+              resource.data.status in ['assigned', 'in_progress', 'waiting_for_parts', 'reopened']
+              && request.resource.data.status == resource.data.status
+              && resource.data.currentTechnicianId is string
+              && request.resource.data.currentTechnicianId != resource.data.currentTechnicianId
+              && (
+                (!resource.data.keys().hasAny(['firstAssignedAt'])
+                  && !request.resource.data.keys().hasAny(['firstAssignedAt']))
+                || (resource.data.keys().hasAny(['firstAssignedAt'])
+                  && request.resource.data.keys().hasAny(['firstAssignedAt'])
+                  && request.resource.data.firstAssignedAt == resource.data.firstAssignedAt)
+              )
             )
           )
-          ||
-          (
-            resource.data.status in ['assigned', 'in_progress', 'waiting_for_parts', 'reopened']
-            && request.resource.data.status == resource.data.status
-            && resource.data.currentTechnicianId is string
-            && request.resource.data.currentTechnicianId != resource.data.currentTechnicianId
-            && (
-              (!resource.data.keys().hasAny(['firstAssignedAt'])
-                && !request.resource.data.keys().hasAny(['firstAssignedAt']))
-              || (resource.data.keys().hasAny(['firstAssignedAt'])
-                && request.resource.data.keys().hasAny(['firstAssignedAt'])
-                && request.resource.data.firstAssignedAt == resource.data.firstAssignedAt)
+        )
+        || (
+          isTechnician()
+          && resource.data.currentTechnicianId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'visitCount', 'isRepeatVisit', 'activeVisitId', 'status',
+            'resolvedAt', 'updatedAt'
+          ])
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.visitCount is int
+          && request.resource.data.isRepeatVisit == (request.resource.data.visitCount > 1)
+          && (
+            (
+              resource.data.status in ['assigned', 'in_progress', 'waiting_for_parts', 'reopened']
+              && request.resource.data.status == 'in_progress'
+              && request.resource.data.activeVisitId is string
+              && (!resource.data.keys().hasAny(['activeVisitId'])
+                || resource.data.activeVisitId == null)
+              && request.resource.data.visitCount > resource.data.visitCount
+              && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.activeVisitId)).data.complaintId == complaintId
+              && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.activeVisitId)).data.technicianId == request.auth.uid
+              && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.activeVisitId)).data.visitNumber == request.resource.data.visitCount
+              && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.activeVisitId)).data.startedAt == request.time
+              && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.activeVisitId)).data.completedAt == null
+            )
+            ||
+            (
+              resource.data.activeVisitId is string
+              && (!request.resource.data.keys().hasAny(['activeVisitId'])
+                || request.resource.data.activeVisitId == null)
+              && request.resource.data.status in ['in_progress', 'waiting_for_parts', 'resolved']
+              && request.resource.data.visitCount == resource.data.visitCount
+              && request.resource.data.isRepeatVisit == resource.data.isRepeatVisit
+              && getAfter(/databases/$(database)/documents/maintenance_visits/$(resource.data.activeVisitId)).data.complaintId == complaintId
+              && getAfter(/databases/$(database)/documents/maintenance_visits/$(resource.data.activeVisitId)).data.technicianId == request.auth.uid
+              && getAfter(/databases/$(database)/documents/maintenance_visits/$(resource.data.activeVisitId)).data.completedAt == request.time
+              && (
+                (getAfter(/databases/$(database)/documents/maintenance_visits/$(resource.data.activeVisitId)).data.outcome == 'resolved'
+                  && getAfter(/databases/$(database)/documents/maintenance_visits/$(resource.data.activeVisitId)).data.isResolved == true
+                  && request.resource.data.status == 'resolved')
+                || (getAfter(/databases/$(database)/documents/maintenance_visits/$(resource.data.activeVisitId)).data.outcome == 'unresolved'
+                  && getAfter(/databases/$(database)/documents/maintenance_visits/$(resource.data.activeVisitId)).data.isResolved == false
+                  && request.resource.data.status == 'in_progress')
+                || (getAfter(/databases/$(database)/documents/maintenance_visits/$(resource.data.activeVisitId)).data.outcome == 'waiting_for_parts'
+                  && getAfter(/databases/$(database)/documents/maintenance_visits/$(resource.data.activeVisitId)).data.isResolved == false
+                  && request.resource.data.status == 'waiting_for_parts')
+              )
+              && (
+                (request.resource.data.status != 'resolved')
+                || (!resource.data.keys().hasAny(['resolvedAt'])
+                  || resource.data.resolvedAt == null
+                  || request.resource.data.resolvedAt == resource.data.resolvedAt
+                  || request.resource.data.resolvedAt == request.time)
+              )
             )
           )
         );
+      allow delete: if false;
+    }
+
+    match /maintenance_visits/{visitId} {
+      allow read: if isOperationsStaff()
+        || (
+          isTechnician()
+          && get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.currentTechnicianId == request.auth.uid
+        );
+      allow create: if isTechnician()
+        && request.resource.data.keys().hasOnly([
+          'complaintId', 'technicianId', 'visitNumber', 'startedAt',
+          'completedAt', 'observation', 'actionTaken', 'outcome',
+          'isResolved', 'followUpRequired', 'followUpNotes',
+          'resolutionSummary', 'operationId'
+        ])
+        && request.resource.data.keys().hasAll([
+          'complaintId', 'technicianId', 'visitNumber', 'startedAt',
+          'completedAt', 'observation', 'actionTaken', 'outcome',
+          'isResolved', 'followUpRequired', 'followUpNotes',
+          'resolutionSummary', 'operationId'
+        ])
+        && request.resource.data.technicianId == request.auth.uid
+        && request.resource.data.startedAt == request.time
+        && request.resource.data.completedAt == null
+        && request.resource.data.observation == null
+        && request.resource.data.actionTaken == null
+        && request.resource.data.outcome == null
+        && request.resource.data.isResolved == false
+        && request.resource.data.followUpRequired == false
+        && request.resource.data.operationId is string
+        && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.currentTechnicianId == request.auth.uid
+        && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.activeVisitId == visitId
+        && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == 'in_progress'
+        && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.visitCount == request.resource.data.visitNumber;
+      allow update: if isTechnician()
+        && resource.data.technicianId == request.auth.uid
+        && get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.currentTechnicianId == request.auth.uid
+        && resource.data.completedAt == null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'completedAt', 'observation', 'actionTaken', 'outcome',
+          'isResolved', 'followUpRequired', 'followUpNotes',
+          'resolutionSummary'
+        ])
+        && request.resource.data.completedAt == request.time
+        && request.resource.data.observation is string
+        && request.resource.data.observation.size() > 0
+        && request.resource.data.actionTaken is string
+        && request.resource.data.actionTaken.size() > 0
+        && request.resource.data.outcome in ['resolved', 'unresolved', 'waiting_for_parts']
+        && request.resource.data.isResolved is bool
+        && request.resource.data.followUpRequired is bool
+        && (
+          (request.resource.data.outcome == 'resolved' && request.resource.data.isResolved == true)
+          || (request.resource.data.outcome in ['unresolved', 'waiting_for_parts'] && request.resource.data.isResolved == false)
+        )
+        && (!getAfter(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.keys().hasAny(['activeVisitId'])
+          || getAfter(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.activeVisitId == null);
       allow delete: if false;
     }
 
@@ -216,27 +340,54 @@ service cloud.firestore {
     }
 
     match /audit_events/{eventId} {
-      allow read: if isOperationsStaff();
-      allow create: if isOperationsStaff()
+      allow read: if isOperationsStaff()
+        || (
+          isTechnician()
+          && get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.currentTechnicianId == request.auth.uid
+        );
+      allow create: if (isOperationsStaff() || isTechnician())
         && request.resource.data.keys().hasOnly([
-          'complaintId', 'eventType', 'actorId', 'createdAt', 'metadata'
+          'complaintId', 'eventType', 'actorId', 'actorRole', 'createdAt',
+          'metadata', 'previousValue', 'newValue', 'reason', 'schemaVersion'
         ])
         && request.resource.data.keys().hasAll([
-          'complaintId', 'eventType', 'actorId', 'createdAt', 'metadata'
+          'complaintId', 'eventType', 'actorId', 'actorRole', 'createdAt',
+          'metadata', 'schemaVersion'
         ])
+        && request.resource.data.complaintId is string
+        && request.resource.data.eventType in [
+          'COMPLAINT_CREATED', 'COMPLAINT_UPDATED',
+          'TECHNICIAN_ASSIGNED', 'TECHNICIAN_REASSIGNED',
+          'COMPLAINT_STATUS_CHANGED', 'COMPLAINT_RESOLVED',
+          'COMPLAINT_REOPENED', 'COMPLAINT_CLOSED',
+          'COMPLAINT_CANCELLED', 'COMPLAINT_WAITING_FOR_PARTS',
+          'PRIORITY_CHANGED', 'VISIT_STARTED', 'VISIT_COMPLETED',
+          'FOLLOW_UP_REQUESTED'
+        ]
         && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.actorRole == get(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data.role
+        && request.resource.data.actorRole in [
+          'property_operations', 'complaint_operations', 'technician',
+          'property_owner', 'tenant'
+        ]
         && request.resource.data.createdAt == request.time
+        && request.resource.data.metadata is map
+        && request.resource.data.schemaVersion == 1
         && (
           (
             request.resource.data.eventType == 'COMPLAINT_CREATED'
             && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.createdBy == request.auth.uid
             && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == 'open'
+            && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.createdAt == request.time
           )
           ||
           (
             request.resource.data.eventType in ['TECHNICIAN_ASSIGNED', 'TECHNICIAN_REASSIGNED']
             && request.resource.data.metadata.keys().hasOnly([
-              'previousTechnicianId', 'newTechnicianId', 'assignmentType', 'operationId'
+              'previousTechnicianId', 'newTechnicianId', 'assignmentType',
+              'operationId', 'reason'
             ])
             && request.resource.data.metadata.keys().hasAll([
               'previousTechnicianId', 'newTechnicianId', 'assignmentType', 'operationId'
@@ -248,15 +399,83 @@ service cloud.firestore {
                 && request.resource.data.metadata.assignmentType == 'INITIAL_ASSIGNMENT'
                 && request.resource.data.metadata.previousTechnicianId == null
                 && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == 'assigned'
+                && (
+                  !get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.keys().hasAny(['currentTechnicianId'])
+                  || get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.currentTechnicianId == null
+                )
               )
               ||
               (
                 request.resource.data.eventType == 'TECHNICIAN_REASSIGNED'
                 && request.resource.data.metadata.assignmentType == 'REASSIGNMENT'
                 && request.resource.data.metadata.previousTechnicianId is string
+                && get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.currentTechnicianId == request.resource.data.metadata.previousTechnicianId
                 && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status
               )
             )
+          )
+          ||
+          (
+            request.resource.data.eventType == 'VISIT_STARTED'
+            && request.resource.data.metadata.keys().hasOnly([
+              'visitId', 'visitNumber', 'technicianId', 'previousStatus',
+              'newStatus', 'operationId'
+            ])
+            && request.resource.data.metadata.keys().hasAll([
+              'visitId', 'visitNumber', 'technicianId', 'previousStatus',
+              'newStatus', 'operationId'
+            ])
+            && request.resource.data.metadata.technicianId == request.auth.uid
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.complaintId == request.resource.data.complaintId
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.startedAt == request.time
+            && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.activeVisitId == request.resource.data.metadata.visitId
+          )
+          ||
+          (
+            request.resource.data.eventType == 'VISIT_COMPLETED'
+            && request.resource.data.metadata.keys().hasOnly([
+              'visitId', 'visitNumber', 'technicianId', 'previousStatus',
+              'newStatus', 'outcome', 'isResolved', 'followUpRequired'
+            ])
+            && request.resource.data.metadata.keys().hasAll([
+              'visitId', 'visitNumber', 'technicianId', 'previousStatus',
+              'newStatus', 'outcome', 'isResolved', 'followUpRequired'
+            ])
+            && request.resource.data.metadata.technicianId == request.auth.uid
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.complaintId == request.resource.data.complaintId
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.completedAt == request.time
+            && (!getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.keys().hasAny(['activeVisitId'])
+              || getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.activeVisitId == null)
+          )
+          ||
+          (
+            request.resource.data.eventType == 'COMPLAINT_STATUS_CHANGED'
+            && request.resource.data.metadata.keys().hasOnly([
+              'visitId', 'visitNumber', 'previousStatus', 'newStatus', 'outcome'
+            ])
+            && request.resource.data.metadata.keys().hasAll([
+              'visitId', 'visitNumber', 'previousStatus', 'newStatus'
+            ])
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.complaintId == request.resource.data.complaintId
+            && (
+              getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.startedAt == request.time
+              || getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.completedAt == request.time
+            )
+            && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == request.resource.data.metadata.newStatus
+          )
+          ||
+          (
+            request.resource.data.eventType == 'FOLLOW_UP_REQUESTED'
+            && request.resource.data.metadata.keys().hasOnly([
+              'visitId', 'visitNumber', 'followUpNotes', 'outcome'
+            ])
+            && request.resource.data.metadata.keys().hasAll([
+              'visitId', 'visitNumber', 'followUpNotes'
+            ])
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.complaintId == request.resource.data.complaintId
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.technicianId == request.auth.uid
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.completedAt == request.time
+            && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.followUpRequired == true
           )
         );
       allow update, delete: if false;

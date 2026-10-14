@@ -130,19 +130,48 @@ reason                  string, optional
 collection retains every successful responsibility change. Initial assignment
 sets `firstAssignedAt` once; reassignment never changes it.
 
-### `audit_events/{eventId}` assignment events
+### `audit_events/{eventId}` complaint audit events
 
-Assignment audit records reuse the existing top-level audit collection. They
-use `TECHNICIAN_ASSIGNED` or `TECHNICIAN_REASSIGNED` and store
-`previousTechnicianId`, `newTechnicianId`, `assignmentType`, and `operationId`
-inside the existing `metadata` map. Audit records are append-only.
+Audit events remain in the established top-level collection. The centralized
+`ComplaintAuditWriter` writes these fields:
 
-The Flutter client uses one Firestore transaction for the complaint update,
-assignment history row, and audit row. Firestore Security Rules restrict the
-individual writes and validate roles, fields, timestamps, and lifecycle state.
-Rules cannot prove that an arbitrary client always submits all three paired
-writes; a trusted server-side callable operation would be required for that
-stronger guarantee.
+```text
+complaintId       string, required
+eventType         stable event name, required
+actorId           authenticated Firebase UID, required
+actorRole         trusted users/{uid}.role value, required for new writes
+createdAt         Timestamp, server generated
+metadata         structured event details, required
+previousValue     optional old value
+newValue          optional new value
+reason            optional reason
+schemaVersion     integer, currently 1
+```
+
+Supported event names include `COMPLAINT_CREATED`, `COMPLAINT_UPDATED`,
+`TECHNICIAN_ASSIGNED`, `TECHNICIAN_REASSIGNED`, status/lifecycle events,
+priority changes, visit events, and follow-up requests. Unknown legacy event
+strings are represented safely as `UNKNOWN` by the Dart model so a timeline
+does not crash.
+
+The audit repository exposes only complaint-scoped timeline reads. There are
+no client update/delete methods, and Firestore rules explicitly deny updates
+and deletes. Timeline queries filter by `complaintId`, order by authoritative
+`createdAt`, and use document ID as a stable tie-breaker. The composite index
+is declared in `firestore.indexes.json`.
+
+Complaint creation writes the complaint and `COMPLAINT_CREATED` event in one
+transaction. Assignment/reassignment writes the complaint update, append-only
+assignment history row, and audit event in one transaction. Assignment history
+answers who currently/previously held responsibility; audit history answers
+who performed the operation and what changed.
+
+The rules validate authentication, actor UID, actor role, recognized event
+names, server timestamps, and the relevant atomic complaint transition. Rules
+cannot prove every arbitrary client transaction contains all intended paired
+writes; a trusted server-side callable would provide stronger integrity. Rules
+also do not constrain privileged Firebase Admin SDK users or project
+administrators.
 
 ## Downstream relationship contracts
 
@@ -150,10 +179,14 @@ Future operational documents should store IDs rather than copied entity maps:
 
 ```text
 complaints/{complaintId}
-  propertyId, unitId, tenantId, createdBy, currentTechnicianId
+  propertyId, unitId, tenantId, createdBy, currentTechnicianId, activeVisitId
+
+  visitCount, isRepeatVisit
 
 maintenance_visits/{visitId}
-  complaintId, technicianId, visitNumber
+  complaintId, technicianId, visitNumber, startedAt, completedAt
+  observation, actionTaken, outcome, isResolved, followUpRequired
+  followUpNotes, resolutionSummary, operationId
 
 rent_records/{rentRecordId}
   propertyId, unitId, tenantId, tenancyId (when tenancy history exists)
@@ -167,3 +200,28 @@ occupancy from a mutable current tenant document.
 
 Full complaint, maintenance, rent, audit, and property CRUD are outside
 GRIH-010.
+
+## Technician Assigned-Work Queue (GRIH-018)
+
+Technicians view active complaints assigned to them in real time.
+
+### Query semantics
+- Collection: `complaints`
+- Filter 1: `currentTechnicianId == request.auth.uid`
+- Filter 2: `status in ['open', 'assigned', 'in_progress', 'waiting_for_parts', 'reopened']`
+- Excluded statuses: Terminal statuses (`resolved`, `closed`, `cancelled`) are strictly excluded.
+- Ordering: Handled client-side by priority (urgent -> high -> in-progress -> other active) and `createdAt` ascending.
+
+### Security rules
+- Active technicians with trusted profile role `technician` can read only documents where `currentTechnicianId == request.auth.uid` and status is active.
+- Unauthenticated users, inactive profiles, other roles, and requests for another technician's complaints are denied.
+- Operations staff retain broad read access across all complaints.
+
+### Composite index
+- Collection: `complaints`
+- Scope: `COLLECTION`
+- Fields:
+  - `currentTechnicianId`: `ASCENDING`
+  - `status`: `ASCENDING`
+- Declared in `firestore.indexes.json`.
+
