@@ -13,6 +13,8 @@ import '../core/models/complaint_audit_event.dart';
 import '../core/models/user.dart';
 import '../services/auth_service.dart';
 import '../services/complaint_audit_service.dart';
+import '../screens/technician/visit/visit_models.dart';
+import '../utils/visit_validators.dart';
 
 const String complaintCreatedEventType = 'COMPLAINT_CREATED';
 
@@ -184,6 +186,49 @@ abstract interface class ComplaintRepository {
   /// Streams active complaints assigned to [technicianId].
   Stream<List<Complaint>> watchAssignedComplaints({
     required String technicianId,
+  });
+
+  /// Advances the technician visit workflow step and appends an audit event.
+  Future<Complaint> advanceVisitStep(
+    String complaintId,
+    VisitWorkflowStep step, {
+    required String actorId,
+    String? role,
+    String? note,
+    List<String>? photos,
+  });
+
+  /// Appends a visit evidence photo event.
+  Future<void> addVisitPhoto(
+    String complaintId, {
+    required String photoUrl,
+    required String group,
+    required String actorId,
+    String? role,
+  });
+
+  /// Appends a part used event.
+  Future<void> addPart(
+    String complaintId,
+    VisitPartInput part, {
+    required String actorId,
+    String? role,
+  });
+
+  /// Completes a visit as resolved and appends completion audit events.
+  Future<Complaint> completeVisit(
+    String complaintId,
+    VisitCompletionInput completion, {
+    required String actorId,
+    String? role,
+  });
+
+  /// Flags a visit as needing a follow-up and appends audit events.
+  Future<Complaint> requestFollowUpVisit(
+    String complaintId,
+    FollowUpRequestInput request, {
+    required String actorId,
+    String? role,
   });
 }
 
@@ -725,6 +770,64 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     final updated = await loadComplaint(complaintId);
     return updated!;
   }
+
+  @override
+  Future<Complaint> advanceVisitStep(
+    String complaintId,
+    VisitWorkflowStep step, {
+    required String actorId,
+    String? role,
+    String? note,
+    List<String>? photos,
+  }) async {
+    // TODO: Implement Firestore write for technician visit workflow steps.
+    throw UnimplementedError('Firestore advanceVisitStep is not yet implemented.');
+  }
+
+  @override
+  Future<void> addVisitPhoto(
+    String complaintId, {
+    required String photoUrl,
+    required String group,
+    required String actorId,
+    String? role,
+  }) async {
+    // TODO: Implement Firestore write for visit photos.
+    throw UnimplementedError('Firestore addVisitPhoto is not yet implemented.');
+  }
+
+  @override
+  Future<void> addPart(
+    String complaintId,
+    VisitPartInput part, {
+    required String actorId,
+    String? role,
+  }) async {
+    // TODO: Implement Firestore write for parts used.
+    throw UnimplementedError('Firestore addPart is not yet implemented.');
+  }
+
+  @override
+  Future<Complaint> completeVisit(
+    String complaintId,
+    VisitCompletionInput completion, {
+    required String actorId,
+    String? role,
+  }) async {
+    // TODO: Implement Firestore transaction for visit completion.
+    throw UnimplementedError('Firestore completeVisit is not yet implemented.');
+  }
+
+  @override
+  Future<Complaint> requestFollowUpVisit(
+    String complaintId,
+    FollowUpRequestInput request, {
+    required String actorId,
+    String? role,
+  }) async {
+    // TODO: Implement Firestore transaction for follow-up visit request.
+    throw UnimplementedError('Firestore requestFollowUpVisit is not yet implemented.');
+  }
 }
 
 /// In-memory implementation of [ComplaintRepository] with reactive stream support.
@@ -748,6 +851,8 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   final List<Complaint> _complaints;
   final Map<String, List<ComplaintAuditEvent>> _auditEvents;
   final Duration streamDelay;
+  bool simulateFailure = false;
+  Duration operationDelay = Duration.zero;
   final StreamController<List<Complaint>> _controller =
       StreamController<List<Complaint>>.broadcast();
   final Map<String, StreamController<Complaint?>> _complaintControllers = {};
@@ -1363,6 +1468,328 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     );
 
     return controller.stream;
+  }
+
+  @override
+  Future<Complaint> advanceVisitStep(
+    String complaintId,
+    VisitWorkflowStep step, {
+    required String actorId,
+    String? role,
+    String? note,
+    List<String>? photos,
+  }) async {
+    if (simulateFailure) {
+      throw const ComplaintWriteException('Simulated repository write failure.');
+    }
+    if (operationDelay > Duration.zero) {
+      await Future<void>.delayed(operationDelay);
+    }
+
+    final index = _complaints.indexWhere((c) => c.id == complaintId.trim());
+    if (index == -1) {
+      throw const ComplaintNotFoundException('Complaint not found.');
+    }
+
+    final current = _complaints[index];
+    final now = DateTime.now();
+
+    ComplaintStatus newStatus = current.status;
+    if (step == VisitWorkflowStep.inspection || step == VisitWorkflowStep.repairing) {
+      newStatus = ComplaintStatus.inProgress;
+    }
+
+    final updated = Complaint(
+      id: current.id,
+      tenantId: current.tenantId,
+      propertyId: current.propertyId,
+      unitId: current.unitId,
+      title: current.title,
+      description: current.description,
+      category: current.category,
+      priority: current.priority,
+      status: newStatus,
+      currentTechnicianId: current.currentTechnicianId ?? actorId,
+      visitCount: current.visitCount,
+      isRepeatVisit: current.isRepeatVisit,
+      reopenCount: current.reopenCount,
+      createdBy: current.createdBy,
+      createdAt: current.createdAt,
+      firstAssignedAt: current.firstAssignedAt ?? now,
+      resolvedAt: current.resolvedAt,
+      closedAt: current.closedAt,
+      updatedAt: now,
+    );
+    _complaints[index] = updated;
+
+    final event = ComplaintAuditEvent(
+      id: '${complaintId}_evt_${now.millisecondsSinceEpoch}',
+      complaintId: complaintId,
+      eventType: step == VisitWorkflowStep.inspection
+          ? ComplaintAuditEventType.visitStarted
+          : ComplaintAuditEventType.unknown,
+      rawEventType: step.auditEventName,
+      actorId: actorId,
+      timestamp: now,
+      metadata: {
+        'step': step.name,
+        'actorRole': role ?? 'technician',
+        'note': note ?? 'Step advanced to ${step.label}',
+        if (photos != null && photos.isNotEmpty) 'photos': photos,
+      },
+    );
+
+    await appendAuditEvent(event);
+    _emit();
+    _emitComplaint(complaintId);
+    return updated;
+  }
+
+  @override
+  Future<void> addVisitPhoto(
+    String complaintId, {
+    required String photoUrl,
+    required String group,
+    required String actorId,
+    String? role,
+  }) async {
+    if (simulateFailure) {
+      throw const ComplaintWriteException('Simulated repository write failure.');
+    }
+    if (operationDelay > Duration.zero) {
+      await Future<void>.delayed(operationDelay);
+    }
+
+    final now = DateTime.now();
+    final event = ComplaintAuditEvent(
+      id: '${complaintId}_photo_${now.millisecondsSinceEpoch}',
+      complaintId: complaintId,
+      eventType: ComplaintAuditEventType.unknown,
+      rawEventType: 'PHOTO_UPLOADED',
+      actorId: actorId,
+      timestamp: now,
+      metadata: {
+        'photoUrl': photoUrl,
+        'group': group,
+        'actorRole': role ?? 'technician',
+        'note': 'Photo uploaded ($group evidence)',
+      },
+    );
+
+    await appendAuditEvent(event);
+    _emitComplaint(complaintId);
+  }
+
+  @override
+  Future<void> addPart(
+    String complaintId,
+    VisitPartInput part, {
+    required String actorId,
+    String? role,
+  }) async {
+    if (simulateFailure) {
+      throw const ComplaintWriteException('Simulated repository write failure.');
+    }
+    if (operationDelay > Duration.zero) {
+      await Future<void>.delayed(operationDelay);
+    }
+
+    final now = DateTime.now();
+    final event = ComplaintAuditEvent(
+      id: '${complaintId}_part_${now.millisecondsSinceEpoch}',
+      complaintId: complaintId,
+      eventType: ComplaintAuditEventType.unknown,
+      rawEventType: 'PART_ADDED',
+      actorId: actorId,
+      timestamp: now,
+      metadata: {
+        'name': part.name,
+        'quantity': part.quantity,
+        if (part.cost != null) 'cost': part.cost,
+        'actorRole': role ?? 'technician',
+        'note': 'Part added: ${part.name} (x${part.quantity})',
+      },
+    );
+
+    await appendAuditEvent(event);
+    _emitComplaint(complaintId);
+  }
+
+  @override
+  Future<Complaint> completeVisit(
+    String complaintId,
+    VisitCompletionInput completion, {
+    required String actorId,
+    String? role,
+  }) async {
+    if (simulateFailure) {
+      throw const ComplaintWriteException('Simulated repository write failure.');
+    }
+    if (operationDelay > Duration.zero) {
+      await Future<void>.delayed(operationDelay);
+    }
+
+    final index = _complaints.indexWhere((c) => c.id == complaintId.trim());
+    if (index == -1) {
+      throw const ComplaintNotFoundException('Complaint not found.');
+    }
+
+    final current = _complaints[index];
+    final now = DateTime.now();
+
+    final updated = Complaint(
+      id: current.id,
+      tenantId: current.tenantId,
+      propertyId: current.propertyId,
+      unitId: current.unitId,
+      title: current.title,
+      description: current.description,
+      category: current.category,
+      priority: current.priority,
+      status: ComplaintStatus.resolved,
+      currentTechnicianId: current.currentTechnicianId ?? actorId,
+      visitCount: current.visitCount,
+      isRepeatVisit: current.isRepeatVisit,
+      reopenCount: current.reopenCount,
+      createdBy: current.createdBy,
+      createdAt: current.createdAt,
+      firstAssignedAt: current.firstAssignedAt ?? now,
+      resolvedAt: now,
+      closedAt: current.closedAt,
+      updatedAt: now,
+    );
+    _complaints[index] = updated;
+
+    for (final part in completion.parts) {
+      await addPart(complaintId, part, actorId: actorId, role: role);
+    }
+
+    final repairCompletedEvent = ComplaintAuditEvent(
+      id: '${complaintId}_evt_repaired_${now.millisecondsSinceEpoch}',
+      complaintId: complaintId,
+      eventType: ComplaintAuditEventType.complaintResolved,
+      rawEventType: 'REPAIR_COMPLETED',
+      actorId: actorId,
+      timestamp: now,
+      metadata: {
+        'whatWasFound': completion.whatWasFound,
+        'whatWasRepaired': completion.whatWasRepaired,
+        'additionalWorkRecommended': completion.additionalWorkRecommended,
+        if (completion.additionalWorkNotes != null)
+          'additionalWorkNotes': completion.additionalWorkNotes,
+        'actorRole': role ?? 'technician',
+        'note': completion.whatWasRepaired,
+      },
+    );
+    await appendAuditEvent(repairCompletedEvent);
+
+    final markedResolvedEvent = ComplaintAuditEvent(
+      id: '${complaintId}_evt_resolved_${now.millisecondsSinceEpoch + 1}',
+      complaintId: complaintId,
+      eventType: ComplaintAuditEventType.complaintResolved,
+      rawEventType: 'MARKED_RESOLVED',
+      actorId: actorId,
+      timestamp: now.add(const Duration(milliseconds: 1)),
+      metadata: {
+        'resolutionNotes': completion.tenantResolutionNotes,
+        'actorRole': role ?? 'technician',
+        'note': 'Marked resolved: ${completion.tenantResolutionNotes}',
+      },
+    );
+    await appendAuditEvent(markedResolvedEvent);
+
+    final tenantNotifiedEvent = ComplaintAuditEvent(
+      id: '${complaintId}_evt_tenant_notified_${now.millisecondsSinceEpoch + 2}',
+      complaintId: complaintId,
+      eventType: ComplaintAuditEventType.unknown,
+      rawEventType: 'TENANT_NOTIFIED',
+      actorId: actorId,
+      timestamp: now.add(const Duration(milliseconds: 2)),
+      metadata: {
+        'actorRole': role ?? 'technician',
+        'note': 'Tenant notified to confirm resolution or reopen.',
+      },
+    );
+    await appendAuditEvent(tenantNotifiedEvent);
+
+    _emit();
+    _emitComplaint(complaintId);
+    return updated;
+  }
+
+  @override
+  Future<Complaint> requestFollowUpVisit(
+    String complaintId,
+    FollowUpRequestInput request, {
+    required String actorId,
+    String? role,
+  }) async {
+    if (simulateFailure) {
+      throw const ComplaintWriteException('Simulated repository write failure.');
+    }
+    if (operationDelay > Duration.zero) {
+      await Future<void>.delayed(operationDelay);
+    }
+
+    final index = _complaints.indexWhere((c) => c.id == complaintId.trim());
+    if (index == -1) {
+      throw const ComplaintNotFoundException('Complaint not found.');
+    }
+
+    final current = _complaints[index];
+    final now = DateTime.now();
+
+    final updated = Complaint(
+      id: current.id,
+      tenantId: current.tenantId,
+      propertyId: current.propertyId,
+      unitId: current.unitId,
+      title: current.title,
+      description: current.description,
+      category: current.category,
+      priority: current.priority,
+      status: ComplaintStatus.assigned,
+      currentTechnicianId: current.currentTechnicianId ?? actorId,
+      visitCount: current.visitCount + 1,
+      isRepeatVisit: true,
+      reopenCount: current.reopenCount,
+      createdBy: current.createdBy,
+      createdAt: current.createdAt,
+      firstAssignedAt: current.firstAssignedAt ?? now,
+      resolvedAt: null,
+      closedAt: null,
+      updatedAt: now,
+    );
+    _complaints[index] = updated;
+
+    final followUpEvent = ComplaintAuditEvent(
+      id: '${complaintId}_evt_followup_${now.millisecondsSinceEpoch}',
+      complaintId: complaintId,
+      eventType: ComplaintAuditEventType.followUpRequested,
+      rawEventType: 'NEEDS_ANOTHER_VISIT',
+      actorId: actorId,
+      timestamp: now,
+      metadata: {
+        'reason': request.reason.label,
+        if (request.otherReasonDetails != null)
+          'otherReasonDetails': request.otherReasonDetails,
+        'details': request.details,
+        if (request.suggestedDate != null)
+          'suggestedDate': request.suggestedDate!.toIso8601String(),
+        if (request.suggestedSlot != null)
+          'suggestedSlot': request.suggestedSlot,
+        if (request.partsToBring.isNotEmpty)
+          'partsToBring': request.partsToBring,
+        'flaggedForStaff': true,
+        'actorRole': role ?? 'technician',
+        'note': 'Needs another visit: ${request.reason.label} - ${request.details}',
+      },
+    );
+    await appendAuditEvent(followUpEvent);
+
+    _emit();
+    _emitComplaint(complaintId);
+    return updated;
   }
 
   void addComplaint(Complaint complaint) {

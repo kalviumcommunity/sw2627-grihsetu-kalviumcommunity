@@ -22,6 +22,16 @@ enum VisitWorkflowStep {
     }
     return null;
   }
+
+  /// Event name used in audit logging for this step.
+  String get auditEventName => switch (this) {
+    VisitWorkflowStep.accepted => 'JOB_ACCEPTED',
+    VisitWorkflowStep.travelling => 'TECHNICIAN_TRAVELLING',
+    VisitWorkflowStep.arrived => 'TECHNICIAN_ARRIVED',
+    VisitWorkflowStep.inspection => 'INSPECTION_STARTED',
+    VisitWorkflowStep.repairing => 'REPAIR_STARTED',
+    VisitWorkflowStep.completed => 'VISIT_COMPLETED',
+  };
 }
 
 /// Standard reasons for requesting a follow-up visit.
