@@ -707,8 +707,11 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
         vertical: AppSpacing.sm + 4,
       ),
       color: palette.surface,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.xs,
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           OutlinedButton(
             key: const Key('cancel_assign_button'),
@@ -722,7 +725,6 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
             onPressed: () => Navigator.of(context).maybePop(),
             child: const Text('Cancel'),
           ),
-          const SizedBox(width: AppSpacing.sm),
           FilledButton(
             key: const Key('confirm_assign_button'),
             style: FilledButton.styleFrom(

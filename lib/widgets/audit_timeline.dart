@@ -190,10 +190,10 @@ class _PulsingDotState extends State<_PulsingDot>
       vsync: this,
       duration: const Duration(milliseconds: 1300),
     );
-    final inTest = WidgetsBinding.instance.runtimeType.toString().contains(
+    final isUnderTest = WidgetsBinding.instance.runtimeType.toString().contains(
       'Test',
     );
-    if (!inTest) {
+    if (!isUnderTest) {
       _controller.repeat(reverse: true);
     } else {
       _controller.value = 1.0;

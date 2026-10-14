@@ -40,6 +40,58 @@ class TestStreamComplaintRepository implements ComplaintRepository {
     throw UnimplementedError();
   }
 
+  @override
+  Stream<Complaint?> watchComplaint(String id) => Stream.value(null);
+
+  @override
+  Future<Complaint?> loadComplaint(String id) async => null;
+
+  @override
+  Stream<List<ComplaintAuditEvent>> watchAuditEvents(String complaintId) =>
+      Stream.value(const []);
+
+  @override
+  Future<List<ComplaintAuditEvent>> loadAuditEvents(String complaintId) async =>
+      const [];
+
+  @override
+  Future<void> appendAuditEvent(ComplaintAuditEvent event) async {}
+
+  @override
+  Future<Complaint> updateComplaintStatus(
+    String complaintId,
+    ComplaintStatus newStatus, {
+    required String actorId,
+    String? role,
+    String? note,
+    Map<String, dynamic>? metadata,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Complaint> updateComplaintPriority(
+    String complaintId,
+    ComplaintPriority newPriority, {
+    required String actorId,
+    String? reason,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Complaint> assignComplaintTechnician(
+    String complaintId,
+    String technicianId, {
+    required String actorId,
+    String? role,
+    DateTime? scheduledDate,
+    String? timeSlot,
+    String? reason,
+  }) async {
+    throw UnimplementedError();
+  }
+
   void dispose() => _controller.close();
 }
 

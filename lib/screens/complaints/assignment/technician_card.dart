@@ -107,26 +107,24 @@ class _TechnicianCardState extends State<TechnicianCard> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
+                                Wrap(
+                                  spacing: AppSpacing.xs + 2,
+                                  runSpacing: 2,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
-                                    Flexible(
-                                      child: Text(
-                                        tech.name,
-                                        style: theme.textTheme.titleSmall
-                                            ?.copyWith(
-                                              color: palette.ink,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                                    Text(
+                                      tech.name,
+                                      style: theme.textTheme.titleSmall
+                                          ?.copyWith(
+                                            color: palette.ink,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
-                                    if (tech.isBestMatch) ...[
-                                      const SizedBox(width: AppSpacing.xs + 2),
+                                    if (tech.isBestMatch)
                                       const StatusBadge(
                                         label: 'Best match',
                                         tone: StatusBadgeTone.accent,
                                       ),
-                                    ],
                                   ],
                                 ),
                                 const SizedBox(height: 2),
@@ -217,11 +215,13 @@ class _TechnicianCardState extends State<TechnicianCard> {
                               color: palette.warning,
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              'Technician is currently off duty',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: palette.warning,
-                                fontWeight: FontWeight.w500,
+                            Flexible(
+                              child: Text(
+                                'Technician is currently off duty',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: palette.warning,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ],
