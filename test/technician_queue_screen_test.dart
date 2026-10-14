@@ -47,6 +47,9 @@ class TestTechnicianComplaintRepository implements ComplaintRepository {
     throw UnimplementedError();
   }
 
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
   void dispose() => _controller.close();
 }
 

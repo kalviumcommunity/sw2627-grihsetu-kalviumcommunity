@@ -198,7 +198,6 @@ class Complaint {
     priority: priority ?? this.priority,
     status: status ?? this.status,
     currentTechnicianId: currentTechnicianId ?? this.currentTechnicianId,
-    activeVisitId: activeVisitId ?? this.activeVisitId,
     visitCount: visitCount ?? this.visitCount,
     isRepeatVisit: isRepeatVisit ?? this.isRepeatVisit,
     reopenCount: reopenCount ?? this.reopenCount,

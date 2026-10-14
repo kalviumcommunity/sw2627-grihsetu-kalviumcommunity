@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/enums/complaint_audit_event_type.dart';
 import '../../../core/enums/complaint_priority.dart';
 import '../../../core/enums/complaint_status.dart';
 import '../../../core/models/complaint.dart';
 import '../../../core/models/complaint_audit_event.dart';
 import '../../../repositories/complaint_repository.dart';
+import '../../../utils/visit_validators.dart';
 import 'complaint_detail_models.dart';
 
 /// Single source of truth controller for a complaint and its audit trail.
@@ -269,9 +271,9 @@ class ComplaintDetailController extends ChangeNotifier {
       final auditEvent = ComplaintAuditEvent(
         id: '${complaintId}_assign_${now.millisecondsSinceEpoch}',
         complaintId: complaintId,
-        eventType: 'TECHNICIAN_ASSIGNED',
+        eventType: ComplaintAuditEventType.technicianAssigned,
         actorId: actorId ?? currentUserId,
-        createdAt: now,
+        timestamp: now,
         metadata: {
           'technicianId': technicianId,
           'technicianName': technicianName ?? 'Technician',
@@ -338,9 +340,10 @@ class ComplaintDetailController extends ChangeNotifier {
     final event = ComplaintAuditEvent(
       id: '${complaintId}_note_${now.millisecondsSinceEpoch}',
       complaintId: complaintId,
-      eventType: 'NOTE_ADDED',
+      eventType: ComplaintAuditEventType.unknown,
+      rawEventType: 'NOTE_ADDED',
       actorId: actorId ?? currentUserId,
-      createdAt: now,
+      timestamp: now,
       metadata: {
         'actorName': actorName ?? currentUserName,
         'actorRole': currentUserRole,
@@ -374,9 +377,12 @@ class ComplaintDetailController extends ChangeNotifier {
     final event = ComplaintAuditEvent(
       id: '${complaintId}_tech_${now.millisecondsSinceEpoch}',
       complaintId: complaintId,
-      eventType: eventType,
+      eventType:
+          ComplaintAuditEventType.tryFromValue(eventType) ??
+          ComplaintAuditEventType.unknown,
+      rawEventType: eventType,
       actorId: actorId ?? currentUserId,
-      createdAt: now,
+      timestamp: now,
       metadata: {
         'actorName': actorName ?? currentUserName,
         'actorRole': 'Technician',
@@ -408,6 +414,25 @@ class ComplaintDetailController extends ChangeNotifier {
         );
       }
     }
+  }
+
+  /// Advances the technician visit workflow using VisitWorkflowStep through the repository.
+  Future<void> advanceVisitWorkflowStep(
+    VisitWorkflowStep step, {
+    String? note,
+    List<String>? photos,
+    String? actorId,
+  }) async {
+    final updated = await repository.advanceVisitStep(
+      complaintId,
+      step,
+      actorId: actorId ?? currentUserId,
+      role: 'technician',
+      note: note,
+      photos: photos,
+    );
+    _latestComplaint = updated;
+    notifyListeners();
   }
 
   /// Tenant confirms resolution.

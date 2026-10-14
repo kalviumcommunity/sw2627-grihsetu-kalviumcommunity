@@ -21,6 +21,7 @@ class ComplaintCard extends StatelessWidget {
     this.unitNumber,
     this.onTap,
     this.selected = false,
+    this.bottomAction,
   });
 
   final Complaint complaint;
@@ -28,6 +29,7 @@ class ComplaintCard extends StatelessWidget {
   final String? unitNumber;
   final VoidCallback? onTap;
   final bool selected;
+  final Widget? bottomAction;
 
   String get _displayPropertyName {
     final name = propertyName?.trim();
@@ -182,6 +184,12 @@ class ComplaintCard extends StatelessWidget {
                 ),
             ],
           ),
+          if (bottomAction != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Divider(color: palette.border, height: 1),
+            const SizedBox(height: AppSpacing.xs),
+            bottomAction!,
+          ],
         ],
       ),
     );
