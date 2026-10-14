@@ -5,7 +5,10 @@ import '../../../core/enums/complaint_priority.dart';
 import '../../../core/enums/complaint_status.dart';
 import '../../../repositories/assignment_repository.dart';
 import '../../../theme/app_palette.dart';
+import '../../../utils/visit_validators.dart';
 import '../../../widgets/app_spacing.dart';
+import '../../technician/visit/visit_completion_form.dart';
+import '../../technician/visit/visit_screen.dart';
 import '../assignment/assign_technician_sheet.dart';
 import 'complaint_detail_controller.dart';
 import 'complaint_detail_models.dart';
@@ -221,20 +224,55 @@ class ComplaintActionBar extends StatelessWidget {
     }
 
     final hasAccepted = state.events.any(
-      (e) => e.type == ActivityEventType.accepted,
+      (e) =>
+          e.type == ActivityEventType.accepted ||
+          (e.metadata['rawEventType'] ?? '').toString().contains('JOB_ACCEPTED') ||
+          (e.metadata['rawEventType'] ?? '').toString().contains('TECHNICIAN_ACCEPTED'),
     );
     final hasTravelStarted = state.events.any(
-      (e) => e.type == ActivityEventType.travelStarted,
+      (e) =>
+          e.type == ActivityEventType.travelStarted ||
+          (e.metadata['rawEventType'] ?? '').toString().contains('TRAVELL') ||
+          (e.metadata['rawEventType'] ?? '').toString().contains('TRAVEL_STARTED'),
     );
     final hasArrived = state.events.any(
-      (e) => e.type == ActivityEventType.arrived,
+      (e) =>
+          e.type == ActivityEventType.arrived ||
+          (e.metadata['rawEventType'] ?? '').toString().contains('ARRIVED'),
+    );
+    final hasInspection = state.events.any(
+      (e) =>
+          (e.metadata['rawEventType'] ?? '').toString().contains('INSPECTION') ||
+          (e.note ?? '').toUpperCase().contains('INSPECTION'),
     );
     final hasWorkStarted = state.events.any(
-      (e) => e.type == ActivityEventType.workStarted,
+      (e) =>
+          e.type == ActivityEventType.workStarted ||
+          (e.metadata['rawEventType'] ?? '').toString().contains('REPAIR_STARTED') ||
+          (e.metadata['rawEventType'] ?? '').toString().contains('WORK_STARTED'),
+    );
+
+    final visitScreenButton = OutlinedButton.icon(
+      key: const Key('open_visit_screen_button'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(120, 48),
+        foregroundColor: palette.accent,
+        side: BorderSide(color: palette.accent),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      onPressed: () => VisitScreen.open(
+        context,
+        complaintId: state.complaint!.id,
+        repository: controller.repository,
+        technicianId: controller.currentUserId,
+      ),
+      icon: const Icon(Icons.phone_android_outlined, size: 18),
+      label: const Text('Visit Screen'),
     );
 
     if (!hasAccepted && currentStatus == ComplaintStatus.assigned) {
       return [
+        visitScreenButton,
         FilledButton.icon(
           key: const Key('tech_accept_job_button'),
           style: FilledButton.styleFrom(
@@ -245,8 +283,9 @@ class ComplaintActionBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          onPressed: () =>
-              controller.advanceTechnicianStep(ActivityEventType.accepted),
+          onPressed: () => controller.advanceVisitWorkflowStep(
+            VisitWorkflowStep.accepted,
+          ),
           icon: const Icon(Icons.thumb_up_alt_outlined, size: 18),
           label: const Text('Accept job'),
         ),
@@ -255,6 +294,7 @@ class ComplaintActionBar extends StatelessWidget {
 
     if (!hasTravelStarted) {
       return [
+        visitScreenButton,
         FilledButton.icon(
           key: const Key('tech_start_travel_button'),
           style: FilledButton.styleFrom(
@@ -265,8 +305,9 @@ class ComplaintActionBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          onPressed: () =>
-              controller.advanceTechnicianStep(ActivityEventType.travelStarted),
+          onPressed: () => controller.advanceVisitWorkflowStep(
+            VisitWorkflowStep.travelling,
+          ),
           icon: const Icon(Icons.directions_car_outlined, size: 18),
           label: const Text('Start travel'),
         ),
@@ -275,6 +316,7 @@ class ComplaintActionBar extends StatelessWidget {
 
     if (!hasArrived) {
       return [
+        visitScreenButton,
         FilledButton.icon(
           key: const Key('tech_arrived_button'),
           style: FilledButton.styleFrom(
@@ -285,16 +327,40 @@ class ComplaintActionBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          onPressed: () =>
-              controller.advanceTechnicianStep(ActivityEventType.arrived),
+          onPressed: () => controller.advanceVisitWorkflowStep(
+            VisitWorkflowStep.arrived,
+          ),
           icon: const Icon(Icons.location_on_outlined, size: 18),
-          label: const Text('Arrived at unit'),
+          label: const Text("I've arrived"),
+        ),
+      ];
+    }
+
+    if (!hasInspection) {
+      return [
+        visitScreenButton,
+        FilledButton.icon(
+          key: const Key('tech_start_inspection_button'),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(140, 48),
+            backgroundColor: palette.accent,
+            foregroundColor: palette.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          onPressed: () => controller.advanceVisitWorkflowStep(
+            VisitWorkflowStep.inspection,
+          ),
+          icon: const Icon(Icons.search_outlined, size: 18),
+          label: const Text('Start inspection'),
         ),
       ];
     }
 
     if (!hasWorkStarted) {
       return [
+        visitScreenButton,
         FilledButton.icon(
           key: const Key('tech_start_work_button'),
           style: FilledButton.styleFrom(
@@ -305,18 +371,20 @@ class ComplaintActionBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          onPressed: () =>
-              controller.advanceTechnicianStep(ActivityEventType.workStarted),
+          onPressed: () => controller.advanceVisitWorkflowStep(
+            VisitWorkflowStep.repairing,
+          ),
           icon: const Icon(Icons.build_outlined, size: 18),
-          label: const Text('Start repair work'),
+          label: const Text('Start repair'),
         ),
       ];
     }
 
-    // Work is active -> can mark resolved
+    // Work is active -> Complete visit
     return [
+      visitScreenButton,
       FilledButton.icon(
-        key: const Key('tech_mark_resolved_button'),
+        key: const Key('tech_complete_visit_button'),
         style: FilledButton.styleFrom(
           minimumSize: const Size(140, 48),
           backgroundColor: palette.success,
@@ -325,68 +393,17 @@ class ComplaintActionBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        onPressed: () => _showResolveDialog(context),
+        onPressed: () => VisitCompletionForm.open(
+          context,
+          complaintId: state.complaint!.id,
+          repository: controller.repository,
+          technicianId: controller.currentUserId,
+          technicianName: controller.currentUserName,
+        ),
         icon: const Icon(Icons.verified_outlined, size: 18),
-        label: const Text('Mark resolved'),
+        label: const Text('Complete visit'),
       ),
     ];
-  }
-
-  void _showResolveDialog(BuildContext context) {
-    final noteController = TextEditingController();
-    showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        final palette = ctx.palette;
-        return AlertDialog(
-          backgroundColor: palette.surface,
-          title: Text(
-            'Complete repair',
-            style: TextStyle(fontFamily: 'Fraunces', color: palette.ink),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Add resolution details or parts replaced (optional):',
-                style: TextStyle(color: palette.muted, fontSize: 13),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                key: const Key('resolve_note_field'),
-                controller: noteController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'Work summary...',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              key: const Key('confirm_resolve_submit_button'),
-              style: FilledButton.styleFrom(backgroundColor: palette.success),
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                controller.advanceTechnicianStep(
-                  ActivityEventType.markedResolved,
-                  note: noteController.text.trim().isNotEmpty
-                      ? noteController.text.trim()
-                      : 'Repair completed and inspected.',
-                );
-              },
-              child: const Text('Submit resolution'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   // -------------------------------------------------------------

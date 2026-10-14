@@ -8,6 +8,7 @@ import '../../../core/enums/complaint_status.dart';
 import '../../../core/models/complaint.dart';
 import '../../../core/models/complaint_audit_event.dart';
 import '../../../repositories/complaint_repository.dart';
+import '../../../utils/visit_validators.dart';
 import 'complaint_detail_models.dart';
 
 /// Single source of truth controller for a complaint and its audit trail.
@@ -412,6 +413,25 @@ class ComplaintDetailController extends ChangeNotifier {
         );
       }
     }
+  }
+
+  /// Advances the technician visit workflow using VisitWorkflowStep through the repository.
+  Future<void> advanceVisitWorkflowStep(
+    VisitWorkflowStep step, {
+    String? note,
+    List<String>? photos,
+    String? actorId,
+  }) async {
+    final updated = await repository.advanceVisitStep(
+      complaintId,
+      step,
+      actorId: actorId ?? currentUserId,
+      role: 'technician',
+      note: note,
+      photos: photos,
+    );
+    _latestComplaint = updated;
+    notifyListeners();
   }
 
   /// Tenant confirms resolution.

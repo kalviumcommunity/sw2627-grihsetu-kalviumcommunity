@@ -197,6 +197,25 @@ abstract final class VisitValidators {
     return validateAttachments(photos);
   }
 
+  /// Validates photo attachment count up to 6 photos.
+  static String? validateAttachmentsCount(int count) {
+    if (count > maxPhotosPerGroup) {
+      return 'You can add up to $maxPhotosPerGroup photos.';
+    }
+    return null;
+  }
+
+  /// Validates after photos count (at least 1 required, up to 6).
+  static String? validateAfterPhotosCount(int count) {
+    if (count < 1) {
+      return 'At least 1 "After" photo is required to mark job resolved.';
+    }
+    if (count > maxPhotosPerGroup) {
+      return 'You can add up to $maxPhotosPerGroup photos.';
+    }
+    return null;
+  }
+
   // ==========================================
   // Resolved Outcome Rules
   // ==========================================

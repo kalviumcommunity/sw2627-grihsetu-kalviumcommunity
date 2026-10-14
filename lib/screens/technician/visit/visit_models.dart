@@ -170,3 +170,130 @@ class PreviousVisitSummary {
     return list;
   }
 }
+
+/// In-memory autosave draft for the visit completion form.
+class VisitFormDraft {
+  const VisitFormDraft({
+    this.outcome = 'resolved',
+    this.whatWasFound = '',
+    this.whatWasRepaired = '',
+    this.parts = const [],
+    this.noPartsUsed = false,
+    this.additionalWorkRecommended = false,
+    this.additionalWorkNotes = '',
+    this.tenantResolutionNotes = '',
+    this.afterPhotos = const [],
+    this.reason,
+    this.otherReasonDetails = '',
+    this.details = '',
+    this.suggestedDate,
+    this.suggestedSlot,
+    this.partsToBring = const [],
+  });
+
+  final String outcome; // 'resolved' or 'needsAnotherVisit'
+  final String whatWasFound;
+  final String whatWasRepaired;
+  final List<VisitPartInput> parts;
+  final bool noPartsUsed;
+  final bool additionalWorkRecommended;
+  final String additionalWorkNotes;
+  final String tenantResolutionNotes;
+  final List<String> afterPhotos;
+  final FollowUpReason? reason;
+  final String otherReasonDetails;
+  final String details;
+  final DateTime? suggestedDate;
+  final String? suggestedSlot;
+  final List<String> partsToBring;
+
+  bool get isDirty =>
+      whatWasFound.isNotEmpty ||
+      whatWasRepaired.isNotEmpty ||
+      parts.isNotEmpty ||
+      noPartsUsed ||
+      additionalWorkRecommended ||
+      additionalWorkNotes.isNotEmpty ||
+      tenantResolutionNotes.isNotEmpty ||
+      afterPhotos.isNotEmpty ||
+      reason != null ||
+      otherReasonDetails.isNotEmpty ||
+      details.isNotEmpty ||
+      partsToBring.isNotEmpty;
+}
+
+/// Global in-memory draft store so draft is preserved across navigation.
+abstract final class VisitFormDraftStore {
+  static final Map<String, VisitFormDraft> _drafts = {};
+
+  static VisitFormDraft? get(String complaintId) => _drafts[complaintId];
+
+  static void save(String complaintId, VisitFormDraft draft) {
+    _drafts[complaintId] = draft;
+  }
+
+  static void clear(String complaintId) {
+    _drafts.remove(complaintId);
+  }
+}
+
+/// Derives the next actionable visit step from a complaint's audit trail.
+VisitWorkflowStep? resolveNextVisitStepFromEvents(
+  List<ComplaintAuditEvent> events,
+  String statusValue,
+) {
+  if (statusValue == 'resolved' ||
+      statusValue == 'closed' ||
+      statusValue == 'cancelled') {
+    return null;
+  }
+
+  bool hasAccepted = false;
+  bool hasTravelling = false;
+  bool hasArrived = false;
+  bool hasInspection = false;
+  bool hasRepairing = false;
+  bool hasCompleted = false;
+
+  for (final event in events) {
+    final raw = (event.rawEventType ?? event.eventType.name).toUpperCase();
+    final note = (event.metadata['note'] ?? '').toString().toUpperCase();
+
+    if (raw.contains('JOB_ACCEPTED') ||
+        raw.contains('TECHNICIAN_ACCEPTED') ||
+        note.contains('ACCEPTED')) {
+      hasAccepted = true;
+    }
+    if (raw.contains('TRAVELL') ||
+        raw.contains('TRAVEL_STARTED') ||
+        note.contains('TRAVELL')) {
+      hasTravelling = true;
+    }
+    if (raw.contains('ARRIVED') || note.contains('ARRIVED')) {
+      hasArrived = true;
+    }
+    if (raw.contains('INSPECTION') || note.contains('INSPECTION')) {
+      hasInspection = true;
+    }
+    if (raw.contains('REPAIR_STARTED') ||
+        raw.contains('WORK_STARTED') ||
+        note.contains('START REPAIR')) {
+      hasRepairing = true;
+    }
+    if (raw.contains('REPAIR_COMPLETED') ||
+        raw.contains('MARKED_RESOLVED') ||
+        raw.contains('NEEDS_ANOTHER_VISIT') ||
+        raw.contains('VISIT_COMPLETED')) {
+      hasCompleted = true;
+    }
+  }
+
+  if (hasCompleted) return null;
+  if (!hasAccepted) return VisitWorkflowStep.accepted;
+  if (!hasTravelling) return VisitWorkflowStep.travelling;
+  if (!hasArrived) return VisitWorkflowStep.arrived;
+  if (!hasInspection) return VisitWorkflowStep.inspection;
+  if (!hasRepairing) return VisitWorkflowStep.repairing;
+  return VisitWorkflowStep.completed;
+}
+

@@ -19,6 +19,7 @@ import '../../widgets/skeleton_box.dart';
 import '../../widgets/status_badge.dart';
 import 'complaint_detail_screen.dart';
 import 'complaint_view_models.dart';
+import '../technician/visit/technician_next_step_button.dart';
 
 /// Screen displaying live Firestore stream of active complaints assigned to
 /// the currently authenticated field technician.
@@ -343,6 +344,14 @@ class _TechnicianQueueScreenState extends State<TechnicianQueueScreen> {
                               complaint.unitId,
                             ),
                             onTap: () => _openDetail(complaint),
+                            bottomAction: _repository != null
+                                ? TechnicianNextStepButton(
+                                    complaintId: complaint.id,
+                                    status: complaint.status,
+                                    repository: _repository!,
+                                    technicianId: _technicianId ?? 'usr_002',
+                                  )
+                                : null,
                           ),
                           const SizedBox(height: AppSpacing.sm),
                         ],
