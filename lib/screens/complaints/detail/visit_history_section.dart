@@ -4,7 +4,6 @@ import '../../../theme/app_colors.dart';
 import '../../../utils/visit_history.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/app_spacing.dart';
-import '../../../widgets/empty_state.dart';
 import '../../../widgets/repeat_indicator.dart';
 import '../../../widgets/status_badge.dart';
 
@@ -134,13 +133,35 @@ class _VisitHistorySectionState extends State<VisitHistorySection> {
 
             // Empty state
             if (orderedVisits.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                child: EmptyState(
-                  title: 'No visits yet',
-                  message:
-                      'No maintenance visits have been recorded for this complaint.',
-                  icon: Icons.history_toggle_off_outlined,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.event_busy_outlined,
+                        size: 36,
+                        color: palette.muted.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'No visits yet',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: palette.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'No maintenance visits have been recorded for this complaint.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: palette.muted,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               )
             else
@@ -211,7 +232,7 @@ class _RecurringIssueCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: palette.accentSoft,
+                  color: palette.accent.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: palette.accent.withValues(alpha: 0.3),
@@ -277,8 +298,14 @@ class _VisitCardState extends State<_VisitCard> {
 
     // Outcome badge tone
     final (badgeLabel, badgeTone) = switch (visit.outcome.toLowerCase()) {
-      final s when s.contains('resolved') => ('Resolved', StatusBadgeTone.success),
-      final s when s.contains('needs') || s.contains('another') || s.contains('follow') =>
+      final s when s.contains('resolved') => (
+        'Resolved',
+        StatusBadgeTone.success,
+      ),
+      final s
+          when s.contains('needs') ||
+              s.contains('another') ||
+              s.contains('follow') =>
         ('Needs another visit', StatusBadgeTone.warning),
       _ => ('In progress', StatusBadgeTone.accent),
     };
@@ -343,11 +370,7 @@ class _VisitCardState extends State<_VisitCard> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.person_outline,
-                    size: 14,
-                    color: palette.muted,
-                  ),
+                  Icon(Icons.person_outline, size: 14, color: palette.muted),
                   const SizedBox(width: 4),
                   Text(
                     visit.technician,
@@ -361,11 +384,7 @@ class _VisitCardState extends State<_VisitCard> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.schedule_outlined,
-                    size: 14,
-                    color: palette.muted,
-                  ),
+                  Icon(Icons.schedule_outlined, size: 14, color: palette.muted),
                   const SizedBox(width: 4),
                   Text(
                     timeOnSite,
@@ -424,11 +443,7 @@ class _VisitCardState extends State<_VisitCard> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.extension_outlined,
-                  size: 14,
-                  color: palette.muted,
-                ),
+                Icon(Icons.extension_outlined, size: 14, color: palette.muted),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
@@ -449,7 +464,11 @@ class _VisitCardState extends State<_VisitCard> {
             Wrap(
               spacing: AppSpacing.xs,
               children: [
-                for (var i = 0; i < (visit.photoCount > 4 ? 4 : visit.photoCount); i++)
+                for (
+                  var i = 0;
+                  i < (visit.photoCount > 4 ? 4 : visit.photoCount);
+                  i++
+                )
                   Container(
                     width: 36,
                     height: 36,

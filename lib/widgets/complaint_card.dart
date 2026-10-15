@@ -88,6 +88,11 @@ class ComplaintCard extends StatelessWidget {
             children: [
               ComplaintStatusBadge(status: complaint.status),
               ComplaintPriorityBadge(priority: complaint.priority),
+              if (complaint.isRepeatVisit)
+                const StatusBadge(
+                  label: 'Repeat visit',
+                  tone: StatusBadgeTone.warning,
+                ),
               if (complaint.isRepeatVisit || complaint.visitCount >= 2)
                 RepeatIndicator.repeat(
                   complaint.visitCount >= 2 ? complaint.visitCount : 2,

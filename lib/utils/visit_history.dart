@@ -91,31 +91,35 @@ class RepeatInfo {
 List<VisitRecord> visitsFromEvents(List<dynamic> events) {
   if (events.isEmpty) return const <VisitRecord>[];
 
-  // If already MaintenanceVisit objects, map directly.
-  if (events.every((e) => e is MaintenanceVisit)) {
-    final visits = events.cast<MaintenanceVisit>().toList()
+  // If MaintenanceVisit objects, map directly.
+  if (events.any((e) => e is MaintenanceVisit)) {
+    final visits = events.whereType<MaintenanceVisit>().toList()
       ..sort((a, b) => a.visitNumber.compareTo(b.visitNumber));
-    return visits.map((v) {
-      final started = v.startedAt;
-      final completed = v.completedAt;
-      final duration = (started != null && completed != null)
-          ? completed.difference(started)
-          : null;
-      final outcomeStr = v.outcome?.value ??
-          (v.isResolved
-              ? 'resolved'
-              : (v.followUpRequired ? 'needs another visit' : 'in progress'));
-      return VisitRecord(
-        date: started ?? completed ?? DateTime.now(),
-        technician: v.technicianId.isNotEmpty ? v.technicianId : 'Technician',
-        arrival: started,
-        end: completed,
-        timeOnSite: duration,
-        outcome: outcomeStr,
-        notes: v.resolutionSummary ?? v.observation,
-        visitNumber: v.visitNumber,
-      );
-    }).toList();
+    if (visits.isNotEmpty) {
+      return visits.map((v) {
+        final started = v.startedAt;
+        final completed = v.completedAt;
+        final duration = (started != null && completed != null)
+            ? completed.difference(started)
+            : null;
+        final outcomeStr =
+            v.outcome?.value ??
+            (v.isResolved
+                ? 'resolved'
+                : (v.followUpRequired ? 'needs another visit' : 'in progress'));
+        return VisitRecord(
+          date: started ?? completed ?? DateTime.now(),
+          technician: v.technicianId.isNotEmpty ? v.technicianId : 'Technician',
+          arrival: started,
+          end: completed,
+          timeOnSite: duration,
+          outcome: outcomeStr,
+          notes: v.resolutionSummary ?? v.observation,
+          parts: const <String>[],
+          visitNumber: v.visitNumber,
+        );
+      }).toList();
+    }
   }
 
   // Normalize all events to standardized raw items.
@@ -125,23 +129,6 @@ List<VisitRecord> visitsFromEvents(List<dynamic> events) {
       rawItems.add(_RawEventItem.fromAuditEvent(e));
     } else if (e is ActivityEvent) {
       rawItems.add(_RawEventItem.fromActivityEvent(e));
-    } else if (e is MaintenanceVisit) {
-      final started = e.startedAt;
-      final completed = e.completedAt;
-      return [
-        VisitRecord(
-          date: started ?? completed ?? DateTime.now(),
-          technician: e.technicianId.isNotEmpty ? e.technicianId : 'Technician',
-          arrival: started,
-          end: completed,
-          timeOnSite: (started != null && completed != null)
-              ? completed.difference(started)
-              : null,
-          outcome: e.outcome?.value ?? (e.isResolved ? 'resolved' : 'in progress'),
-          notes: e.resolutionSummary ?? e.observation,
-          visitNumber: e.visitNumber,
-        ),
-      ];
     } else if (e is Map<String, dynamic>) {
       rawItems.add(_RawEventItem.fromMap(e));
     } else {
@@ -178,7 +165,9 @@ List<VisitRecord> visitsFromEvents(List<dynamic> events) {
     visits.add(
       VisitRecord(
         date: current!.arrival ?? current!.firstSeen,
-        technician: current!.technician.isNotEmpty ? current!.technician : 'Technician',
+        technician: current!.technician.isNotEmpty
+            ? current!.technician
+            : 'Technician',
         arrival: current!.arrival,
         end: end,
         timeOnSite: duration,
@@ -198,116 +187,121 @@ List<VisitRecord> visitsFromEvents(List<dynamic> events) {
     // Check if this event starts a visit.
     final isArrival = type.contains('ARRIV') || type.contains('VISIT_STARTED');
     final isInspection = type.contains('INSPECT');
-    final isRepairWork = type.contains('REPAIR_STARTED') ||
-        type.contains('WORK_STARTED');
-    final isResolved = type.contains('RESOLV') ||
+    final isRepairWork =
+        type.contains('REPAIR_STARTED') || type.contains('WORK_STARTED');
+    final isResolved =
+        type.contains('RESOLV') ||
         type.contains('REPAIR_COMPLETED') ||
         (type.contains('VISIT_COMPLETED') && item.isResolvedOutcome);
-    final isNeedsAnother = type.contains('NEEDS_ANOTHER') ||
+    final isNeedsAnother =
+        type.contains('NEEDS_ANOTHER') ||
         type.contains('FOLLOW_UP') ||
         (type.contains('VISIT_COMPLETED') && !item.isResolvedOutcome);
     final isPartAdded = type.contains('PART');
-    final isPhotoUploaded = type.contains('PHOTO') || type.contains('ATTACHMENT');
+    final isPhotoUploaded =
+        type.contains('PHOTO') || type.contains('ATTACHMENT');
 
     if (isArrival) {
       if (current != null) {
         closeCurrent(current!.lastOutcome ?? 'in progress', current!.lastSeen);
       }
-      current = _VisitAccumulator(
+      final acc = _VisitAccumulator(
         arrival: item.timestamp,
         firstSeen: item.timestamp,
         technician: item.actorName,
         visitNumber: item.visitNumber,
       );
       if (item.note != null && item.note!.trim().isNotEmpty) {
-        current.notes = item.note!.trim();
+        acc.notes = item.note!.trim();
       }
+      current = acc;
       continue;
     }
 
     if (isInspection || isRepairWork) {
-      current ??= _VisitAccumulator(
+      final acc = current ??= _VisitAccumulator(
         arrival: item.timestamp,
         firstSeen: item.timestamp,
         technician: item.actorName,
         visitNumber: item.visitNumber,
       );
-      if (item.actorName.isNotEmpty && current.technician.isEmpty) {
-        current.technician = item.actorName;
+      if (item.actorName.isNotEmpty && acc.technician.isEmpty) {
+        acc.technician = item.actorName;
       }
       if (item.note != null && item.note!.trim().isNotEmpty) {
-        current.notes = item.note!.trim();
+        acc.notes = item.note!.trim();
       }
-      current.lastSeen = item.timestamp;
+      acc.lastSeen = item.timestamp;
       continue;
     }
 
     if (isPartAdded) {
-      current ??= _VisitAccumulator(
+      final acc = current ??= _VisitAccumulator(
         firstSeen: item.timestamp,
         technician: item.actorName,
         visitNumber: item.visitNumber,
       );
       if (item.partName != null && item.partName!.isNotEmpty) {
-        current.parts.add(item.partName!);
+        acc.parts.add(item.partName!);
       }
-      current.parts.addAll(item.parts);
-      current.lastSeen = item.timestamp;
+      acc.parts.addAll(item.parts);
+      acc.lastSeen = item.timestamp;
       continue;
     }
 
     if (isPhotoUploaded) {
-      current ??= _VisitAccumulator(
+      final acc = current ??= _VisitAccumulator(
         firstSeen: item.timestamp,
         technician: item.actorName,
         visitNumber: item.visitNumber,
       );
-      current.photoCount += item.photoCount > 0 ? item.photoCount : 1;
-      current.lastSeen = item.timestamp;
+      acc.photoCount += item.photoCount > 0 ? item.photoCount : 1;
+      acc.lastSeen = item.timestamp;
       continue;
     }
 
     if (isResolved) {
-      current ??= _VisitAccumulator(
+      final acc = current ??= _VisitAccumulator(
         firstSeen: item.timestamp,
         technician: item.actorName,
         visitNumber: item.visitNumber,
       );
       if (item.note != null && item.note!.trim().isNotEmpty) {
-        current.notes = item.note!.trim();
+        acc.notes = item.note!.trim();
       }
-      if (item.actorName.isNotEmpty && current.technician.isEmpty) {
-        current.technician = item.actorName;
+      if (item.actorName.isNotEmpty && acc.technician.isEmpty) {
+        acc.technician = item.actorName;
       }
-      current.parts.addAll(item.parts);
-      if (item.photoCount > 0) current.photoCount += item.photoCount;
+      acc.parts.addAll(item.parts);
+      if (item.photoCount > 0) acc.photoCount += item.photoCount;
       closeCurrent('resolved', item.timestamp);
       continue;
     }
 
     if (isNeedsAnother) {
-      current ??= _VisitAccumulator(
+      final acc = current ??= _VisitAccumulator(
         firstSeen: item.timestamp,
         technician: item.actorName,
         visitNumber: item.visitNumber,
       );
       if (item.note != null && item.note!.trim().isNotEmpty) {
-        current.notes = item.note!.trim();
+        acc.notes = item.note!.trim();
       }
-      if (item.actorName.isNotEmpty && current.technician.isEmpty) {
-        current.technician = item.actorName;
+      if (item.actorName.isNotEmpty && acc.technician.isEmpty) {
+        acc.technician = item.actorName;
       }
-      current.parts.addAll(item.parts);
+      acc.parts.addAll(item.parts);
       closeCurrent('needs another visit', item.timestamp);
       continue;
     }
 
     // General note or other event during visit
     if (current != null) {
+      final acc = current!;
       if (item.note != null && item.note!.trim().isNotEmpty) {
-        current.notes = item.note!.trim();
+        acc.notes = item.note!.trim();
       }
-      current.lastSeen = item.timestamp;
+      acc.lastSeen = item.timestamp;
     }
   }
 
@@ -367,10 +361,11 @@ bool _isWithin60Days(DateTime ref, DateTime target) {
   final diffSecs = (ref.difference(target).inSeconds).abs();
   final diffDaysExact = diffSecs / 86400.0;
   // If calendar days or exact duration is <= 60 days
-  final calendarDiff = DateTime(ref.year, ref.month, ref.day)
-      .difference(DateTime(target.year, target.month, target.day))
-      .inDays
-      .abs();
+  final calendarDiff = DateTime(
+    ref.year,
+    ref.month,
+    ref.day,
+  ).difference(DateTime(target.year, target.month, target.day)).inDays.abs();
   return calendarDiff <= 60 && diffDaysExact <= 60.5;
 }
 
@@ -438,7 +433,8 @@ class _RawEventItem {
       }
     }
     final outcome = meta['outcome']?.toString().toLowerCase();
-    final isRes = outcome == 'resolved' ||
+    final isRes =
+        outcome == 'resolved' ||
         act.type == ActivityEventType.markedResolved ||
         act.type == ActivityEventType.repairCompleted;
 
