@@ -9,6 +9,7 @@ import '../../../core/models/maintenance_visit.dart';
 import '../../../repositories/complaint_repository.dart';
 import '../../../services/media_picker.dart';
 import '../../../theme/app_palette.dart';
+import '../../../utils/date_time_formatters.dart' as dtf;
 import '../../../utils/visit_validators.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/app_spacing.dart';
@@ -858,9 +859,7 @@ class _VisitScreenState extends State<VisitScreen> {
 
     String? timeFormatted;
     if (timestamp != null) {
-      final h = timestamp.hour.toString().padLeft(2, '0');
-      final m = timestamp.minute.toString().padLeft(2, '0');
-      timeFormatted = '$h:$m';
+      timeFormatted = dtf.formatTime(timestamp);
     }
 
     return InkWell(
@@ -927,16 +926,9 @@ class _VisitScreenState extends State<VisitScreen> {
   Widget _buildWorkLogCard(BuildContext context, VisitWorkLog log) {
     final palette = context.palette;
     final duration = log.totalOnSiteDuration(_now);
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-    final liveTimerText =
-        '${hours.toString().padLeft(2, "0")}:${minutes.toString().padLeft(2, "0")}:${seconds.toString().padLeft(2, "0")}';
+    final liveTimerText = dtf.formatTimerDuration(duration);
 
-    String formatTime(DateTime? t) {
-      if (t == null) return '--:--';
-      return '${t.hour.toString().padLeft(2, "0")}:${t.minute.toString().padLeft(2, "0")}';
-    }
+    String formatTime(DateTime? t) => dtf.formatTime(t, placeholder: '--:--');
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/enums/complaint_audit_event_type.dart';
 import '../../../core/enums/complaint_priority.dart';
 import '../../../core/enums/complaint_status.dart';
@@ -575,4 +576,154 @@ class ComplaintDetailState {
       complaint?.isRepeatVisit == true ||
       numberOfVisits > 1 ||
       (complaint?.reopenCount ?? 0) > 0;
+
+  /// Comprehensive visit summary derived from authoritative maintenance visits
+  /// with legacy fallback.
+  VisitSummary get visitSummary =>
+      VisitSummary.from(complaint: complaint, visits: visits, events: events);
+
+  /// Latest visit timestamp derived from canonical visits or fallback events.
+  DateTime? get lastVisitDate => visitSummary.lastVisitDate;
+
+  /// Number of repeat visits beyond the initial visit.
+  int get repeatVisitsCount => visitSummary.repeatVisitsCount;
+}
+
+/// Domain representation of visit statistics and repeat-visit metrics.
+class VisitSummary {
+  const VisitSummary({
+    required this.totalVisits,
+    this.lastVisitDate,
+    required this.isRepeat,
+    this.repeatVisitsCount = 0,
+    this.reopenCount = 0,
+    this.isVisitInProgress = false,
+  });
+
+  /// Authoritative count of on-site maintenance visits.
+  final int totalVisits;
+
+  /// Chronologically latest visit timestamp (completed or in-progress).
+  final DateTime? lastVisitDate;
+
+  /// Whether this complaint constitutes a repeat issue.
+  final bool isRepeat;
+
+  /// Total visits beyond the initial visit (max(0, totalVisits - 1)).
+  final int repeatVisitsCount;
+
+  /// Number of times the complaint was reopened.
+  final int reopenCount;
+
+  /// Whether an active visit is currently in progress.
+  final bool isVisitInProgress;
+
+  /// Operations-friendly status string.
+  String get repeatStatusLabel {
+    if (repeatVisitsCount > 0 && reopenCount > 0) {
+      return 'Repeat ($repeatVisitsCount follow-up${repeatVisitsCount > 1 ? 's' : ''}, reopened)';
+    }
+    if (repeatVisitsCount > 0) {
+      return 'Repeat ($repeatVisitsCount follow-up${repeatVisitsCount > 1 ? 's' : ''})';
+    }
+    if (reopenCount > 0) {
+      return 'Reopened ($reopenCount)';
+    }
+    if (isRepeat) {
+      return 'Repeat issue';
+    }
+    return totalVisits > 0 ? 'First visit' : 'No visits';
+  }
+
+  /// Pure derivation from canonical [visits] and fallback [events]/[complaint].
+  ///
+  /// - [visits] (MaintenanceVisit list) is the authoritative canonical history.
+  /// - [events] (ActivityEvent list) is used as a legacy/in-memory fallback only when [visits] is empty.
+  /// - Deduplicates and never combines counts from both sources simultaneously.
+  /// - Last visit is derived as the chronologically latest timestamp among completed or in-progress visits.
+  /// - Repeat visit count is derived as max(0, totalVisits - 1).
+  /// - Repeat status is true if complaint has isRepeatVisit flag, totalVisits > 1, or reopenCount > 0.
+  factory VisitSummary.from({
+    Complaint? complaint,
+    List<MaintenanceVisit> visits = const <MaintenanceVisit>[],
+    List<ActivityEvent> events = const <ActivityEvent>[],
+    List<ComplaintAuditEvent> auditEvents = const <ComplaintAuditEvent>[],
+  }) {
+    int totalVisits = 0;
+    if (visits.isNotEmpty) {
+      totalVisits = visits.length;
+    } else {
+      final arrivalCount = events
+          .where((e) => e.type == ActivityEventType.arrived)
+          .length;
+      final auditArrivalCount = auditEvents.where((a) {
+        final raw = (a.rawEventType ?? a.eventType.value).toUpperCase();
+        return raw.contains('ARRIVED');
+      }).length;
+      final eventCount = arrivalCount > auditArrivalCount
+          ? arrivalCount
+          : auditArrivalCount;
+      final modelCount = complaint?.visitCount ?? 0;
+      totalVisits = eventCount > modelCount ? eventCount : modelCount;
+    }
+
+    DateTime? lastVisit;
+    bool hasActiveVisit = false;
+
+    if (visits.isNotEmpty) {
+      for (final v in visits) {
+        if (v.isActive) hasActiveVisit = true;
+        final candidate = v.completedAt ?? v.startedAt;
+        if (candidate != null) {
+          if (lastVisit == null || candidate.isAfter(lastVisit)) {
+            lastVisit = candidate;
+          }
+        }
+      }
+    } else {
+      for (final e in events) {
+        if (e.type == ActivityEventType.arrived ||
+            e.type == ActivityEventType.repairCompleted ||
+            e.type == ActivityEventType.markedResolved ||
+            e.type == ActivityEventType.needsAnotherVisit) {
+          if (lastVisit == null || e.timestamp.isAfter(lastVisit)) {
+            lastVisit = e.timestamp;
+          }
+        }
+      }
+      if (lastVisit == null) {
+        for (final a in auditEvents) {
+          final raw = (a.rawEventType ?? a.eventType.value).toUpperCase();
+          if (raw.contains('ARRIVED') ||
+              raw.contains('REPAIR_COMPLETED') ||
+              raw.contains('MARKED_RESOLVED') ||
+              raw.contains('NEEDS_ANOTHER_VISIT')) {
+            final ts = a.timestamp;
+            if (ts != null) {
+              if (lastVisit == null || ts.isAfter(lastVisit)) {
+                lastVisit = ts;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    final reopenCount = complaint?.reopenCount ?? 0;
+    final isRepeat =
+        (complaint?.isRepeatVisit == true) ||
+        (totalVisits > AppConstants.repeatVisitThreshold) ||
+        (reopenCount > 0);
+
+    final repeatVisitsCount = totalVisits > 1 ? totalVisits - 1 : 0;
+
+    return VisitSummary(
+      totalVisits: totalVisits,
+      lastVisitDate: lastVisit,
+      isRepeat: isRepeat,
+      repeatVisitsCount: repeatVisitsCount,
+      reopenCount: reopenCount,
+      isVisitInProgress: hasActiveVisit,
+    );
+  }
 }

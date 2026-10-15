@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_palette.dart';
+import '../utils/date_time_formatters.dart';
 
 enum AuditTone { neutral, accent, success, warning, danger }
 
@@ -60,12 +61,7 @@ class AuditTimeline extends StatelessWidget {
     AuditTone.danger => palette.danger,
   };
 
-  String _elapsed(Duration duration) {
-    if (duration.inDays > 0) return '${duration.inDays}d between events';
-    if (duration.inHours > 0) return '${duration.inHours}h between events';
-    if (duration.inMinutes > 0) return '${duration.inMinutes}m between events';
-    return 'Moments between events';
-  }
+  String _elapsed(Duration duration) => formatBetweenEventsDuration(duration);
 }
 
 class _TimelineRow extends StatelessWidget {
@@ -135,7 +131,7 @@ class _TimelineRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    _formatTimestamp(event.timestamp),
+                    formatDateTime(event.timestamp),
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: palette.muted),
                   ),
@@ -162,11 +158,6 @@ class _TimelineRow extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatTimestamp(DateTime value) {
-    String two(int number) => number.toString().padLeft(2, '0');
-    return '${two(value.day)}/${two(value.month)}/${value.year} · ${two(value.hour)}:${two(value.minute)}';
   }
 }
 
