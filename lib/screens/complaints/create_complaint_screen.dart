@@ -329,9 +329,7 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
         if (_isTenant)
           const Padding(
             padding: EdgeInsets.only(top: 12),
-            child: Text(
-              'Your registered home is prefilled.',
-            ),
+            child: Text('Your registered home is prefilled.'),
           ),
         if (_errors['location'] != null) _ErrorText(_errors['location']!),
       ],
