@@ -4,6 +4,7 @@ import 'package:grihsetu/core/enums/complaint_category.dart';
 import 'package:grihsetu/repositories/assignment_repository.dart';
 import 'package:grihsetu/theme/app_palette.dart';
 import 'package:grihsetu/widgets/app_spacing.dart';
+import 'package:grihsetu/widgets/repeat_indicator.dart';
 import 'package:grihsetu/widgets/status_badge.dart';
 
 /// Card row representing a selectable technician option.
@@ -172,35 +173,14 @@ class _TechnicianCardState extends State<TechnicianCard> {
                       // Repeat visit note
                       if (tech.previousVisitsToUnit > 0) ...[
                         const SizedBox(height: AppSpacing.xs + 2),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: palette.accentSoft,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.history,
-                                size: 14,
-                                color: palette.accent,
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  'Previously visited this unit (${tech.previousVisitsToUnit} times)',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: palette.accent,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                        RepeatIndicator(
+                          count: tech.previousVisitsToUnit >= 2
+                              ? tech.previousVisitsToUnit
+                              : 2,
+                          label:
+                              'Previously visited (${tech.previousVisitsToUnit}x)',
+                          tooltip:
+                              'Previously visited this unit ${tech.previousVisitsToUnit} times',
                         ),
                       ],
                       // Off duty inline notice

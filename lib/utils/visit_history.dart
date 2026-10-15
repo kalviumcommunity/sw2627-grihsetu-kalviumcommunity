@@ -335,7 +335,7 @@ RepeatInfo repeatInfo(Complaint c, List<Complaint> sameUnit) {
   }
 
   final totalMatchingCount = matchingComplaints.length;
-  final hasRecurring = totalMatchingCount >= 2;
+  final hasRecurring = totalMatchingCount >= 2 || c.visitCount >= 3;
   final isRepeat = c.visitCount >= 2 || c.isRepeatVisit;
 
   final previousTechs = <String>{};

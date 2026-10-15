@@ -7,6 +7,7 @@ import '../core/models/complaint.dart';
 import '../theme/app_palette.dart';
 import 'app_card.dart';
 import 'app_spacing.dart';
+import 'repeat_indicator.dart';
 import 'status_badge.dart';
 
 /// Reusable complaint presentation card.
@@ -87,10 +88,9 @@ class ComplaintCard extends StatelessWidget {
             children: [
               ComplaintStatusBadge(status: complaint.status),
               ComplaintPriorityBadge(priority: complaint.priority),
-              if (complaint.isRepeatVisit)
-                const StatusBadge(
-                  label: 'Repeat visit',
-                  tone: StatusBadgeTone.warning,
+              if (complaint.isRepeatVisit || complaint.visitCount >= 2)
+                RepeatIndicator.repeat(
+                  complaint.visitCount >= 2 ? complaint.visitCount : 2,
                 ),
             ],
           ),
