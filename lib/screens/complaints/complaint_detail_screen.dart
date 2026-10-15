@@ -8,6 +8,7 @@ import '../../core/models/maintenance_visit.dart';
 import '../../repositories/assignment_repository.dart';
 import '../../repositories/complaint_repository.dart';
 import '../../theme/app_palette.dart';
+import '../../utils/date_time_formatters.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/audit_timeline.dart' as legacy_audit;
@@ -17,6 +18,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/skeleton_box.dart';
 import '../../widgets/status_badge.dart';
+import '../../widgets/visit_summary_widgets.dart';
 import 'detail/activity_timeline.dart';
 import 'detail/complaint_action_bar.dart';
 import 'detail/complaint_detail_controller.dart';
@@ -253,6 +255,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               const SizedBox(height: AppSpacing.md),
               _buildSummaryCard(context, state),
               const SizedBox(height: AppSpacing.md),
+              VisitSummaryCard(summary: state.visitSummary),
+              const SizedBox(height: AppSpacing.md),
               _buildVisitHistoryCard(context, state),
               const SizedBox(height: AppSpacing.md),
               // Activity timeline centerpiece
@@ -308,6 +312,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _buildSummaryCard(context, state),
+                        const SizedBox(height: AppSpacing.md),
+                        VisitSummaryCard(summary: state.visitSummary),
                         const SizedBox(height: AppSpacing.md),
                         _buildVisitHistoryCard(context, state),
                         const SizedBox(height: AppSpacing.md),
@@ -507,23 +513,23 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
           if (state.scheduledVisitDate != null)
             _SummaryRow(
               label: 'Scheduled visit',
-              value: _formatDate(state.scheduledVisitDate),
+              value: formatDate(state.scheduledVisitDate),
             ),
 
           // Created
-          _SummaryRow(label: 'Created', value: _formatDate(c.createdAt)),
+          _SummaryRow(label: 'Created', value: formatDate(c.createdAt)),
 
           // Last updated
           _SummaryRow(
             label: 'Last updated',
-            value: _formatDate(state.lastUpdated),
+            value: formatDate(state.lastUpdated),
           ),
 
           // Expected resolution
           if (state.expectedResolution != null)
             _SummaryRow(
               label: 'Expected resolution',
-              value: _formatDate(state.expectedResolution),
+              value: formatDate(state.expectedResolution),
             ),
         ],
       ),
@@ -568,14 +574,14 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     final palette = context.palette;
 
     final firstResponse = state.timeToFirstResponse != null
-        ? _formatDuration(state.timeToFirstResponse!)
+        ? formatElapsedDuration(state.timeToFirstResponse!)
         : 'Pending';
 
     final durationLabel = state.timeToResolve != null
         ? 'Resolution'
         : 'Time open';
-    final durationValue = _formatDuration(
-      state.timeToResolve ?? state.timeOpen ?? Duration.zero,
+    final durationValue = formatElapsedDuration(
+      state.timeToResolve ?? state.timeOpen,
     );
 
     return LayoutBuilder(
@@ -913,33 +919,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     if (c.unitId.trim().isNotEmpty) return c.unitId;
     return 'Unknown unit';
   }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'Date unavailable';
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final month = months[(date.month - 1).clamp(0, 11)];
-    return '$month ${date.day}, ${date.year}';
-  }
-
-  String _formatDuration(Duration d) {
-    if (d.inDays > 0) return '${d.inDays}d ${d.inHours % 24}h';
-    if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes % 60}m';
-    if (d.inMinutes > 0) return '${d.inMinutes}m';
-    return '< 1m';
-  }
 }
 
 class _MetricBox extends StatelessWidget {
@@ -1056,8 +1035,8 @@ class _VisitHistoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final started = _formatTimestamp(visit.startedAt);
-    final completed = _formatTimestamp(visit.completedAt);
+    final started = formatDateTime(visit.startedAt, placeholder: 'Pending');
+    final completed = formatDateTime(visit.completedAt, placeholder: 'Pending');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1118,12 +1097,6 @@ class _VisitDetail extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatTimestamp(DateTime? value) {
-  if (value == null) return 'Pending';
-  return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year} '
-      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 }
 
 class _SummaryRow extends StatelessWidget {
