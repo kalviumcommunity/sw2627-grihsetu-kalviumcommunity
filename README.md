@@ -8,6 +8,9 @@ The project focuses on solving a common operational problem: **property managers
 
 GrihSetu creates a structured workflow where every complaint, assignment, technician visit, status change, and resolution can be tracked.
 
+Project requirements are documented in [docs/PRD.md](docs/PRD.md), with the
+current user-flow and screen notes in [docs/UX.md](docs/UX.md).
+
 ---
 
 ## 📌 Problem Statement

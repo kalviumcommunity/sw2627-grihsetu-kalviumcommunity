@@ -5,6 +5,7 @@ import '../../../core/enums/complaint_priority.dart';
 import '../../../core/enums/complaint_status.dart';
 import '../../../core/models/complaint.dart';
 import '../../../core/models/complaint_audit_event.dart';
+import '../../../core/models/maintenance_visit.dart';
 
 /// Strongly-typed activity event types supported by GrihSetu.
 enum ActivityEventType {
@@ -219,12 +220,14 @@ class VisitRecord {
     required this.technicianName,
     required this.outcome,
     this.note,
+    this.visitNumber,
   });
 
   final DateTime date;
   final String technicianName;
   final String outcome;
   final String? note;
+  final int? visitNumber;
 }
 
 enum ComplaintDetailStatus { loading, notFound, error, data }
@@ -238,6 +241,7 @@ class ComplaintDetailState {
     required this.status,
     this.complaint,
     this.events = const <ActivityEvent>[],
+    this.visits = const <MaintenanceVisit>[],
     this.errorMessage,
     this.referenceNow,
   });
@@ -245,6 +249,7 @@ class ComplaintDetailState {
   final ComplaintDetailStatus status;
   final Complaint? complaint;
   final List<ActivityEvent> events;
+  final List<MaintenanceVisit> visits;
   final String? errorMessage;
   final DateTime? referenceNow;
 
@@ -363,10 +368,12 @@ class ComplaintDetailState {
     return created.add(duration);
   }
 
-  /// Total visits derived from the count of technician arrival events.
+  /// Total visits from the maintenance-visit repository, with the complaint
+  /// counter retained as a safe legacy fallback while history loads.
   int get numberOfVisits {
+    if (visits.isNotEmpty) return visits.length;
     final arrivalCount = events
-        .where((e) => e.type == ActivityEventType.arrived)
+        .where((event) => event.type == ActivityEventType.arrived)
         .length;
     final modelCount = complaint?.visitCount ?? 0;
     return arrivalCount > modelCount ? arrivalCount : modelCount;
@@ -533,8 +540,22 @@ class ComplaintDetailState {
     return ProgressStep.confirmed;
   }
 
-  /// Derived previous visits list from arrival events.
+  /// Derived previous visits list from stored maintenance visits. Audit-event
+  /// arrivals remain a compatibility fallback for older in-memory fixtures.
   List<VisitRecord> get previousVisits {
+    if (visits.isNotEmpty) {
+      return visits.map((visit) {
+        final timestamp =
+            visit.startedAt ?? visit.completedAt ?? DateTime(1970);
+        return VisitRecord(
+          date: timestamp,
+          technicianName: visit.technicianId,
+          outcome: visit.outcome?.value ?? 'In progress',
+          note: visit.resolutionSummary ?? visit.observation,
+          visitNumber: visit.visitNumber,
+        );
+      }).toList();
+    }
     final arrivals = events
         .where((e) => e.type == ActivityEventType.arrived)
         .toList();

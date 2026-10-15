@@ -10,6 +10,7 @@ import '../core/models/maintenance_visit.dart';
 import '../core/models/user.dart';
 import 'auth_service.dart';
 import 'complaint_audit_service.dart';
+import 'maintenance_visit_reconciliation.dart';
 
 enum MaintenanceVisitFailureCode {
   validation,
@@ -267,9 +268,11 @@ class MaintenanceVisitService {
       throw _fromFirebaseException(error);
     }
     var historicalMaxVisitNumber = 0;
+    final historicalVisitRecords = <MaintenanceVisit>[];
     String? legacyActiveVisitId;
     for (final document in historicalVisits.docs) {
       final visit = _decodeVisit(document);
+      historicalVisitRecords.add(visit);
       if (visit.visitNumber > historicalMaxVisitNumber) {
         historicalMaxVisitNumber = visit.visitNumber;
       }
@@ -365,6 +368,22 @@ class MaintenanceVisitService {
           hasActiveVisit: hasActiveVisit,
         );
 
+        final historicalConsistency = MaintenanceVisitReconciliation.inspect(
+          visits: historicalVisitRecords,
+        );
+        // The complaint document is the transaction lock. A preflight query
+        // can be stale after another transaction commits, so a counter ahead
+        // of the preflight count is accepted as the newer authoritative
+        // value. A historical count ahead of the complaint is only repaired
+        // when the existing numbering is contiguous; gaps/duplicates are
+        // rejected rather than silently renumbered.
+        if (historicalVisitRecords.length > complaint.visitCount &&
+            !historicalConsistency.isConsistent) {
+          throw const MaintenanceVisitFailure(
+            MaintenanceVisitFailureCode.malformedData,
+            'Historical visit numbers require reconciliation before a new visit can be started.',
+          );
+        }
         final visitNumber =
             (complaint.visitCount > historicalMaxVisitNumber
                 ? complaint.visitCount
@@ -688,7 +707,12 @@ class MaintenanceVisitService {
           .where('complaintId', isEqualTo: normalizedId)
           .get();
       final visits = snapshot.docs.map(_decodeVisit).toList()
-        ..sort((a, b) => a.visitNumber.compareTo(b.visitNumber));
+        ..sort((a, b) {
+          final numberComparison = a.visitNumber.compareTo(b.visitNumber);
+          return numberComparison != 0
+              ? numberComparison
+              : a.id.compareTo(b.id);
+        });
       return visits;
     } on FirebaseException catch (error) {
       throw _fromFirebaseException(error);
@@ -698,6 +722,51 @@ class MaintenanceVisitService {
         error.message,
       );
     }
+  }
+
+  /// Real-time visit history used by complaint and technician detail views.
+  /// The query intentionally has no limit; older visits are part of the
+  /// complaint's audit history and must remain visible.
+  Stream<List<MaintenanceVisit>> watchMaintenanceVisits(String complaintId) {
+    final normalizedId = _validId(complaintId, 'Complaint ID');
+    return _firestore
+        .collection(FirestoreCollections.maintenanceVisits)
+        .where('complaintId', isEqualTo: normalizedId)
+        .snapshots()
+        .map((snapshot) {
+          final visits = snapshot.docs.map(_decodeVisit).toList()
+            ..sort((a, b) {
+              final numberComparison = a.visitNumber.compareTo(b.visitNumber);
+              return numberComparison != 0
+                  ? numberComparison
+                  : a.id.compareTo(b.id);
+            });
+          return visits;
+        });
+  }
+
+  /// Read-only legacy-data audit. It is deliberately separate from the
+  /// workflow and never writes or renumbers production records.
+  Future<MaintenanceVisitConsistencyReport> inspectComplaintVisitConsistency(
+    String complaintId,
+  ) async {
+    final normalizedId = _validId(complaintId, 'Complaint ID');
+    final complaintSnapshot = await _firestore
+        .collection(FirestoreCollections.complaints)
+        .doc(normalizedId)
+        .get();
+    if (!complaintSnapshot.exists || complaintSnapshot.data() == null) {
+      throw const MaintenanceVisitFailure(
+        MaintenanceVisitFailureCode.complaintNotFound,
+      );
+    }
+    final visits = await getMaintenanceVisits(normalizedId);
+    final data = complaintSnapshot.data()!;
+    return MaintenanceVisitReconciliation.inspect(
+      visits: visits,
+      storedVisitCount: (data['visitCount'] as num?)?.toInt(),
+      storedRepeatFlag: data['isRepeatVisit'] as bool?,
+    );
   }
 
   String _requireUid() {

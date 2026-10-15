@@ -201,6 +201,34 @@ occupancy from a mutable current tenant document.
 Full complaint, maintenance, rent, audit, and property CRUD are outside
 GRIH-010.
 
+## Maintenance visit history and repeat-visit invariants (GRIH-025)
+
+`maintenance_visits/{visitId}` is the authoritative history for technician
+visits. Each valid started visit has one immutable sequence position for its
+complaint and stores `complaintId`, `technicianId`, `visitNumber`,
+`startedAt`, `completedAt`, `observation`, `actionTaken`, `outcome`,
+`isResolved`, `followUpRequired`, `followUpNotes`, `resolutionSummary`, and
+the idempotency `operationId` where supplied. A visit is created when a
+technician starts work; completion updates that visit and does not increment
+the complaint counter again. Follow-up completion is also an update to the
+recorded visit, not a second count.
+
+For current data, `complaints/{complaintId}.visitCount` equals the number of
+valid stored visit records and `isRepeatVisit` is derived as
+`visitCount > 1`. The complaint document is the transaction lock used while
+allocating the next `visitNumber`; `activeVisitId` prevents a second active
+visit for the same complaint. A caller-provided `operationId` makes repeated
+start requests idempotent. The service rejects malformed historical numbering
+instead of silently renumbering records.
+
+History reads filter by `complaintId` and sort client-side by `visitNumber`
+then document ID. They currently have no result limit, so no additional
+composite index is required for the history query. The read-only
+`MaintenanceVisitReconciliation` service reports stale counts/flags, duplicate
+or gapped numbering, and the derived repair values; it never writes, deletes,
+or renumbers production records. Any migration of legacy data must be an
+explicit, reviewed Admin/emulator operation outside the normal client flow.
+
 ## Technician Assigned-Work Queue (GRIH-018)
 
 Technicians view active complaints assigned to them in real time.

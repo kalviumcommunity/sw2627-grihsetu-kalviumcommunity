@@ -11,6 +11,7 @@ import '../core/enums/user_role.dart';
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/complaint.dart';
 import '../core/models/complaint_audit_event.dart';
+import '../core/models/maintenance_visit.dart';
 import '../core/models/user.dart';
 import '../services/auth_service.dart';
 import '../services/complaint_audit_service.dart';
@@ -153,6 +154,16 @@ abstract interface class ComplaintRepository {
 
   /// Loads all audit events for a complaint.
   Future<List<ComplaintAuditEvent>> loadAuditEvents(String complaintId);
+
+  /// Streams every stored maintenance visit for a complaint in visit-number
+  /// order. This is the authoritative source for visit history; audit events
+  /// remain the source for workflow activity.
+  Stream<List<MaintenanceVisit>> watchMaintenanceVisits(String complaintId) =>
+      Stream<List<MaintenanceVisit>>.value(const <MaintenanceVisit>[]);
+
+  /// Loads every stored maintenance visit for a complaint.
+  Future<List<MaintenanceVisit>> loadMaintenanceVisits(String complaintId) =>
+      Future<List<MaintenanceVisit>>.value(const <MaintenanceVisit>[]);
 
   /// Appends an audit event to a complaint's history.
   Future<void> appendAuditEvent(ComplaintAuditEvent event);
@@ -607,6 +618,16 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   }
 
   @override
+  Stream<List<MaintenanceVisit>> watchMaintenanceVisits(String complaintId) {
+    return _visitService.watchMaintenanceVisits(complaintId);
+  }
+
+  @override
+  Future<List<MaintenanceVisit>> loadMaintenanceVisits(String complaintId) {
+    return _visitService.getMaintenanceVisits(complaintId);
+  }
+
+  @override
   Future<void> appendAuditEvent(ComplaintAuditEvent event) async {
     final ref = _firestore
         .collection(FirestoreCollections.auditEvents)
@@ -794,10 +815,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         VisitWorkflowStep.repairing => ComplaintAuditEventType.repairStarted,
         // Completion is submitted through completeVisit so required fields
         // and the outcome cannot be bypassed.
-        VisitWorkflowStep.completed =>
-          throw const ComplaintValidationException(
-            'Complete the visit using the completion form.',
-          ),
+        VisitWorkflowStep.completed => throw const ComplaintValidationException(
+          'Complete the visit using the completion form.',
+        ),
       };
 
       await _appendVisitAuditEvent(
@@ -814,22 +834,19 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     } on ComplaintFailure {
       rethrow;
     } on MaintenanceVisitFailure catch (error) {
-      throw ComplaintFailure(
-        switch (error.code) {
-          MaintenanceVisitFailureCode.unauthenticated =>
-            ComplaintFailureCode.unauthenticated,
-          MaintenanceVisitFailureCode.unauthorized =>
-            ComplaintFailureCode.permissionDenied,
-          MaintenanceVisitFailureCode.complaintNotFound =>
-            ComplaintFailureCode.notFound,
-          MaintenanceVisitFailureCode.validation ||
-          MaintenanceVisitFailureCode.invalidStatus ||
-          MaintenanceVisitFailureCode.duplicateActiveVisit ||
-          MaintenanceVisitFailureCode.conflict => ComplaintFailureCode.conflict,
-          _ => ComplaintFailureCode.write,
-        },
-        error.message,
-      );
+      throw ComplaintFailure(switch (error.code) {
+        MaintenanceVisitFailureCode.unauthenticated =>
+          ComplaintFailureCode.unauthenticated,
+        MaintenanceVisitFailureCode.unauthorized =>
+          ComplaintFailureCode.permissionDenied,
+        MaintenanceVisitFailureCode.complaintNotFound =>
+          ComplaintFailureCode.notFound,
+        MaintenanceVisitFailureCode.validation ||
+        MaintenanceVisitFailureCode.invalidStatus ||
+        MaintenanceVisitFailureCode.duplicateActiveVisit ||
+        MaintenanceVisitFailureCode.conflict => ComplaintFailureCode.conflict,
+        _ => ComplaintFailureCode.write,
+      }, error.message);
     } on FirebaseException catch (error) {
       throw _fromFirebaseException(error);
     }
@@ -904,12 +921,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       // Persist part entries before completion because the completion form
       // submits them as one input object rather than calling addPart itself.
       for (final part in completion.parts) {
-        await addPart(
-          normalizedComplaintId,
-          part,
-          actorId: actor,
-          role: role,
-        );
+        await addPart(normalizedComplaintId, part, actorId: actor, role: role);
       }
       await _visitService.completeMaintenanceVisit(
         complaintId: normalizedComplaintId,
@@ -944,7 +956,8 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       request.details,
       if (request.suggestedDate != null)
         'Suggested date: ${request.suggestedDate!.toIso8601String()}',
-      if (request.suggestedSlot != null) 'Suggested slot: ${request.suggestedSlot}',
+      if (request.suggestedSlot != null)
+        'Suggested slot: ${request.suggestedSlot}',
       if (request.partsToBring.isNotEmpty)
         'Parts to bring: ${request.partsToBring.join(', ')}',
     ].whereType<String>().where((item) => item.trim().isNotEmpty).join('\n');
@@ -1074,7 +1087,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
 
   static String _validId(String value, String label) {
     final normalized = value.trim();
-    if (normalized.isEmpty || normalized.contains('/') || normalized.length > 128) {
+    if (normalized.isEmpty ||
+        normalized.contains('/') ||
+        normalized.length > 128) {
       throw ComplaintValidationException('$label is invalid.');
     }
     return normalized;
@@ -1101,6 +1116,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
 
   final List<Complaint> _complaints;
   final Map<String, List<ComplaintAuditEvent>> _auditEvents;
+  final Map<String, List<MaintenanceVisit>> _maintenanceVisits = {};
   final Duration streamDelay;
   bool simulateFailure = false;
   Duration operationDelay = Duration.zero;
@@ -1109,9 +1125,12 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   final Map<String, StreamController<Complaint?>> _complaintControllers = {};
   final Map<String, StreamController<List<ComplaintAuditEvent>>>
   _auditControllers = {};
+  final Map<String, StreamController<List<MaintenanceVisit>>>
+  _visitControllers = {};
 
   void _seedDefaultEvents() {
     for (final c in _complaints) {
+      _seedDefaultVisits(c);
       if (!_auditEvents.containsKey(c.id)) {
         final events = <ComplaintAuditEvent>[
           ComplaintAuditEvent(
@@ -1204,6 +1223,42 @@ class InMemoryComplaintRepository implements ComplaintRepository {
         _auditEvents[c.id] = events;
       }
     }
+  }
+
+  void _seedDefaultVisits(Complaint complaint) {
+    if (_maintenanceVisits.containsKey(complaint.id) ||
+        complaint.visitCount == 0) {
+      return;
+    }
+    final startedAt =
+        complaint.firstAssignedAt ??
+        complaint.createdAt ??
+        DateTime(2026, 10, 1);
+    _maintenanceVisits[complaint.id] = List.generate(complaint.visitCount, (
+      index,
+    ) {
+      final completed =
+          complaint.status == ComplaintStatus.resolved ||
+          complaint.status == ComplaintStatus.closed;
+      return MaintenanceVisit(
+        id: '${complaint.id}_legacy_visit_${index + 1}',
+        complaintId: complaint.id,
+        technicianId: complaint.currentTechnicianId ?? 'usr_002',
+        visitNumber: index + 1,
+        startedAt: startedAt.add(Duration(days: index)),
+        completedAt: completed
+            ? startedAt.add(Duration(days: index, hours: 2))
+            : null,
+        observation: completed ? 'Legacy visit record' : null,
+        actionTaken: completed ? 'Legacy visit record' : null,
+        outcome: completed ? MaintenanceVisitOutcome.resolved : null,
+        isResolved: completed,
+        followUpRequired: false,
+        followUpNotes: null,
+        resolutionSummary: completed ? 'Imported legacy visit' : null,
+        operationId: '${complaint.id}_legacy_visit_${index + 1}',
+      );
+    });
   }
 
   /// Seeds an external or test complaint and emits updates.
@@ -1439,6 +1494,43 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   }
 
   @override
+  Stream<List<MaintenanceVisit>> watchMaintenanceVisits(String complaintId) {
+    if (!_visitControllers.containsKey(complaintId) ||
+        _visitControllers[complaintId]!.isClosed) {
+      _visitControllers[complaintId] =
+          StreamController<List<MaintenanceVisit>>.broadcast();
+    }
+    final controller = _visitControllers[complaintId]!;
+    scheduleMicrotask(() {
+      if (!controller.isClosed) controller.add(_sortedVisits(complaintId));
+    });
+    return controller.stream;
+  }
+
+  @override
+  Future<List<MaintenanceVisit>> loadMaintenanceVisits(String complaintId) {
+    return Future<List<MaintenanceVisit>>.value(_sortedVisits(complaintId));
+  }
+
+  List<MaintenanceVisit> _sortedVisits(String complaintId) {
+    final visits = List<MaintenanceVisit>.from(
+      _maintenanceVisits[complaintId] ?? const <MaintenanceVisit>[],
+    );
+    visits.sort((a, b) {
+      final numberComparison = a.visitNumber.compareTo(b.visitNumber);
+      return numberComparison != 0 ? numberComparison : a.id.compareTo(b.id);
+    });
+    return visits;
+  }
+
+  void _emitVisits(String complaintId) {
+    final controller = _visitControllers[complaintId];
+    if (controller != null && !controller.isClosed) {
+      controller.add(_sortedVisits(complaintId));
+    }
+  }
+
+  @override
   Future<void> appendAuditEvent(ComplaintAuditEvent event) async {
     final list = _auditEvents.putIfAbsent(event.complaintId, () => []);
     list.add(event);
@@ -1474,7 +1566,6 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       currentTechnicianId: current.currentTechnicianId,
       activeVisitId: current.activeVisitId,
       visitCount: current.visitCount,
-      isRepeatVisit: current.isRepeatVisit,
       reopenCount: newStatus == ComplaintStatus.reopened
           ? current.reopenCount + 1
           : current.reopenCount,
@@ -1560,7 +1651,6 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       currentTechnicianId: current.currentTechnicianId,
       activeVisitId: current.activeVisitId,
       visitCount: current.visitCount,
-      isRepeatVisit: current.isRepeatVisit,
       reopenCount: current.reopenCount,
       createdBy: current.createdBy,
       createdAt: current.createdAt,
@@ -1625,7 +1715,6 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       currentTechnicianId: technicianId,
       activeVisitId: current.activeVisitId,
       visitCount: current.visitCount,
-      isRepeatVisit: current.isRepeatVisit,
       reopenCount: current.reopenCount,
       createdBy: current.createdBy,
       createdAt: current.createdAt,
@@ -1750,6 +1839,34 @@ class InMemoryComplaintRepository implements ComplaintRepository {
 
     final current = _complaints[index];
     final now = DateTime.now();
+    var activeVisitId = current.activeVisitId;
+    var visitCount = current.visitCount;
+    if (step == VisitWorkflowStep.accepted &&
+        (activeVisitId == null || activeVisitId.trim().isEmpty)) {
+      visitCount += 1;
+      activeVisitId = '${current.id}_visit_$visitCount';
+      _maintenanceVisits
+          .putIfAbsent(current.id, () => [])
+          .add(
+            MaintenanceVisit(
+              id: activeVisitId,
+              complaintId: current.id,
+              technicianId: actorId,
+              visitNumber: visitCount,
+              startedAt: now,
+              completedAt: null,
+              observation: null,
+              actionTaken: null,
+              outcome: null,
+              isResolved: false,
+              followUpRequired: false,
+              followUpNotes: null,
+              resolutionSummary: null,
+              operationId: activeVisitId,
+            ),
+          );
+      _emitVisits(current.id);
+    }
 
     ComplaintStatus newStatus = current.status;
     if (step == VisitWorkflowStep.inspection ||
@@ -1768,9 +1885,8 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       priority: current.priority,
       status: newStatus,
       currentTechnicianId: current.currentTechnicianId ?? actorId,
-      activeVisitId: current.activeVisitId,
-      visitCount: current.visitCount,
-      isRepeatVisit: current.isRepeatVisit,
+      activeVisitId: activeVisitId,
+      visitCount: visitCount,
       reopenCount: current.reopenCount,
       createdBy: current.createdBy,
       createdAt: current.createdAt,
@@ -1902,6 +2018,47 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     final current = _complaints[index];
     final now = DateTime.now();
 
+    var activeVisitId = current.activeVisitId;
+    var visitCount = current.visitCount;
+    if (activeVisitId == null || activeVisitId.trim().isEmpty) {
+      // The in-memory adapter supports the legacy completion form being
+      // opened directly in previews/tests. Production Firestore completion
+      // still requires an explicitly started active visit.
+      visitCount += 1;
+      activeVisitId = '${current.id}_visit_$visitCount';
+      _maintenanceVisits
+          .putIfAbsent(current.id, () => [])
+          .add(
+            MaintenanceVisit(
+              id: activeVisitId,
+              complaintId: current.id,
+              technicianId: actorId,
+              visitNumber: visitCount,
+              startedAt: now,
+              completedAt: null,
+              observation: null,
+              actionTaken: null,
+              outcome: null,
+              isResolved: false,
+              followUpRequired: false,
+              followUpNotes: null,
+              resolutionSummary: null,
+              operationId: activeVisitId,
+            ),
+          );
+    }
+    _replaceInMemoryVisit(
+      complaintId: current.id,
+      visitId: activeVisitId,
+      technicianId: actorId,
+      completedAt: now,
+      observation: completion.whatWasFound,
+      actionTaken: completion.whatWasRepaired,
+      outcome: MaintenanceVisitOutcome.resolved,
+      isResolved: true,
+      resolutionSummary: completion.tenantResolutionNotes,
+    );
+
     final updated = Complaint(
       id: current.id,
       tenantId: current.tenantId,
@@ -1913,9 +2070,8 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       priority: current.priority,
       status: ComplaintStatus.resolved,
       currentTechnicianId: current.currentTechnicianId ?? actorId,
-      activeVisitId: current.activeVisitId,
-      visitCount: current.visitCount,
-      isRepeatVisit: current.isRepeatVisit,
+      activeVisitId: null,
+      visitCount: visitCount,
       reopenCount: current.reopenCount,
       createdBy: current.createdBy,
       createdAt: current.createdAt,
@@ -1983,6 +2139,43 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     return updated;
   }
 
+  void _replaceInMemoryVisit({
+    required String complaintId,
+    required String visitId,
+    required String technicianId,
+    required DateTime completedAt,
+    required String observation,
+    required String actionTaken,
+    required MaintenanceVisitOutcome outcome,
+    required bool isResolved,
+    String? followUpNotes,
+    String? resolutionSummary,
+  }) {
+    final visits = _maintenanceVisits.putIfAbsent(complaintId, () => []);
+    final index = visits.indexWhere((visit) => visit.id == visitId);
+    if (index == -1) return;
+    final current = visits[index];
+    visits[index] = MaintenanceVisit(
+      id: current.id,
+      complaintId: current.complaintId,
+      technicianId: current.technicianId.isEmpty
+          ? technicianId
+          : current.technicianId,
+      visitNumber: current.visitNumber,
+      startedAt: current.startedAt,
+      completedAt: completedAt,
+      observation: observation.trim(),
+      actionTaken: actionTaken.trim(),
+      outcome: outcome,
+      isResolved: isResolved,
+      followUpRequired: followUpNotes != null,
+      followUpNotes: followUpNotes,
+      resolutionSummary: resolutionSummary,
+      operationId: current.operationId,
+    );
+    _emitVisits(complaintId);
+  }
+
   @override
   Future<Complaint> requestFollowUpVisit(
     String complaintId,
@@ -2006,6 +2199,46 @@ class InMemoryComplaintRepository implements ComplaintRepository {
 
     final current = _complaints[index];
     final now = DateTime.now();
+    var activeVisitId = current.activeVisitId;
+    var visitCount = current.visitCount;
+    if (activeVisitId == null || activeVisitId.trim().isEmpty) {
+      visitCount += 1;
+      activeVisitId = '${current.id}_visit_$visitCount';
+      _maintenanceVisits
+          .putIfAbsent(current.id, () => [])
+          .add(
+            MaintenanceVisit(
+              id: activeVisitId,
+              complaintId: current.id,
+              technicianId: actorId,
+              visitNumber: visitCount,
+              startedAt: now,
+              completedAt: null,
+              observation: null,
+              actionTaken: null,
+              outcome: null,
+              isResolved: false,
+              followUpRequired: false,
+              followUpNotes: null,
+              resolutionSummary: null,
+              operationId: activeVisitId,
+            ),
+          );
+    }
+    _replaceInMemoryVisit(
+      complaintId: current.id,
+      visitId: activeVisitId,
+      technicianId: actorId,
+      completedAt: now,
+      observation: request.details,
+      actionTaken: 'Follow-up required: ${request.reason.label}',
+      outcome: request.reason == FollowUpReason.partNotAvailable
+          ? MaintenanceVisitOutcome.waitingForParts
+          : MaintenanceVisitOutcome.unresolved,
+      isResolved: false,
+      followUpNotes: request.details,
+      resolutionSummary: request.details,
+    );
 
     final updated = Complaint(
       id: current.id,
@@ -2018,9 +2251,8 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       priority: current.priority,
       status: ComplaintStatus.assigned,
       currentTechnicianId: current.currentTechnicianId ?? actorId,
-      activeVisitId: current.activeVisitId,
-      visitCount: current.visitCount + 1,
-      isRepeatVisit: true,
+      activeVisitId: null,
+      visitCount: visitCount,
       reopenCount: current.reopenCount,
       createdBy: current.createdBy,
       createdAt: current.createdAt,

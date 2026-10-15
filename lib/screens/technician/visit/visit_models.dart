@@ -1,4 +1,5 @@
 import '../../../core/models/complaint_audit_event.dart';
+import '../../../core/models/maintenance_visit.dart';
 import '../../../utils/visit_validators.dart';
 
 /// Completion input submitted when a technician resolves a visit.
@@ -128,12 +129,24 @@ class PreviousVisitSummary {
     required this.technicianName,
     required this.outcome,
     this.notes,
+    this.visitNumber,
   });
 
   final DateTime date;
   final String technicianName;
   final String outcome;
   final String? notes;
+  final int? visitNumber;
+
+  factory PreviousVisitSummary.fromMaintenanceVisit(MaintenanceVisit visit) {
+    return PreviousVisitSummary(
+      date: visit.startedAt ?? visit.completedAt ?? DateTime(1970),
+      technicianName: visit.technicianId,
+      outcome: visit.outcome?.value ?? 'In progress',
+      notes: visit.resolutionSummary ?? visit.observation,
+      visitNumber: visit.visitNumber,
+    );
+  }
 
   static List<PreviousVisitSummary> deriveFromEvents(
     List<ComplaintAuditEvent> events,
