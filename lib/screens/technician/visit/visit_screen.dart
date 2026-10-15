@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/enums/complaint_status.dart';
 import '../../../core/models/complaint.dart';
 import '../../../core/models/complaint_audit_event.dart';
+import '../../../core/models/maintenance_visit.dart';
 import '../../../repositories/complaint_repository.dart';
 import '../../../services/media_picker.dart';
 import '../../../theme/app_palette.dart';
@@ -64,9 +65,11 @@ class _VisitScreenState extends State<VisitScreen> {
 
   StreamSubscription<Complaint?>? _complaintSub;
   StreamSubscription<List<ComplaintAuditEvent>>? _eventsSub;
+  StreamSubscription<List<MaintenanceVisit>>? _visitsSub;
 
   Complaint? _complaint;
   List<ComplaintAuditEvent> _events = const [];
+  List<MaintenanceVisit> _visits = const [];
   bool _isLoading = true;
   Object? _error;
   bool _isActionInProgress = false;
@@ -106,6 +109,7 @@ class _VisitScreenState extends State<VisitScreen> {
 
     _complaintSub?.cancel();
     _eventsSub?.cancel();
+    _visitsSub?.cancel();
 
     _complaintSub = _repository
         .watchComplaint(widget.complaintId)
@@ -143,6 +147,19 @@ class _VisitScreenState extends State<VisitScreen> {
             });
           },
         );
+
+    _visitsSub = _repository
+        .watchMaintenanceVisits(widget.complaintId)
+        .listen(
+          (visits) {
+            if (!mounted) return;
+            setState(() => _visits = visits);
+          },
+          onError: (Object err) {
+            if (!mounted) return;
+            setState(() => _error = err);
+          },
+        );
   }
 
   void _populatePhotosFromEvents(List<ComplaintAuditEvent> events) {
@@ -167,6 +184,7 @@ class _VisitScreenState extends State<VisitScreen> {
     _tickerTimer?.cancel();
     _complaintSub?.cancel();
     _eventsSub?.cancel();
+    _visitsSub?.cancel();
     super.dispose();
   }
 
@@ -353,8 +371,12 @@ class _VisitScreenState extends State<VisitScreen> {
     final c = _complaint!;
     final nextStep = resolveNextVisitStepFromEvents(_events, c.status.value);
     final workLog = VisitWorkLog.fromEvents(_events);
-    final previousVisits = PreviousVisitSummary.deriveFromEvents(_events);
-    final isRepeat = c.isRepeatVisit || c.visitCount > 0;
+    final previousVisits = _visits.isNotEmpty
+        ? _visits
+              .map(PreviousVisitSummary.fromMaintenanceVisit)
+              .toList(growable: false)
+        : PreviousVisitSummary.deriveFromEvents(_events);
+    final isRepeat = c.isRepeatVisit;
 
     return Scaffold(
       backgroundColor: palette.canvas,
@@ -654,7 +676,9 @@ class _VisitScreenState extends State<VisitScreen> {
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        v.technicianName,
+                                        v.visitNumber == null
+                                            ? v.technicianName
+                                            : 'Visit #${v.visitNumber} · ${v.technicianName}',
                                         style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           color: palette.ink,

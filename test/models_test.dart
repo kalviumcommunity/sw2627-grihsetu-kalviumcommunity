@@ -39,6 +39,28 @@ void main() {
       expect(restored.status, ComplaintStatus.inProgress);
       expect(restored.isRepeatVisit, isTrue);
     });
+
+    test(
+      'derives repeat status instead of trusting a stale persisted flag',
+      () {
+        final restored = Complaint.fromMap({
+          'tenantId': 'ten_1',
+          'propertyId': 'prop_1',
+          'unitId': 'unit_1',
+          'title': 'Leak',
+          'description': 'Leak',
+          'category': 'plumbing',
+          'priority': 'high',
+          'status': 'open',
+          'visitCount': 2,
+          'isRepeatVisit': false,
+          'createdBy': 'usr_ops',
+        }, id: 'cmp_stale');
+
+        expect(restored.isRepeatVisit, isTrue);
+        expect(restored.toFirestoreMap()['isRepeatVisit'], isTrue);
+      },
+    );
   });
 
   group('AppUser Model Tests', () {

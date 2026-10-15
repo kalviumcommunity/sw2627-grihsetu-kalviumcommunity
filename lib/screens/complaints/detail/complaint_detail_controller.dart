@@ -7,6 +7,7 @@ import '../../../core/enums/complaint_priority.dart';
 import '../../../core/enums/complaint_status.dart';
 import '../../../core/models/complaint.dart';
 import '../../../core/models/complaint_audit_event.dart';
+import '../../../core/models/maintenance_visit.dart';
 import '../../../repositories/complaint_repository.dart';
 import '../../../utils/visit_validators.dart';
 import 'complaint_detail_models.dart';
@@ -35,6 +36,7 @@ class ComplaintDetailController extends ChangeNotifier {
                events: (initialEvents != null && initialEvents.isNotEmpty)
                    ? initialEvents
                    : _buildDefaultInitialEvents(initialComplaint),
+               visits: const <MaintenanceVisit>[],
                referenceNow: referenceNow,
              )
            : const ComplaintDetailState(status: ComplaintDetailStatus.loading) {
@@ -135,10 +137,20 @@ class ComplaintDetailController extends ChangeNotifier {
 
   StreamSubscription<Complaint?>? _complaintSub;
   StreamSubscription<List<ComplaintAuditEvent>>? _eventsSub;
+  StreamSubscription<List<MaintenanceVisit>>? _visitsSub;
 
   Complaint? _latestComplaint;
   List<ActivityEvent> _latestEvents = const [];
+  List<MaintenanceVisit> _latestVisits = const [];
   bool _isDisposed = false;
+
+  Stream<List<MaintenanceVisit>> _watchMaintenanceVisits() {
+    if (repository is FirestoreComplaintRepository ||
+        repository is InMemoryComplaintRepository) {
+      return repository.watchMaintenanceVisits(complaintId);
+    }
+    return Stream<List<MaintenanceVisit>>.value(const <MaintenanceVisit>[]);
+  }
 
   void _initStreams() {
     _complaintSub = repository
@@ -161,6 +173,7 @@ class ComplaintDetailController extends ChangeNotifier {
                   status: ComplaintDetailStatus.data,
                   complaint: _latestComplaint,
                   events: _latestEvents,
+                  visits: _latestVisits,
                   referenceNow: _referenceNow,
                 ),
               );
@@ -197,6 +210,7 @@ class ComplaintDetailController extends ChangeNotifier {
                   status: ComplaintDetailStatus.data,
                   complaint: _latestComplaint,
                   events: _latestEvents,
+                  visits: _latestVisits,
                   referenceNow: _referenceNow,
                 ),
               );
@@ -214,6 +228,37 @@ class ComplaintDetailController extends ChangeNotifier {
             }
           },
         );
+
+    _visitsSub = _watchMaintenanceVisits().listen(
+      (visits) {
+        if (_isDisposed) return;
+        _latestVisits = visits;
+        if (_latestComplaint != null) {
+          _updateState(
+            ComplaintDetailState(
+              status: ComplaintDetailStatus.data,
+              complaint: _latestComplaint,
+              events: _latestEvents,
+              visits: _latestVisits,
+              referenceNow: _referenceNow,
+            ),
+          );
+        }
+      },
+      onError: (Object error) {
+        if (_isDisposed || _latestComplaint == null) return;
+        _updateState(
+          ComplaintDetailState(
+            status: ComplaintDetailStatus.data,
+            complaint: _latestComplaint,
+            events: _latestEvents,
+            visits: _latestVisits,
+            errorMessage: error.toString(),
+            referenceNow: _referenceNow,
+          ),
+        );
+      },
+    );
   }
 
   void _updateState(ComplaintDetailState newState) {
@@ -228,6 +273,7 @@ class ComplaintDetailController extends ChangeNotifier {
     );
     await _complaintSub?.cancel();
     await _eventsSub?.cancel();
+    await _visitsSub?.cancel();
     _initStreams();
   }
 
@@ -266,6 +312,7 @@ class ComplaintDetailController extends ChangeNotifier {
         status: ComplaintDetailStatus.data,
         complaint: _latestComplaint,
         events: _latestEvents,
+        visits: _latestVisits,
         referenceNow: _referenceNow,
       ),
     );
@@ -431,6 +478,7 @@ class ComplaintDetailController extends ChangeNotifier {
     _isDisposed = true;
     _complaintSub?.cancel();
     _eventsSub?.cancel();
+    _visitsSub?.cancel();
     super.dispose();
   }
 }

@@ -98,8 +98,7 @@ class Complaint {
     this.resolvedAt,
     this.closedAt,
     this.updatedAt,
-  }) : isRepeatVisit =
-           isRepeatVisit ?? (visitCount > AppConstants.repeatVisitThreshold);
+  }) : isRepeatVisit = visitCount > AppConstants.repeatVisitThreshold;
 
   /// Returns required-field errors before persistence.
   List<String> validate() => CreateComplaintInput(
@@ -155,9 +154,10 @@ class Complaint {
       currentTechnicianId: map['currentTechnicianId'] as String?,
       activeVisitId: map['activeVisitId'] as String?,
       visitCount: visitCount,
-      isRepeatVisit:
-          map['isRepeatVisit'] as bool? ??
-          (visitCount > AppConstants.repeatVisitThreshold),
+      // Repeat status is a derived value. The persisted flag is retained for
+      // backwards-compatible reads, but never becomes a second source of
+      // truth when legacy data is stale or manually edited.
+      isRepeatVisit: visitCount > AppConstants.repeatVisitThreshold,
       reopenCount: (map['reopenCount'] as num?)?.toInt() ?? 0,
       createdBy: map['createdBy'] as String? ?? '',
       createdAt: dateTimeFromFirestore(map['createdAt']),
@@ -206,7 +206,9 @@ class Complaint {
         ? this.activeVisitId
         : activeVisitId as String?,
     visitCount: visitCount ?? this.visitCount,
-    isRepeatVisit: isRepeatVisit ?? this.isRepeatVisit,
+    isRepeatVisit: visitCount != null
+        ? visitCount > AppConstants.repeatVisitThreshold
+        : this.isRepeatVisit,
     reopenCount: reopenCount ?? this.reopenCount,
     createdBy: createdBy ?? this.createdBy,
     createdAt: identical(createdAt, _copyWithUnset)
