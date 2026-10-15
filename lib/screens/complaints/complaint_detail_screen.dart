@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app/user_role.dart';
+import '../../core/enums/complaint_status.dart';
 import '../../core/models/complaint.dart';
-import '../../core/models/maintenance_visit.dart';
 import '../../repositories/assignment_repository.dart';
 import '../../repositories/complaint_repository.dart';
 import '../../theme/app_palette.dart';
@@ -14,6 +14,8 @@ import '../../widgets/audit_timeline.dart' as legacy_audit;
 import '../../widgets/complaint_card.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/empty_state.dart';
+import '../../utils/visit_history.dart' as vh;
+import '../../widgets/repeat_indicator.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/skeleton_box.dart';
 import '../../widgets/status_badge.dart';
@@ -21,11 +23,13 @@ import 'detail/activity_timeline.dart';
 import 'detail/complaint_action_bar.dart';
 import 'detail/complaint_detail_controller.dart';
 import 'detail/complaint_detail_models.dart';
+import 'detail/visit_history_section.dart';
 
 export 'detail/activity_timeline.dart';
 export 'detail/complaint_action_bar.dart';
 export 'detail/complaint_detail_controller.dart';
 export 'detail/complaint_detail_models.dart';
+export 'detail/visit_history_section.dart';
 
 /// Single source of truth ComplaintDetailScreen.
 ///
@@ -356,9 +360,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               ComplaintStatusBadge(status: state.currentStatus),
               ComplaintPriorityBadge(priority: c.priority),
               if (state.isRepeatIssue)
-                const StatusBadge(
-                  label: 'Repeat issue',
-                  tone: StatusBadgeTone.warning,
+                RepeatIndicator.recurring(
+                  count: state.numberOfVisits >= 2 ? state.numberOfVisits : 2,
                 ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -534,31 +537,31 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     BuildContext context,
     ComplaintDetailState state,
   ) {
-    final palette = context.palette;
-    final visits = state.visits;
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(title: 'Visit history (${state.numberOfVisits})'),
-          const SizedBox(height: AppSpacing.sm),
-          if (visits.isEmpty)
-            Text(
-              state.numberOfVisits == 0
-                  ? 'No maintenance visits recorded yet.'
-                  : 'Visit history is still loading or requires legacy reconciliation.',
-              style: TextStyle(color: palette.muted, fontSize: 13),
-            )
-          else
-            for (final visit in visits) ...[
-              _VisitHistoryRow(visit: visit),
-              if (visit != visits.last)
-                Divider(color: palette.border, height: AppSpacing.lg),
-            ],
-        ],
-      ),
-    );
+    final complaint = state.complaint;
+    var visits = vh.visitsFromEvents(state.events);
+    if (state.visits.length > visits.length) {
+      visits = vh.visitsFromEvents(state.visits);
+    }
+    if ((complaint?.visitCount ?? 0) > visits.length) {
+      final vCount = complaint!.visitCount;
+      visits = List.generate(
+        vCount,
+        (i) => vh.VisitRecord(
+          date: complaint.createdAt ?? DateTime.now(),
+          technician: complaint.currentTechnicianId ?? 'Technician',
+          outcome:
+              i == vCount - 1 && complaint.status == ComplaintStatus.resolved
+              ? 'resolved'
+              : 'needs another visit',
+          visitNumber: i + 1,
+        ),
+      );
+    }
+    final info = complaint != null
+        ? vh.repeatInfo(complaint, const <Complaint>[])
+        : null;
+
+    return VisitHistorySection(visits: visits, repeatInfo: info);
   }
 
   // -------------------------------------------------------------
@@ -1046,84 +1049,6 @@ class _StepNode extends StatelessWidget {
       ],
     );
   }
-}
-
-class _VisitHistoryRow extends StatelessWidget {
-  const _VisitHistoryRow({required this.visit});
-
-  final MaintenanceVisit visit;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    final started = _formatTimestamp(visit.startedAt);
-    final completed = _formatTimestamp(visit.completedAt);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.xs,
-          children: [
-            Text(
-              'Visit #${visit.visitNumber}',
-              style: TextStyle(color: palette.ink, fontWeight: FontWeight.bold),
-            ),
-            if (visit.visitNumber > 1)
-              const StatusBadge(
-                label: 'Repeat visit',
-                tone: StatusBadgeTone.warning,
-              ),
-            Text(
-              'Technician: ${visit.technicianId}',
-              style: TextStyle(color: palette.muted, fontSize: 12),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Started: $started · Completed: $completed',
-          style: TextStyle(color: palette.muted, fontSize: 12),
-        ),
-        if (visit.observation != null)
-          _VisitDetail(label: 'Observation', value: visit.observation!),
-        if (visit.actionTaken != null)
-          _VisitDetail(label: 'Action', value: visit.actionTaken!),
-        if (visit.outcome != null)
-          _VisitDetail(label: 'Outcome', value: visit.outcome!.value),
-        if (visit.resolutionSummary != null)
-          _VisitDetail(
-            label: 'Resolution / follow-up',
-            value: visit.resolutionSummary!,
-          ),
-      ],
-    );
-  }
-}
-
-class _VisitDetail extends StatelessWidget {
-  const _VisitDetail({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Padding(
-      padding: const EdgeInsets.only(top: 3),
-      child: Text(
-        '$label: $value',
-        style: TextStyle(color: palette.ink, fontSize: 12, height: 1.3),
-      ),
-    );
-  }
-}
-
-String _formatTimestamp(DateTime? value) {
-  if (value == null) return 'Pending';
-  return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year} '
-      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 }
 
 class _SummaryRow extends StatelessWidget {

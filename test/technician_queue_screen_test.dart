@@ -29,6 +29,7 @@ class TestTechnicianComplaintRepository implements ComplaintRepository {
     _latest = List<Complaint>.of(data);
     _controller.add(data);
   }
+
   void emitError(Object error) => _controller.addError(error);
 
   @override

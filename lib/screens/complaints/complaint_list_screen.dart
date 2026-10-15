@@ -153,8 +153,8 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
         UserRole.technician => app.UserRole.technician,
         UserRole.tenant => app.UserRole.tenant,
         UserRole.propertyOwner => app.UserRole.owner,
-        UserRole.propertyOperations || UserRole.complaintOperations =>
-          app.UserRole.staff,
+        UserRole.propertyOperations ||
+        UserRole.complaintOperations => app.UserRole.staff,
         null => app.UserRole.staff,
       },
       currentUserId: widget.profile?.id,
