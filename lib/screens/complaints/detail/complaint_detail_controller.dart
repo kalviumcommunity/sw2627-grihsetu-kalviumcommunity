@@ -9,6 +9,7 @@ import '../../../core/models/complaint.dart';
 import '../../../core/models/complaint_audit_event.dart';
 import '../../../core/models/maintenance_visit.dart';
 import '../../../repositories/complaint_repository.dart';
+import '../../../services/complaint_lifecycle_service.dart';
 import '../../../utils/visit_validators.dart';
 import 'complaint_detail_models.dart';
 
@@ -447,14 +448,20 @@ class ComplaintDetailController extends ChangeNotifier {
     String? actorId,
     String? actorName,
   }) async {
-    await repository.updateComplaintStatus(
-      complaintId,
-      ComplaintStatus.closed,
-      actorId: actorId ?? currentUserId,
-      role: 'Tenant',
-      note: note ?? 'Tenant confirmed repair was successful.',
-      metadata: {'actorName': actorName ?? currentUserName},
-    );
+    if (repository is FirestoreComplaintRepository) {
+      await ComplaintLifecycleService().closeComplaint(
+        complaintId: complaintId,
+      );
+    } else {
+      await repository.updateComplaintStatus(
+        complaintId,
+        ComplaintStatus.closed,
+        actorId: actorId ?? currentUserId,
+        role: 'Tenant',
+        note: note ?? 'Tenant confirmed repair was successful.',
+        metadata: {'actorName': actorName ?? currentUserName},
+      );
+    }
   }
 
   /// Tenant reopens resolved complaint with reason.
@@ -463,14 +470,48 @@ class ComplaintDetailController extends ChangeNotifier {
     String? actorId,
     String? actorName,
   }) async {
-    await repository.updateComplaintStatus(
-      complaintId,
-      ComplaintStatus.reopened,
-      actorId: actorId ?? currentUserId,
-      role: 'Tenant',
-      note: reason,
-      metadata: {'actorName': actorName ?? currentUserName, 'reason': reason},
-    );
+    if (reason.trim().isEmpty) {
+      throw const ComplaintLifecycleFailure(
+        ComplaintLifecycleFailureCode.missingReason,
+      );
+    }
+    if (repository is FirestoreComplaintRepository) {
+      await ComplaintLifecycleService().reopenComplaint(
+        complaintId: complaintId,
+        reason: reason,
+      );
+    } else {
+      await repository.updateComplaintStatus(
+        complaintId,
+        ComplaintStatus.reopened,
+        actorId: actorId ?? currentUserId,
+        role: 'Tenant',
+        note: reason,
+        metadata: {'actorName': actorName ?? currentUserName, 'reason': reason},
+      );
+    }
+  }
+
+  Future<void> cancel({required String reason, String? actorId}) async {
+    if (reason.trim().isEmpty) {
+      throw const ComplaintLifecycleFailure(
+        ComplaintLifecycleFailureCode.missingReason,
+      );
+    }
+    if (repository is FirestoreComplaintRepository) {
+      await ComplaintLifecycleService().cancelComplaint(
+        complaintId: complaintId,
+        reason: reason,
+      );
+    } else {
+      await repository.updateComplaintStatus(
+        complaintId,
+        ComplaintStatus.cancelled,
+        actorId: actorId ?? currentUserId,
+        role: currentUserRole,
+        note: reason,
+      );
+    }
   }
 
   @override

@@ -465,6 +465,44 @@ class ComplaintActionBar extends StatelessWidget {
             label: const Text('Assign technician'),
           );
 
+    final lifecycleActions = <Widget>[];
+    if (state.currentStatus == ComplaintStatus.resolved) {
+      lifecycleActions.add(
+        FilledButton.icon(
+          key: const Key('staff_close_complaint_button'),
+          onPressed: () => _confirmClose(context),
+          icon: const Icon(Icons.lock_outline, size: 18),
+          label: const Text('Close complaint'),
+        ),
+      );
+    }
+    if (state.currentStatus == ComplaintStatus.resolved ||
+        state.currentStatus == ComplaintStatus.closed) {
+      lifecycleActions.add(
+        OutlinedButton.icon(
+          key: const Key('staff_reopen_complaint_button'),
+          onPressed: () => _showReopenDialog(context),
+          icon: const Icon(Icons.replay, size: 18),
+          label: const Text('Reopen complaint'),
+        ),
+      );
+    }
+    if ({
+      ComplaintStatus.open,
+      ComplaintStatus.assigned,
+      ComplaintStatus.waitingForParts,
+      ComplaintStatus.reopened,
+    }.contains(state.currentStatus)) {
+      lifecycleActions.add(
+        OutlinedButton.icon(
+          key: const Key('staff_cancel_complaint_button'),
+          onPressed: () => _showCancelDialog(context),
+          icon: const Icon(Icons.cancel_outlined, size: 18),
+          label: const Text('Cancel complaint'),
+        ),
+      );
+    }
+
     return [
       assignButton,
       OutlinedButton.icon(
@@ -495,7 +533,62 @@ class ComplaintActionBar extends StatelessWidget {
         icon: const Icon(Icons.note_add_outlined, size: 18),
         label: const Text('Add internal note'),
       ),
+      ...lifecycleActions,
     ];
+  }
+
+  Future<void> _confirmClose(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Close complaint?'),
+        content: const Text('Confirm that the resolved work is accepted.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await controller.confirmFixed();
+  }
+
+  void _showCancelDialog(BuildContext context) {
+    final reasonController = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel complaint'),
+        content: TextField(
+          controller: reasonController,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Reason',
+            hintText: 'Why is this complaint no longer required?',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Keep open'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) return;
+              Navigator.pop(ctx);
+              controller.cancel(reason: reason);
+            },
+            child: const Text('Cancel complaint'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openAssignmentSheet(

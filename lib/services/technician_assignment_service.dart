@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants/firestore_collections.dart';
 import '../core/enums/complaint_audit_event_type.dart';
+import '../core/domain/complaint_transition_guard.dart';
 import '../core/enums/complaint_status.dart';
 import '../core/enums/user_role.dart';
 import '../core/models/complaint.dart';
@@ -407,6 +408,12 @@ class TechnicianAssignmentService {
             assignmentType == TechnicianAssignmentType.initialAssignment
             ? ComplaintStatus.assigned
             : complaint.status;
+        if (nextStatus != complaint.status) {
+          ComplaintTransitionGuard.validateTransition(
+            complaint.status,
+            nextStatus,
+          );
+        }
         final complaintUpdate = <String, dynamic>{
           'currentTechnicianId': normalizedTechnicianId,
           'updatedAt': FieldValue.serverTimestamp(),
