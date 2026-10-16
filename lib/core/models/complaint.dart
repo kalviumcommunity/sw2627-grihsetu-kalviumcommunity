@@ -75,6 +75,13 @@ class Complaint {
   final DateTime? firstAssignedAt;
   final DateTime? resolvedAt;
   final DateTime? closedAt;
+  final String? closedBy;
+  final DateTime? reopenedAt;
+  final String? reopenedBy;
+  final String? reopenReason;
+  final DateTime? cancelledAt;
+  final String? cancelledBy;
+  final String? cancellationReason;
   final DateTime? updatedAt;
 
   const Complaint({
@@ -97,6 +104,13 @@ class Complaint {
     this.firstAssignedAt,
     this.resolvedAt,
     this.closedAt,
+    this.closedBy,
+    this.reopenedAt,
+    this.reopenedBy,
+    this.reopenReason,
+    this.cancelledAt,
+    this.cancelledBy,
+    this.cancellationReason,
     this.updatedAt,
   }) : isRepeatVisit = visitCount > AppConstants.repeatVisitThreshold;
 
@@ -136,6 +150,13 @@ class Complaint {
       'firstAssignedAt': timestampFromDateTime(firstAssignedAt),
     if (resolvedAt != null) 'resolvedAt': timestampFromDateTime(resolvedAt),
     if (closedAt != null) 'closedAt': timestampFromDateTime(closedAt),
+    if (closedBy != null) 'closedBy': closedBy,
+    if (reopenedAt != null) 'reopenedAt': timestampFromDateTime(reopenedAt),
+    if (reopenedBy != null) 'reopenedBy': reopenedBy,
+    if (reopenReason != null) 'reopenReason': reopenReason,
+    if (cancelledAt != null) 'cancelledAt': timestampFromDateTime(cancelledAt),
+    if (cancelledBy != null) 'cancelledBy': cancelledBy,
+    if (cancellationReason != null) 'cancellationReason': cancellationReason,
     if (updatedAt != null) 'updatedAt': timestampFromDateTime(updatedAt),
   };
 
@@ -164,6 +185,13 @@ class Complaint {
       firstAssignedAt: dateTimeFromFirestore(map['firstAssignedAt']),
       resolvedAt: dateTimeFromFirestore(map['resolvedAt']),
       closedAt: dateTimeFromFirestore(map['closedAt']),
+      closedBy: map['closedBy'] as String?,
+      reopenedAt: dateTimeFromFirestore(map['reopenedAt']),
+      reopenedBy: map['reopenedBy'] as String?,
+      reopenReason: map['reopenReason'] as String?,
+      cancelledAt: dateTimeFromFirestore(map['cancelledAt']),
+      cancelledBy: map['cancelledBy'] as String?,
+      cancellationReason: map['cancellationReason'] as String?,
       updatedAt: dateTimeFromFirestore(map['updatedAt']),
     );
   }
@@ -188,6 +216,13 @@ class Complaint {
     Object? firstAssignedAt = _copyWithUnset,
     Object? resolvedAt = _copyWithUnset,
     Object? closedAt = _copyWithUnset,
+    Object? closedBy = _copyWithUnset,
+    Object? reopenedAt = _copyWithUnset,
+    Object? reopenedBy = _copyWithUnset,
+    Object? reopenReason = _copyWithUnset,
+    Object? cancelledAt = _copyWithUnset,
+    Object? cancelledBy = _copyWithUnset,
+    Object? cancellationReason = _copyWithUnset,
     Object? updatedAt = _copyWithUnset,
   }) => Complaint(
     id: id ?? this.id,
@@ -223,6 +258,27 @@ class Complaint {
     closedAt: identical(closedAt, _copyWithUnset)
         ? this.closedAt
         : closedAt as DateTime?,
+    closedBy: identical(closedBy, _copyWithUnset)
+        ? this.closedBy
+        : closedBy as String?,
+    reopenedAt: identical(reopenedAt, _copyWithUnset)
+        ? this.reopenedAt
+        : reopenedAt as DateTime?,
+    reopenedBy: identical(reopenedBy, _copyWithUnset)
+        ? this.reopenedBy
+        : reopenedBy as String?,
+    reopenReason: identical(reopenReason, _copyWithUnset)
+        ? this.reopenReason
+        : reopenReason as String?,
+    cancelledAt: identical(cancelledAt, _copyWithUnset)
+        ? this.cancelledAt
+        : cancelledAt as DateTime?,
+    cancelledBy: identical(cancelledBy, _copyWithUnset)
+        ? this.cancelledBy
+        : cancelledBy as String?,
+    cancellationReason: identical(cancellationReason, _copyWithUnset)
+        ? this.cancellationReason
+        : cancellationReason as String?,
     updatedAt: identical(updatedAt, _copyWithUnset)
         ? this.updatedAt
         : updatedAt as DateTime?,

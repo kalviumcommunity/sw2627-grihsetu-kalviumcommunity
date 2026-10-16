@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants/firestore_collections.dart';
+import '../core/domain/complaint_transition_guard.dart';
 import '../core/enums/complaint_audit_event_type.dart';
 import '../core/enums/complaint_priority.dart';
 import '../core/enums/complaint_status.dart';
@@ -694,6 +695,8 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       if (!snap.exists) {
         throw const ComplaintFailure(ComplaintFailureCode.notFound);
       }
+      final current = Complaint.fromMap(snap.data()!, id: snap.id);
+      ComplaintTransitionGuard.validateTransition(current.status, newStatus);
       tx.update(complaintRef, {
         'status': newStatus.value,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -1552,6 +1555,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     }
 
     final current = _complaints[index];
+    ComplaintTransitionGuard.validateTransition(current.status, newStatus);
     final now = DateTime.now();
     final updated = Complaint(
       id: current.id,

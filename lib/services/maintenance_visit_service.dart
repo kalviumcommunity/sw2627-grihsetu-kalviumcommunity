@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants/firestore_collections.dart';
+import '../core/domain/complaint_transition_guard.dart';
 import '../core/enums/complaint_audit_event_type.dart';
 import '../core/enums/complaint_status.dart';
 import '../core/enums/maintenance_visit_outcome.dart';
@@ -389,6 +390,12 @@ class MaintenanceVisitService {
                 ? complaint.visitCount
                 : historicalMaxVisitNumber) +
             1;
+        if (complaint.status != ComplaintStatus.inProgress) {
+          ComplaintTransitionGuard.validateTransition(
+            complaint.status,
+            ComplaintStatus.inProgress,
+          );
+        }
         final operation = normalizedOperationId ?? visitId;
         transaction.set(
           visitRef,
@@ -579,6 +586,12 @@ class MaintenanceVisitService {
         }
 
         final nextStatus = MaintenanceVisitPolicy.statusForOutcome(outcome!);
+        if (nextStatus != complaint.status) {
+          ComplaintTransitionGuard.validateTransition(
+            complaint.status,
+            nextStatus,
+          );
+        }
         final actorContext = AuditActorContext.fromProfile(
           profile: actor,
           authenticatedUid: actorId,
