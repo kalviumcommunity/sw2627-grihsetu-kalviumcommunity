@@ -2,21 +2,21 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../core/enums/complaint_status.dart';
 import '../../../core/models/complaint.dart';
 import '../../../core/models/complaint_audit_event.dart';
 import '../../../core/models/maintenance_visit.dart';
 import '../../../repositories/complaint_repository.dart';
 import '../../../services/media_picker.dart';
 import '../../../theme/app_palette.dart';
+import '../../../utils/action_feedback.dart';
 import '../../../utils/date_time_formatters.dart' as dtf;
 import '../../../utils/visit_validators.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/app_spacing.dart';
+import '../../../widgets/complaint_chips.dart';
 import '../../../widgets/empty_state.dart';
 import '../../../widgets/error_state.dart';
 import '../../../widgets/skeleton_box.dart';
-import '../../../widgets/status_badge.dart';
 import 'visit_completion_form.dart';
 import 'visit_models.dart';
 
@@ -209,8 +209,7 @@ class _VisitScreenState extends State<VisitScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed to update step: $e')));
+        ActionFeedback.showError(context, 'Failed to update step: $e');
       }
     } finally {
       if (mounted) {
@@ -225,8 +224,7 @@ class _VisitScreenState extends State<VisitScreen> {
       currentList.length + 1,
     );
     if (countErr != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(countErr)));
+      ActionFeedback.showWarning(context, countErr);
       return;
     }
 
@@ -248,12 +246,13 @@ class _VisitScreenState extends State<VisitScreen> {
             _afterPhotos.add(name);
           }
         });
+        if (mounted) {
+          ActionFeedback.showSuccess(context, 'Photo uploaded successfully');
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not upload photo: $e')));
+        ActionFeedback.showError(context, 'Could not upload photo: $e');
       }
     }
   }
@@ -500,20 +499,9 @@ class _VisitScreenState extends State<VisitScreen> {
                 runSpacing: AppSpacing.xs,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  StatusBadge(
-                    label: c.priority.displayLabel,
-                    tone: c.priority.value == 'urgent'
-                        ? StatusBadgeTone.danger
-                        : c.priority.value == 'high'
-                        ? StatusBadgeTone.warning
-                        : StatusBadgeTone.neutral,
-                  ),
-                  StatusBadge(
-                    label: c.status.displayLabel,
-                    tone: c.status == ComplaintStatus.resolved
-                        ? StatusBadgeTone.success
-                        : StatusBadgeTone.accent,
-                  ),
+                  ComplaintPriorityChip(priority: c.priority),
+                  ComplaintStatusChip(status: c.status),
+                  ComplaintCategoryChip(category: c.category),
                 ],
               ),
               Text(
@@ -579,17 +567,16 @@ class _VisitScreenState extends State<VisitScreen> {
                 icon: const Icon(Icons.phone_outlined, size: 20),
                 tooltip: 'Call tenant stub',
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Calling tenant... (stub)')),
-                  );
+                  ActionFeedback.showInfo(context, 'Calling tenant... (stub)');
                 },
               ),
               IconButton(
                 icon: const Icon(Icons.chat_bubble_outline, size: 20),
                 tooltip: 'Message tenant stub',
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Messaging tenant... (stub)')),
+                  ActionFeedback.showInfo(
+                    context,
+                    'Messaging tenant... (stub)',
                   );
                 },
               ),

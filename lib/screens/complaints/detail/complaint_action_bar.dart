@@ -5,6 +5,7 @@ import '../../../core/enums/complaint_priority.dart';
 import '../../../core/enums/complaint_status.dart';
 import '../../../repositories/assignment_repository.dart';
 import '../../../theme/app_palette.dart';
+import '../../../utils/action_feedback.dart';
 import '../../../utils/visit_validators.dart';
 import '../../../widgets/app_spacing.dart';
 import '../../technician/visit/visit_completion_form.dart';
@@ -517,11 +518,9 @@ class ComplaintActionBar extends StatelessWidget {
         reason: isReassign ? 'Operational reallocation' : null,
       );
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Assigned to ${result.assignedTechnician.name}'),
-            behavior: SnackBarBehavior.floating,
-          ),
+        ActionFeedback.showSuccess(
+          context,
+          'Assigned to ${result.assignedTechnician.name}',
         );
       }
     }

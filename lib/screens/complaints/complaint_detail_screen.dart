@@ -8,18 +8,19 @@ import '../../core/models/complaint.dart';
 import '../../repositories/assignment_repository.dart';
 import '../../repositories/complaint_repository.dart';
 import '../../theme/app_palette.dart';
+import '../../utils/action_feedback.dart';
 import '../../utils/date_time_formatters.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/audit_timeline.dart' as legacy_audit;
 import '../../widgets/complaint_card.dart';
+import '../../widgets/complaint_chips.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/empty_state.dart';
 import '../../utils/visit_history.dart' as vh;
 import '../../widgets/repeat_indicator.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/skeleton_box.dart';
-import '../../widgets/status_badge.dart';
 import '../../widgets/visit_summary_widgets.dart';
 import 'detail/activity_timeline.dart';
 import 'detail/complaint_action_bar.dart';
@@ -363,27 +364,13 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             runSpacing: AppSpacing.xs,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              ComplaintStatusBadge(status: state.currentStatus),
-              ComplaintPriorityBadge(priority: c.priority),
+              ComplaintStatusChip(status: state.currentStatus),
+              ComplaintPriorityChip(priority: c.priority),
               if (state.isRepeatIssue)
                 RepeatIndicator.recurring(
                   count: state.numberOfVisits >= 2 ? state.numberOfVisits : 2,
                 ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: palette.shimmer,
-                  borderRadius: BorderRadius.circular(99),
-                  border: Border.all(color: palette.border),
-                ),
-                child: Text(
-                  c.category.displayLabel,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: palette.ink,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+              ComplaintCategoryChip(category: c.category),
               Text(
                 '#${c.id.isEmpty ? "Pending" : c.id}',
                 style: theme.textTheme.labelSmall?.copyWith(
@@ -483,13 +470,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                         const SizedBox(width: 6),
                         InkWell(
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Calling technician +91 98111 22334...',
-                                ),
-                                behavior: SnackBarBehavior.floating,
-                              ),
+                            ActionFeedback.showInfo(
+                              context,
+                              'Calling technician +91 98111 22334...',
                             );
                           },
                           child: Icon(
@@ -1026,78 +1009,6 @@ class _StepNode extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _VisitHistoryRow extends StatelessWidget {
-  const _VisitHistoryRow({required this.visit});
-
-  final MaintenanceVisit visit;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    final started = formatDateTime(visit.startedAt, placeholder: 'Pending');
-    final completed = formatDateTime(visit.completedAt, placeholder: 'Pending');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.xs,
-          children: [
-            Text(
-              'Visit #${visit.visitNumber}',
-              style: TextStyle(color: palette.ink, fontWeight: FontWeight.bold),
-            ),
-            if (visit.visitNumber > 1)
-              const StatusBadge(
-                label: 'Repeat visit',
-                tone: StatusBadgeTone.warning,
-              ),
-            Text(
-              'Technician: ${visit.technicianId}',
-              style: TextStyle(color: palette.muted, fontSize: 12),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Started: $started · Completed: $completed',
-          style: TextStyle(color: palette.muted, fontSize: 12),
-        ),
-        if (visit.observation != null)
-          _VisitDetail(label: 'Observation', value: visit.observation!),
-        if (visit.actionTaken != null)
-          _VisitDetail(label: 'Action', value: visit.actionTaken!),
-        if (visit.outcome != null)
-          _VisitDetail(label: 'Outcome', value: visit.outcome!.value),
-        if (visit.resolutionSummary != null)
-          _VisitDetail(
-            label: 'Resolution / follow-up',
-            value: visit.resolutionSummary!,
-          ),
-      ],
-    );
-  }
-}
-
-class _VisitDetail extends StatelessWidget {
-  const _VisitDetail({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Padding(
-      padding: const EdgeInsets.only(top: 3),
-      child: Text(
-        '$label: $value',
-        style: TextStyle(color: palette.ink, fontSize: 12, height: 1.3),
-      ),
     );
   }
 }

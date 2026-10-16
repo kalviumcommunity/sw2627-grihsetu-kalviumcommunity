@@ -10,7 +10,6 @@ import 'package:grihsetu/widgets/complaint_card.dart';
 import 'package:grihsetu/widgets/empty_state.dart';
 import 'package:grihsetu/widgets/error_state.dart';
 import 'package:grihsetu/widgets/skeleton_box.dart';
-import 'package:grihsetu/widgets/status_badge.dart';
 
 import 'scheduling_and_reason_section.dart';
 import 'technician_card.dart';
@@ -456,11 +455,8 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
                 ),
               ),
               Text('·', style: TextStyle(color: palette.muted)),
-              StatusBadge(
-                label: complaint.category.displayLabel,
-                tone: StatusBadgeTone.neutral,
-              ),
-              ComplaintPriorityBadge(priority: complaint.priority),
+              ComplaintCategoryChip(category: complaint.category),
+              ComplaintPriorityChip(priority: complaint.priority),
               if (complaint.unitId.isNotEmpty)
                 Text(
                   'Unit: ${complaint.unitId}',
