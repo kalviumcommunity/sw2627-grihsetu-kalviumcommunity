@@ -17,7 +17,6 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/skeleton_box.dart';
-import '../../widgets/status_badge.dart';
 import 'complaint_detail_screen.dart';
 import 'complaint_view_models.dart';
 import '../technician/visit/technician_next_step_button.dart';

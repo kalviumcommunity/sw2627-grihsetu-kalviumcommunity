@@ -54,3 +54,61 @@ AuditTimeline(events: events); // Oldest first; newest event receives the pulse.
 ```
 
 AppCard supports optional tap/hover feedback. SectionHeader accepts an optional trailing action. StatTile accepts an optional delta. EmptyState accepts an optional action label and callback. ErrorState always offers Retry. SkeletonBox pulses without shimmer; SkeletonList repeats a card placeholder. AuditTimeline supports 1–30 events with actor, role, timestamp, optional note, and optional tone.
+
+## Status, priority, and category chips
+
+Prefer these strongly-typed components over ad-hoc containers or bespoke badge implementations:
+
+- **`ComplaintStatusChip`** (from `lib/widgets/complaint_chips.dart`):
+  Covers all 8 operational statuses (`open`, `assigned`, `inProgress`, `waitingForParts`, `resolved`, `closed`, `reopened`, `cancelled`). Maps each status to a distinct semantic tone (`context.palette`) and intuitive iconography (`Icons.check_circle_outline`, `Icons.hourglass_top_outlined`, `Icons.cancel_outlined`, etc.). Provides backwards-compatible `ComplaintStatusBadge` alias.
+- **`ComplaintPriorityChip`** (from `lib/widgets/complaint_chips.dart`):
+  Covers all 4 operational priorities (`low`, `medium`, `high`, `urgent`). Maps each priority to an appropriate semantic tone (neutral, accent, warning, danger) and directional/warning iconography. Provides backwards-compatible `ComplaintPriorityBadge` alias.
+- **`ComplaintCategoryChip`** (from `lib/widgets/complaint_chips.dart`):
+  Covers all 8 complaint categories (`plumbing`, `electrical`, `structural`, `appliance`, `security`, `cleaning`, `commonArea`, `other`). Renders trade-specific outlined icons alongside the category display label with compact contrast-safe styling.
+- **`StatusBadge`** (from `lib/widgets/status_badge.dart`):
+  A generic primitive for arbitrary text badges that accept any `StatusBadgeTone` (`neutral`, `accent`, `success`, `warning`, `danger`).
+
+```dart
+// Usage examples
+ComplaintStatusChip(status: complaint.status);
+ComplaintPriorityChip(priority: complaint.priority);
+ComplaintCategoryChip(category: complaint.category);
+
+// Safe parsing constructor with fallback
+ComplaintStatusChip.fromValue(rawStatusString, fallback: ComplaintStatus.open);
+```
+
+## Action feedback and dialogs
+
+Prefer `ActionFeedback` from `lib/utils/action_feedback.dart` over raw, inline `ScaffoldMessenger.of(context).showSnackBar` calls or ad-hoc alert dialogs.
+
+- **Unified replacement policy**: Automatically clears any existing floating SnackBar to prevent stack-up during rapid user taps.
+- **Accessible & theme-aware**: Uses `context.palette` to tint the floating surface and apply semantic icons and border colors with high contrast in both light and dark themes.
+- **Safety**: Guards against unmounted `BuildContext` invocations.
+
+```dart
+// Success feedback (e.g. after successful technician assignment or photo upload)
+ActionFeedback.showSuccess(context, 'Assigned to Ramesh Meena');
+
+// Error feedback (e.g. when network or Firestore call fails)
+ActionFeedback.showError(context, 'Failed to update visit step');
+
+// Warning feedback (e.g. photo limit validation)
+ActionFeedback.showWarning(context, 'Maximum 5 photos allowed');
+
+// Informational feedback (e.g. action stubs or status tips)
+ActionFeedback.showInfo(context, 'Calling technician stub...');
+
+// Standard confirmation dialog (returns Future<bool?>)
+final confirmed = await ActionFeedback.showConfirmationDialog(
+  context,
+  title: 'Confirm Completion',
+  message: 'Are you sure you want to mark this visit as resolved?',
+  confirmLabel: 'Confirm',
+  cancelLabel: 'Cancel',
+  isDestructive: false,
+);
+```
+
+### Guidance & exceptions
+Always use `ActionFeedback` and the shared chips across operational complaint workflows, queues, detail pages, and visit steps. Direct inline `SnackBar` implementations or custom dialogs are reserved solely for dev/debug tools (e.g., reference data seeder) or deeply customized full-screen modal flows.

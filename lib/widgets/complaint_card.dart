@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../core/enums/complaint_category.dart';
-import '../core/enums/complaint_priority.dart';
-import '../core/enums/complaint_status.dart';
 import '../core/models/complaint.dart';
 import '../theme/app_palette.dart';
 import 'app_card.dart';
 import 'app_spacing.dart';
+import 'complaint_chips.dart';
 import 'repeat_indicator.dart';
-import 'status_badge.dart';
+
+export 'complaint_chips.dart';
 
 /// Reusable complaint presentation card.
 ///
@@ -144,31 +143,7 @@ class ComplaintCard extends StatelessWidget {
             runSpacing: AppSpacing.xs,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: palette.raised,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: palette.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _categoryIcon(complaint.category),
-                      size: 14,
-                      color: palette.muted,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      complaint.category.displayLabel,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: palette.ink,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ComplaintCategoryChip(category: complaint.category),
               if (dateStr.isNotEmpty)
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -195,167 +170,6 @@ class ComplaintCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             bottomAction!,
           ],
-        ],
-      ),
-    );
-  }
-
-  IconData _categoryIcon(ComplaintCategory category) => switch (category) {
-    ComplaintCategory.plumbing => Icons.plumbing_outlined,
-    ComplaintCategory.electrical => Icons.bolt_outlined,
-    ComplaintCategory.structural => Icons.home_repair_service_outlined,
-    ComplaintCategory.appliance => Icons.kitchen_outlined,
-    ComplaintCategory.security => Icons.security_outlined,
-    ComplaintCategory.cleaning => Icons.cleaning_services_outlined,
-    ComplaintCategory.commonArea => Icons.domain_outlined,
-    ComplaintCategory.other => Icons.category_outlined,
-  };
-}
-
-/// Distinguishable status badge rendering all 8 [ComplaintStatus] values.
-///
-/// Uses [ComplaintStatus.displayLabel] for human-readable labels, and combines
-/// both theme tones and distinct icons so information is not conveyed by color alone.
-class ComplaintStatusBadge extends StatelessWidget {
-  const ComplaintStatusBadge({super.key, required this.status});
-
-  final ComplaintStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (tone, icon) = switch (status) {
-      ComplaintStatus.open => (
-        StatusBadgeTone.accent,
-        Icons.fiber_new_outlined,
-      ),
-      ComplaintStatus.assigned => (
-        StatusBadgeTone.neutral,
-        Icons.assignment_ind_outlined,
-      ),
-      ComplaintStatus.inProgress => (
-        StatusBadgeTone.accent,
-        Icons.pending_actions_outlined,
-      ),
-      ComplaintStatus.waitingForParts => (
-        StatusBadgeTone.warning,
-        Icons.hourglass_top_outlined,
-      ),
-      ComplaintStatus.resolved => (
-        StatusBadgeTone.success,
-        Icons.check_circle_outline,
-      ),
-      ComplaintStatus.closed => (
-        StatusBadgeTone.neutral,
-        Icons.task_alt_outlined,
-      ),
-      ComplaintStatus.reopened => (
-        StatusBadgeTone.danger,
-        Icons.replay_outlined,
-      ),
-      ComplaintStatus.cancelled => (
-        StatusBadgeTone.neutral,
-        Icons.cancel_outlined,
-      ),
-    };
-
-    final palette = context.palette;
-    final (foreground, background) = switch (tone) {
-      StatusBadgeTone.neutral => (palette.ink, palette.shimmer),
-      StatusBadgeTone.accent => (palette.accent, palette.accentSoft),
-      StatusBadgeTone.success => (palette.success, palette.surface),
-      StatusBadgeTone.warning => (palette.warning, palette.surface),
-      StatusBadgeTone.danger => (palette.danger, palette.surface),
-    };
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 28),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: foreground.withValues(alpha: 0.42)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: foreground),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              status.displayLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium
-                  ?.copyWith(color: foreground, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Distinguishable priority badge rendering all 4 [ComplaintPriority] values.
-///
-/// Uses [ComplaintPriority.displayLabel] for human-readable labels, and combines
-/// both theme tones and distinct icons so information is not conveyed by color alone.
-class ComplaintPriorityBadge extends StatelessWidget {
-  const ComplaintPriorityBadge({super.key, required this.priority});
-
-  final ComplaintPriority priority;
-
-  @override
-  Widget build(BuildContext context) {
-    final (tone, icon) = switch (priority) {
-      ComplaintPriority.low => (
-        StatusBadgeTone.neutral,
-        Icons.arrow_downward_outlined,
-      ),
-      ComplaintPriority.medium => (
-        StatusBadgeTone.accent,
-        Icons.remove_outlined,
-      ),
-      ComplaintPriority.high => (
-        StatusBadgeTone.warning,
-        Icons.arrow_upward_outlined,
-      ),
-      ComplaintPriority.urgent => (
-        StatusBadgeTone.danger,
-        Icons.warning_amber_rounded,
-      ),
-    };
-
-    final palette = context.palette;
-    final (foreground, background) = switch (tone) {
-      StatusBadgeTone.neutral => (palette.ink, palette.shimmer),
-      StatusBadgeTone.accent => (palette.accent, palette.accentSoft),
-      StatusBadgeTone.success => (palette.success, palette.surface),
-      StatusBadgeTone.warning => (palette.warning, palette.surface),
-      StatusBadgeTone.danger => (palette.danger, palette.surface),
-    };
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 28),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: foreground.withValues(alpha: 0.42)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: foreground),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              priority.displayLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium
-                  ?.copyWith(color: foreground, fontWeight: FontWeight.w600),
-            ),
-          ),
         ],
       ),
     );
