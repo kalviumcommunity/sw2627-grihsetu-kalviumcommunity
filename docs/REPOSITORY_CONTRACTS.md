@@ -5,6 +5,21 @@ application boundary for GRIH-010. UI/controllers depend on these interfaces,
 not on `FirebaseFirestore` directly. Concrete adapters can be added in the
 CRUD issues without changing screens or domain models.
 
+## Rent workflow (GRIH-031)
+
+`RentRepository` exposes scoped rent reads, status-safe updates, payment
+recording, and due/overdue queues. `RentFollowUpRepository` exposes only append
+and history reads. `FirestoreRentRepository.addRentFollowUp` is the canonical
+write workflow: it validates the trusted authenticated operations actor, reads
+the parent rent record, appends one follow-up, and updates the parent in one
+transaction. The in-memory implementation is used by domain and widget tests.
+
+Contact and promise statuses must be produced through a follow-up so the
+history contains the corresponding action. A paid record is immutable and a
+follow-up cannot be added to it. The stored status is not automatically changed
+from `promised` to `overdue`; overdue queues derive unpaid/past-due state from
+the date while preserving the communication workflow value.
+
 ## Contract surface
 
 - `UserProfileRepository`: read-only access to the existing

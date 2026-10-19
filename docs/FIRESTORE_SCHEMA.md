@@ -190,6 +190,13 @@ maintenance_visits/{visitId}
 
 rent_records/{rentRecordId}
   propertyId, unitId, tenantId, tenancyId (when tenancy history exists)
+  month, amountDue, dueDate, status
+  lastFollowUpAt, nextFollowUpAt, createdAt, updatedAt
+
+rent_follow_ups/{followUpId}
+  rentRecordId, handledBy, createdAt, contactMethod
+  notes, tenantResponse, promisedPaymentDate, nextFollowUpAt
+  previousStatus, resultingStatus
 ```
 
 This allows a complaint to retain its property/unit/tenant context even when a
@@ -198,8 +205,22 @@ for repeat-visit and response-time reporting. Rent records must keep the
 historical tenancy reference once that entity exists rather than inferring old
 occupancy from a mutable current tenant document.
 
+Rent records use top-level documents so they can be filtered by property, unit,
+or tenant without copying reference-data maps. The document ID is the rent
+record ID; new records never overwrite an existing document. `status` is a
+stored workflow value from `due`, `contacted`, `promised`, `overdue`, or `paid`.
+Date-based overdue queues treat unpaid records with a past due date as overdue
+for reporting, but do not silently replace a stored `promised` status.
+
+Follow-ups are top-level append-only documents keyed by `rentRecordId`. The
+rent repository creates the follow-up and updates `lastFollowUpAt`,
+`nextFollowUpAt`, `status`, and `updatedAt` in one Firestore transaction.
+Follow-up documents have no client update/delete path. `previousStatus` and
+`resultingStatus` preserve the workflow transition without coupling rent
+history to complaint audit events.
+
 Full complaint, maintenance, rent, audit, and property CRUD are outside
-GRIH-010.
+GRIH-010; rent persistence is implemented by GRIH-031.
 
 ## Maintenance visit history and repeat-visit invariants (GRIH-025)
 

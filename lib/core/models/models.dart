@@ -3,6 +3,7 @@ export 'complaint_audit_event.dart';
 export 'maintenance_visit.dart';
 export 'property.dart';
 export 'rent_record.dart';
+export 'rent_follow_up.dart';
 export 'tenant.dart';
 export 'technician_assignment.dart';
 export 'user.dart';
