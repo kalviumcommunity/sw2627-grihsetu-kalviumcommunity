@@ -120,7 +120,11 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final currentStatus = effectiveStatus(_item.record, _referenceNow, _item.payments);
+    final currentStatus = effectiveStatus(
+      _item.record,
+      _referenceNow,
+      _item.payments,
+    );
     final overdueDays = daysOverdue(_item.dueDate, _referenceNow);
 
     final content = SingleChildScrollView(
@@ -153,7 +157,10 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                           const SizedBox(height: 4),
                           Text(
                             'Unit ${_item.unitNumber} • ${_item.propertyName}',
-                            style: TextStyle(fontSize: 14, color: palette.muted),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: palette.muted,
+                            ),
                           ),
                         ],
                       ),
@@ -173,15 +180,27 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Month', style: TextStyle(fontSize: 12, color: palette.muted)),
+                        Text(
+                          'Month',
+                          style: TextStyle(fontSize: 12, color: palette.muted),
+                        ),
                         const SizedBox(height: 2),
-                        Text(_item.month, style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink)),
+                        Text(
+                          _item.month,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: palette.ink,
+                          ),
+                        ),
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('Total rent', style: TextStyle(fontSize: 12, color: palette.muted)),
+                        Text(
+                          'Total rent',
+                          style: TextStyle(fontSize: 12, color: palette.muted),
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           formatIndianCurrency(_item.amountDue),
@@ -208,11 +227,19 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.account_balance_wallet_outlined, size: 20, color: palette.accent),
+                    Icon(
+                      Icons.account_balance_wallet_outlined,
+                      size: 20,
+                      color: palette.accent,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Payment & Settlement',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: palette.ink),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: palette.ink,
+                      ),
                     ),
                   ],
                 ),
@@ -223,44 +250,64 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Due date', style: TextStyle(fontSize: 12, color: palette.muted)),
+                        Text(
+                          'Due date',
+                          style: TextStyle(fontSize: 12, color: palette.muted),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           '${_item.dueDate.day}/${_item.dueDate.month}/${_item.dueDate.year}',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: overdueDays > 0 && !_item.isPaid ? palette.danger : palette.ink,
+                            color: overdueDays > 0 && !_item.isPaid
+                                ? palette.danger
+                                : palette.ink,
                           ),
                         ),
                         if (overdueDays > 0 && !_item.isPaid)
                           Text(
                             '$overdueDays days overdue',
-                            style: TextStyle(fontSize: 11, color: palette.danger, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: palette.danger,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text('Amount paid', style: TextStyle(fontSize: 12, color: palette.muted)),
+                        Text(
+                          'Amount paid',
+                          style: TextStyle(fontSize: 12, color: palette.muted),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           formatIndianCurrency(_item.amountPaid),
-                          style: TextStyle(fontWeight: FontWeight.w600, color: palette.success),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: palette.success,
+                          ),
                         ),
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('Remaining balance', style: TextStyle(fontSize: 12, color: palette.muted)),
+                        Text(
+                          'Remaining balance',
+                          style: TextStyle(fontSize: 12, color: palette.muted),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           formatIndianCurrency(_item.balance),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: _item.balance > 0 ? palette.accent : palette.success,
+                            color: _item.balance > 0
+                                ? palette.accent
+                                : palette.success,
                           ),
                         ),
                       ],
@@ -273,7 +320,11 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Settlement records',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: palette.muted),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: palette.muted,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   for (final p in _item.payments)
@@ -288,7 +339,11 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                           ),
                           Text(
                             formatIndianCurrency(p.amount),
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: palette.success),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: palette.success,
+                            ),
                           ),
                         ],
                       ),
@@ -301,7 +356,10 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
 
           // 3. Tenant Contact Shortcuts Card
           AppCard(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: 12,
+            ),
             child: Row(
               children: [
                 CircleAvatar(
@@ -316,7 +374,10 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                     children: [
                       Text(
                         _item.tenantName,
-                        style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: palette.ink,
+                        ),
                       ),
                       Text(
                         _item.tenantPhone,
@@ -331,7 +392,9 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                   icon: Icon(Icons.phone_outlined, color: palette.accent),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Calling ${_item.tenantPhone}...')),
+                      SnackBar(
+                        content: Text('Calling ${_item.tenantPhone}...'),
+                      ),
                     );
                   },
                 ),
@@ -341,7 +404,9 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                   icon: Icon(Icons.chat_bubble_outline, color: palette.accent),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Messaging ${_item.tenantPhone}...')),
+                      SnackBar(
+                        content: Text('Messaging ${_item.tenantPhone}...'),
+                      ),
                     );
                   },
                 ),
@@ -421,12 +486,18 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: sorted.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) {
                     final followUp = sorted[index];
-                    final previous = (index < sorted.length - 1) ? sorted[index + 1] : null;
+                    final previous = (index < sorted.length - 1)
+                        ? sorted[index + 1]
+                        : null;
                     final elapsed = previous != null
-                        ? _formatElapsedSince(followUp.timestamp, previous.timestamp)
+                        ? _formatElapsedSince(
+                            followUp.timestamp,
+                            previous.timestamp,
+                          )
                         : 'Initial follow-up';
 
                     return AppCard(
@@ -437,7 +508,10 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: palette.accentSoft,
                                   borderRadius: BorderRadius.circular(6),
@@ -449,7 +523,8 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                                       switch (followUp.method) {
                                         FollowUpMethod.call => Icons.phone,
                                         FollowUpMethod.message => Icons.chat,
-                                        FollowUpMethod.visit => Icons.person_pin_circle,
+                                        FollowUpMethod.visit =>
+                                          Icons.person_pin_circle,
                                         FollowUpMethod.email => Icons.email,
                                       },
                                       size: 14,
@@ -473,32 +548,45 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                                   followUp.outcome.label,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    color: followUp.outcome == FollowUpOutcome.paid
+                                    color:
+                                        followUp.outcome == FollowUpOutcome.paid
                                         ? palette.success
-                                        : followUp.outcome == FollowUpOutcome.promisedToPay
-                                            ? palette.warning
-                                            : palette.ink,
+                                        : followUp.outcome ==
+                                              FollowUpOutcome.promisedToPay
+                                        ? palette.warning
+                                        : palette.ink,
                                   ),
                                 ),
                               ),
                               Text(
                                 '${followUp.timestamp.day}/${followUp.timestamp.month} ${followUp.timestamp.hour.toString().padLeft(2, '0')}:${followUp.timestamp.minute.toString().padLeft(2, '0')}',
-                                style: TextStyle(fontSize: 11, color: palette.muted),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: palette.muted,
+                                ),
                               ),
                             ],
                           ),
-                          if (followUp.outcome == FollowUpOutcome.promisedToPay &&
+                          if (followUp.outcome ==
+                                  FollowUpOutcome.promisedToPay &&
                               followUp.promisedDate != null) ...[
                             const SizedBox(height: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: palette.warning.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.event_available, size: 16, color: palette.warning),
+                                  Icon(
+                                    Icons.event_available,
+                                    size: 16,
+                                    color: palette.warning,
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
@@ -518,7 +606,10 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                             const SizedBox(height: 6),
                             Text(
                               followUp.note,
-                              style: TextStyle(fontSize: 13, color: palette.ink),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: palette.ink,
+                              ),
                             ),
                           ],
                           const SizedBox(height: 6),
@@ -527,11 +618,18 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                             children: [
                               Text(
                                 'By ${followUp.actor}',
-                                style: TextStyle(fontSize: 11, color: palette.muted),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: palette.muted,
+                                ),
                               ),
                               Text(
                                 elapsed,
-                                style: TextStyle(fontSize: 11, color: palette.muted, fontStyle: FontStyle.italic),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: palette.muted,
+                                  fontStyle: FontStyle.italic,
+                                ),
                               ),
                             ],
                           ),
@@ -552,7 +650,7 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
     }
 
     return Scaffold(
-      backgroundColor: palette.background,
+      backgroundColor: palette.canvas,
       appBar: AppBar(
         title: Text(
           'Rent • ${_item.unitNumber}',

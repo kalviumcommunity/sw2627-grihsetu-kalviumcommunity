@@ -132,7 +132,7 @@ class RentItem {
 
   String get id => record.id;
   String get tenantName => tenant.name;
-  String get tenantPhone => tenant.phone;
+  String get tenantPhone => tenant.phone ?? '';
   String get propertyName => property.name;
   String get unitNumber => unit.unitNumber;
   String get month => record.month;
@@ -141,8 +141,7 @@ class RentItem {
   RentStatus get status => record.status;
   DateTime? get nextFollowUpAt => record.nextFollowUpAt;
 
-  double get amountPaid =>
-      payments.fold(0.0, (sum, p) => sum + p.amount);
+  double get amountPaid => payments.fold(0.0, (sum, p) => sum + p.amount);
 
   double get balance {
     final remaining = amountDue - amountPaid;

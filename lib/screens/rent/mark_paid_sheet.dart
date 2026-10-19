@@ -34,8 +34,13 @@ class MarkPaidSheet extends StatefulWidget {
       return showDialog<RentItem>(
         context: context,
         builder: (dialogCtx) => Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 32,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: MarkPaidSheet(
@@ -121,7 +126,10 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
       return;
     }
     if (amount > widget.item.balance) {
-      setState(() => _errorMessage = 'Amount cannot exceed balance of ${formatIndianCurrency(widget.item.balance)}');
+      setState(
+        () => _errorMessage =
+            'Amount cannot exceed balance of ${formatIndianCurrency(widget.item.balance)}',
+      );
       return;
     }
 
@@ -139,10 +147,12 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
         date: _paymentDate,
         mode: _paymentMode,
         actor: widget.actor,
-        note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
+        note: _noteController.text.trim().isNotEmpty
+            ? _noteController.text.trim()
+            : null,
       );
 
-      final updatedPaymentItem = await widget.repository.markPaid(payment);
+      await widget.repository.markPaid(payment);
 
       // Also record follow-up reflecting payment
       final followUp = RentFollowUp(
@@ -152,7 +162,8 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
         outcome: FollowUpOutcome.paid,
         actor: widget.actor,
         timestamp: _referenceNow,
-        note: 'Payment of ${formatIndianCurrency(amount)} received via ${_paymentMode.label}.',
+        note:
+            'Payment of ${formatIndianCurrency(amount)} received via ${_paymentMode.label}.',
       );
       final finalItem = await widget.repository.addFollowUp(followUp);
 
@@ -231,19 +242,28 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
                 decoration: BoxDecoration(
                   color: palette.accentSoft,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: palette.accent.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: palette.accent.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Payment summary',
-                      style: TextStyle(fontWeight: FontWeight.w600, color: palette.accent),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: palette.accent,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Amount: ${formatIndianCurrency(double.tryParse(_amountController.text) ?? 0)}',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: palette.ink),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: palette.ink,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -284,7 +304,10 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Text('Confirm settlement'),
                     ),
@@ -298,13 +321,19 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
                 initialValue: _paymentMode,
                 decoration: InputDecoration(
                   labelText: 'Payment mode *',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                 ),
                 items: PaymentMode.values.map((m) {
                   return DropdownMenuItem(value: m, child: Text(m.label));
                 }).toList(),
-                onChanged: (m) => m != null ? setState(() => _paymentMode = m) : null,
+                onChanged: (m) =>
+                    m != null ? setState(() => _paymentMode = m) : null,
               ),
               const SizedBox(height: AppSpacing.md),
 
@@ -312,12 +341,20 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
               TextField(
                 key: const Key('mark_paid_amount_field'),
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: InputDecoration(
                   labelText: 'Amount (₹) *',
-                  helperText: 'Balance: ${formatIndianCurrency(widget.item.balance)}',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  helperText:
+                      'Balance: ${formatIndianCurrency(widget.item.balance)}',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -333,7 +370,9 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
                   ),
                   OutlinedButton.icon(
                     key: const Key('mark_paid_pick_date_button'),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size(100, 40)),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(100, 40),
+                    ),
                     icon: const Icon(Icons.calendar_today, size: 16),
                     label: const Text('Change'),
                     onPressed: _pickDate,
@@ -350,8 +389,13 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
                 decoration: InputDecoration(
                   labelText: 'Transaction note / reference (optional)',
                   hintText: 'e.g. UPI ref #123456',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -362,7 +406,9 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
                   backgroundColor: palette.accent,
                   foregroundColor: palette.surface,
                   minimumSize: const Size(double.infinity, 48),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 onPressed: _submit,
                 child: const Text('Review & confirm'),

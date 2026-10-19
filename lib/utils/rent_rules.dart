@@ -198,7 +198,8 @@ FollowUpValidationResult validateFollowUp({
     }
   }
 
-  final isValid = methodError == null &&
+  final isValid =
+      methodError == null &&
       outcomeError == null &&
       promisedDateError == null &&
       promisedAmountError == null &&

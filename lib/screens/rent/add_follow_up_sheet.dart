@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/enums/rent_status.dart';
 import '../../repositories/rent_repository.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/rent_rules.dart';
@@ -36,8 +35,13 @@ class AddFollowUpSheet extends StatefulWidget {
       return showDialog<RentItem>(
         context: context,
         builder: (dialogCtx) => Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 32,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: AddFollowUpSheet(
@@ -181,9 +185,12 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
 
     // If outcome is Paid and hasn't gone through confirmation step, show confirm step
     if (_outcome == FollowUpOutcome.paid && !_confirmingPayment) {
-      final paidAmount = double.tryParse(_paidAmountController.text.trim()) ?? 0.0;
+      final paidAmount =
+          double.tryParse(_paidAmountController.text.trim()) ?? 0.0;
       if (paidAmount <= 0) {
-        setState(() => _errorMessage = 'Payment amount must be greater than ₹0');
+        setState(
+          () => _errorMessage = 'Payment amount must be greater than ₹0',
+        );
         return;
       }
       if (paidAmount > widget.item.balance) {
@@ -206,14 +213,18 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
         actor: widget.actor,
         timestamp: _referenceNow,
         note: _noteController.text.trim(),
-        promisedDate: _outcome == FollowUpOutcome.promisedToPay ? _promisedDate : null,
+        promisedDate: _outcome == FollowUpOutcome.promisedToPay
+            ? _promisedDate
+            : null,
         promisedAmount: promisedAmount,
         nextFollowUpDate: _nextFollowUpDate,
       );
 
       RentItem updatedItem;
       if (_outcome == FollowUpOutcome.paid) {
-        final paidAmount = double.tryParse(_paidAmountController.text.trim()) ?? widget.item.balance;
+        final paidAmount =
+            double.tryParse(_paidAmountController.text.trim()) ??
+            widget.item.balance;
         final payment = PaymentRecord(
           id: 'pay_${DateTime.now().millisecondsSinceEpoch}',
           rentRecordId: widget.item.id,
@@ -294,11 +305,17 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                 decoration: BoxDecoration(
                   color: palette.warning.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: palette.warning.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: palette.warning.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: palette.warning, size: 20),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: palette.warning,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -338,7 +355,9 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                 decoration: BoxDecoration(
                   color: palette.accentSoft,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: palette.accent.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: palette.accent.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,7 +372,11 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                     const SizedBox(height: 8),
                     Text(
                       'Amount: ${formatIndianCurrency(double.tryParse(_paidAmountController.text) ?? 0)}',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: palette.ink),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: palette.ink,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -377,7 +400,8 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                         minimumSize: const Size(0, 48),
                         side: BorderSide(color: palette.border),
                       ),
-                      onPressed: () => setState(() => _confirmingPayment = false),
+                      onPressed: () =>
+                          setState(() => _confirmingPayment = false),
                       child: const Text('Back to edit'),
                     ),
                   ),
@@ -394,7 +418,10 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Text('Confirm & record'),
                     ),
@@ -406,40 +433,63 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
               // 1. Method
               Text(
                 'Follow-up method *',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: palette.ink),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: palette.ink,
+                ),
               ),
               const SizedBox(height: 6),
               SegmentedButton<FollowUpMethod>(
                 key: const Key('follow_up_method_segmented'),
                 segments: const [
-                  ButtonSegment(value: FollowUpMethod.call, label: Text('Call')),
-                  ButtonSegment(value: FollowUpMethod.message, label: Text('Message')),
-                  ButtonSegment(value: FollowUpMethod.visit, label: Text('Visit')),
-                  ButtonSegment(value: FollowUpMethod.email, label: Text('Email')),
+                  ButtonSegment(
+                    value: FollowUpMethod.call,
+                    label: Text('Call'),
+                  ),
+                  ButtonSegment(
+                    value: FollowUpMethod.message,
+                    label: Text('Message'),
+                  ),
+                  ButtonSegment(
+                    value: FollowUpMethod.visit,
+                    label: Text('Visit'),
+                  ),
+                  ButtonSegment(
+                    value: FollowUpMethod.email,
+                    label: Text('Email'),
+                  ),
                 ],
                 selected: {_method},
-                onSelectionChanged: (set) => setState(() => _method = set.first),
+                onSelectionChanged: (set) =>
+                    setState(() => _method = set.first),
               ),
               const SizedBox(height: AppSpacing.md),
 
               // 2. Outcome
               Text(
                 'Outcome *',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: palette.ink),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: palette.ink,
+                ),
               ),
               const SizedBox(height: 6),
               DropdownButtonFormField<FollowUpOutcome>(
                 key: const Key('follow_up_outcome_dropdown'),
                 initialValue: _outcome,
                 decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 items: FollowUpOutcome.values.map((o) {
-                  return DropdownMenuItem(
-                    value: o,
-                    child: Text(o.label),
-                  );
+                  return DropdownMenuItem(value: o, child: Text(o.label));
                 }).toList(),
                 onChanged: (val) {
                   if (val != null) setState(() => _outcome = val);
@@ -461,7 +511,10 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                     children: [
                       Text(
                         'Promised payment details',
-                        style: TextStyle(fontWeight: FontWeight.w600, color: palette.accent),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: palette.accent,
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       // Promised Date
@@ -472,12 +525,17 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                               _promisedDate != null
                                   ? 'Promised date: ${_promisedDate!.day}/${_promisedDate!.month}/${_promisedDate!.year}'
                                   : 'Select promised date',
-                              style: TextStyle(fontSize: 13, color: palette.ink),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: palette.ink,
+                              ),
                             ),
                           ),
                           OutlinedButton.icon(
                             key: const Key('pick_promised_date_button'),
-                            style: OutlinedButton.styleFrom(minimumSize: const Size(100, 40)),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(100, 40),
+                            ),
                             icon: const Icon(Icons.calendar_today, size: 16),
                             label: const Text('Change'),
                             onPressed: _pickPromisedDate,
@@ -489,13 +547,21 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                       TextField(
                         key: const Key('promised_amount_field'),
                         controller: _promisedAmountController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Promised amount (₹) *',
                           hintText: 'e.g. ${widget.item.balance.round()}',
-                          helperText: 'Balance: ${formatIndianCurrency(widget.item.balance)}',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          helperText:
+                              'Balance: ${formatIndianCurrency(widget.item.balance)}',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                     ],
@@ -518,7 +584,10 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                     children: [
                       Text(
                         'Payment receipt details',
-                        style: TextStyle(fontWeight: FontWeight.w600, color: palette.accent),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: palette.accent,
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       // Payment Mode
@@ -527,24 +596,40 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                         initialValue: _paymentMode,
                         decoration: InputDecoration(
                           labelText: 'Payment mode *',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                         ),
                         items: PaymentMode.values.map((m) {
-                          return DropdownMenuItem(value: m, child: Text(m.label));
+                          return DropdownMenuItem(
+                            value: m,
+                            child: Text(m.label),
+                          );
                         }).toList(),
-                        onChanged: (m) => m != null ? setState(() => _paymentMode = m) : null,
+                        onChanged: (m) =>
+                            m != null ? setState(() => _paymentMode = m) : null,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       // Payment Amount
                       TextField(
                         key: const Key('paid_amount_field'),
                         controller: _paidAmountController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Amount paid (₹) *',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -554,12 +639,17 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                           Expanded(
                             child: Text(
                               'Payment date: ${_paymentDate.day}/${_paymentDate.month}/${_paymentDate.year}',
-                              style: TextStyle(fontSize: 13, color: palette.ink),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: palette.ink,
+                              ),
                             ),
                           ),
                           OutlinedButton.icon(
                             key: const Key('pick_payment_date_button'),
-                            style: OutlinedButton.styleFrom(minimumSize: const Size(100, 40)),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(100, 40),
+                            ),
                             icon: const Icon(Icons.calendar_today, size: 16),
                             label: const Text('Change'),
                             onPressed: _pickPaymentDate,
@@ -583,7 +673,9 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                       ? 'Note (optional)'
                       : 'Note (10-300 characters) *',
                   hintText: 'Summary of the interaction with tenant...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -607,9 +699,13 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                     ),
                   OutlinedButton.icon(
                     key: const Key('pick_next_follow_up_date_button'),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size(100, 44)),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(100, 44),
+                    ),
                     icon: const Icon(Icons.calendar_month, size: 16),
-                    label: Text(_nextFollowUpDate == null ? 'Set date' : 'Change'),
+                    label: Text(
+                      _nextFollowUpDate == null ? 'Set date' : 'Change',
+                    ),
                     onPressed: _pickNextFollowUpDate,
                   ),
                 ],
@@ -623,16 +719,25 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                   backgroundColor: palette.accent,
                   foregroundColor: palette.surface,
                   minimumSize: const Size(double.infinity, 48),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 onPressed: _isSubmitting ? null : _submit,
                 child: _isSubmitting
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : Text(_outcome == FollowUpOutcome.paid ? 'Proceed to payment' : 'Save follow-up'),
+                    : Text(
+                        _outcome == FollowUpOutcome.paid
+                            ? 'Proceed to payment'
+                            : 'Save follow-up',
+                      ),
               ),
             ],
           ],

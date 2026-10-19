@@ -36,7 +36,8 @@ class RentListScreen extends StatefulWidget {
 }
 
 class _RentListScreenState extends State<RentListScreen> {
-  late final RentRepository _repo = widget.repository ?? InMemoryRentRepository();
+  late final RentRepository _repo =
+      widget.repository ?? InMemoryRentRepository();
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -180,15 +181,16 @@ class _RentListScreenState extends State<RentListScreen> {
     final isWide = width >= 900;
 
     final scaffold = Scaffold(
-      backgroundColor: palette.background,
+      backgroundColor: palette.canvas,
       appBar: widget.showAppBar
           ? AppBar(
-              title: const Text('Rent Collection', style: TextStyle(fontFamily: 'Fraunces')),
+              title: const Text(
+                'Rent Collection',
+                style: TextStyle(fontFamily: 'Fraunces'),
+              ),
             )
           : null,
-      body: SafeArea(
-        child: _buildBody(context, isWide),
-      ),
+      body: SafeArea(child: _buildBody(context, isWide)),
     );
 
     return scaffold;
@@ -198,13 +200,13 @@ class _RentListScreenState extends State<RentListScreen> {
     final palette = context.palette;
 
     if (_isLoading) {
-      return Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+      return const SingleChildScrollView(
+        padding: EdgeInsets.all(AppSpacing.md),
         child: Column(
-          children: const [
+          children: [
             SkeletonCard(),
             SizedBox(height: AppSpacing.md),
-            Expanded(child: SkeletonList(itemCount: 4)),
+            SkeletonList(itemCount: 2),
           ],
         ),
       );
@@ -237,12 +239,18 @@ class _RentListScreenState extends State<RentListScreen> {
     final totalDue = monthItems.fold<double>(0.0, (s, i) => s + i.amountDue);
     final collected = monthItems.fold<double>(0.0, (s, i) => s + i.amountPaid);
     final overdueItems = monthItems.where((i) {
-      return effectiveStatus(i.record, _referenceNow, i.payments) == RentStatus.overdue;
+      return effectiveStatus(i.record, _referenceNow, i.payments) ==
+          RentStatus.overdue;
     }).toList();
-    final overdueAmount = overdueItems.fold<double>(0.0, (s, i) => s + i.balance);
+    final overdueAmount = overdueItems.fold<double>(
+      0.0,
+      (s, i) => s + i.balance,
+    );
     final overdueCount = overdueItems.length;
 
-    final collectionRate = totalDue > 0 ? (collected / totalDue).clamp(0.0, 1.0) : 0.0;
+    final collectionRate = totalDue > 0
+        ? (collected / totalDue).clamp(0.0, 1.0)
+        : 0.0;
 
     final listView = RefreshIndicator(
       onRefresh: _loadData,
@@ -251,7 +259,12 @@ class _RentListScreenState extends State<RentListScreen> {
           // Summary Strip
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                0,
+              ),
               child: _buildSummaryStrip(
                 context,
                 totalDue: totalDue,
@@ -282,13 +295,20 @@ class _RentListScreenState extends State<RentListScreen> {
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear, size: 18),
-                                    onPressed: () => setState(() => _searchQuery = ''),
+                                    onPressed: () =>
+                                        setState(() => _searchQuery = ''),
                                   )
                                 : null,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
-                          onChanged: (val) => setState(() => _searchQuery = val),
+                          onChanged: (val) =>
+                              setState(() => _searchQuery = val),
                         ),
                       ),
                       if (months.length > 1) ...[
@@ -297,8 +317,12 @@ class _RentListScreenState extends State<RentListScreen> {
                           key: const Key('rent_month_selector'),
                           value: _selectedMonth ?? 'All',
                           items: [
-                            const DropdownMenuItem(value: 'All', child: Text('All Months')),
-                            for (final m in months) DropdownMenuItem(value: m, child: Text(m)),
+                            const DropdownMenuItem(
+                              value: 'All',
+                              child: Text('All Months'),
+                            ),
+                            for (final m in months)
+                              DropdownMenuItem(value: m, child: Text(m)),
                           ],
                           onChanged: (val) {
                             setState(() {
@@ -320,7 +344,8 @@ class _RentListScreenState extends State<RentListScreen> {
                           key: const Key('rent_filter_chip_all'),
                           label: const Text('All'),
                           selected: _selectedStatusFilter == null,
-                          onSelected: (_) => setState(() => _selectedStatusFilter = null),
+                          onSelected: (_) =>
+                              setState(() => _selectedStatusFilter = null),
                         ),
                         const SizedBox(width: 8),
                         for (final status in RentStatus.values) ...[
@@ -330,7 +355,9 @@ class _RentListScreenState extends State<RentListScreen> {
                             selected: _selectedStatusFilter == status,
                             onSelected: (selected) {
                               setState(() {
-                                _selectedStatusFilter = selected ? status : null;
+                                _selectedStatusFilter = selected
+                                    ? status
+                                    : null;
                               });
                             },
                           ),
@@ -361,101 +388,108 @@ class _RentListScreenState extends State<RentListScreen> {
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final item = filtered[index];
-                    final currentStatus = effectiveStatus(item.record, _referenceNow, item.payments);
-                    final overdueDays = daysOverdue(item.dueDate, _referenceNow);
-                    final isSelected = isWide && item.id == _selectedItemId;
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final item = filtered[index];
+                  final currentStatus = effectiveStatus(
+                    item.record,
+                    _referenceNow,
+                    item.payments,
+                  );
+                  final overdueDays = daysOverdue(item.dueDate, _referenceNow);
+                  final isSelected = isWide && item.id == _selectedItemId;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: AppCard(
-                        key: Key('rent_row_${item.id}'),
-                        selected: isSelected,
-                        onTap: () {
-                          if (isWide) {
-                            setState(() => _selectedItemId = item.id);
-                          } else {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => RentDetailScreen(
-                                  item: item,
-                                  repository: _repo,
-                                  readOnly: widget.readOnly,
-                                  now: _referenceNow,
-                                  onItemUpdated: (updated) => _loadData(),
-                                ),
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: AppCard(
+                      key: Key('rent_row_${item.id}'),
+                      selected: isSelected,
+                      onTap: () {
+                        if (isWide) {
+                          setState(() => _selectedItemId = item.id);
+                        } else {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => RentDetailScreen(
+                                item: item,
+                                repository: _repo,
+                                readOnly: widget.readOnly,
+                                now: _referenceNow,
+                                onItemUpdated: (updated) => _loadData(),
                               ),
-                            );
-                          }
-                        },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '${item.tenantName} • Unit ${item.unitNumber}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      color: palette.ink,
-                                    ),
-                                  ),
-                                ),
-                                StatusBadge(
-                                  label: currentStatus.displayLabel,
-                                  tone: _statusTone(currentStatus),
-                                ),
-                              ],
                             ),
-                            const SizedBox(height: 6),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Due: ${item.dueDate.day}/${item.dueDate.month}/${item.dueDate.year}',
-                                  style: TextStyle(fontSize: 13, color: palette.muted),
-                                ),
-                                Text(
-                                  formatIndianCurrency(item.amountDue),
+                          );
+                        }
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${item.tenantName} • Unit ${item.unitNumber}',
                                   style: TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w600,
                                     fontSize: 15,
                                     color: palette.ink,
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  _formatLastFollowUp(item.lastFollowUp),
-                                  style: TextStyle(fontSize: 12, color: palette.muted),
+                              ),
+                              StatusBadge(
+                                label: currentStatus.displayLabel,
+                                tone: _statusTone(currentStatus),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Due: ${item.dueDate.day}/${item.dueDate.month}/${item.dueDate.year}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: palette.muted,
                                 ),
-                                if (overdueDays > 0 && !item.isPaid)
-                                  Text(
-                                    '$overdueDays days overdue',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: palette.danger,
-                                    ),
+                              ),
+                              Text(
+                                formatIndianCurrency(item.amountDue),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: palette.ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _formatLastFollowUp(item.lastFollowUp),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: palette.muted,
+                                ),
+                              ),
+                              if (overdueDays > 0 && !item.isPaid)
+                                Text(
+                                  '$overdueDays days overdue',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: palette.danger,
                                   ),
-                              ],
-                            ),
-                          ],
-                        ),
+                                ),
+                            ],
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                  childCount: filtered.length,
-                ),
+                    ),
+                  );
+                }, childCount: filtered.length),
               ),
             ),
         ],
@@ -552,11 +586,18 @@ class _RentListScreenState extends State<RentListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Total due', style: TextStyle(fontSize: 11, color: palette.muted)),
+                    Text(
+                      'Total due',
+                      style: TextStyle(fontSize: 11, color: palette.muted),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       formatIndianCurrency(totalDue),
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: palette.ink),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: palette.ink,
+                      ),
                     ),
                   ],
                 ),
@@ -565,11 +606,18 @@ class _RentListScreenState extends State<RentListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Collected', style: TextStyle(fontSize: 11, color: palette.muted)),
+                    Text(
+                      'Collected',
+                      style: TextStyle(fontSize: 11, color: palette.muted),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       formatIndianCurrency(collected),
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: palette.success),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: palette.success,
+                      ),
                     ),
                   ],
                 ),
@@ -578,7 +626,10 @@ class _RentListScreenState extends State<RentListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Overdue ($overdueCount)', style: TextStyle(fontSize: 11, color: palette.muted)),
+                    Text(
+                      'Overdue ($overdueCount)',
+                      style: TextStyle(fontSize: 11, color: palette.muted),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       formatIndianCurrency(overdueAmount),

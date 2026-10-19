@@ -3,7 +3,6 @@ import 'dart:async';
 import '../core/enums/rent_status.dart';
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/property.dart';
-import '../core/models/rent_record.dart';
 import '../core/models/tenant.dart';
 import '../screens/rent/rent_models.dart';
 import '../utils/rent_rules.dart';
@@ -46,22 +45,20 @@ class InMemoryRentRepository implements RentRepository {
     final properties = {
       for (final p in SampleFixtures.sampleProperties) p.id: p,
     };
-    final units = {
-      for (final u in SampleFixtures.sampleUnits) u.id: u,
-    };
-    final tenants = {
-      for (final t in SampleFixtures.sampleTenants) t.id: t,
-    };
+    final units = {for (final u in SampleFixtures.sampleUnits) u.id: u};
+    final tenants = {for (final t in SampleFixtures.sampleTenants) t.id: t};
 
     for (final record in SampleFixtures.sampleRentRecords) {
-      final prop = properties[record.propertyId] ??
+      final prop =
+          properties[record.propertyId] ??
           Property(
             id: record.propertyId,
             name: 'Property ${record.propertyId}',
             address: 'Gurugram',
             createdAt: DateTime(2025, 1, 1),
           );
-      final unit = units[record.unitId] ??
+      final unit =
+          units[record.unitId] ??
           Unit(
             id: record.unitId,
             propertyId: record.propertyId,
@@ -69,7 +66,8 @@ class InMemoryRentRepository implements RentRepository {
             floor: 1,
             occupancyStatus: 'occupied',
           );
-      final tenant = tenants[record.tenantId] ??
+      final tenant =
+          tenants[record.tenantId] ??
           Tenant(
             id: record.tenantId,
             name: 'Tenant ${record.tenantId}',
@@ -166,7 +164,9 @@ class InMemoryRentRepository implements RentRepository {
     var results = _items.values.toList();
 
     if (propertyId != null && propertyId.isNotEmpty) {
-      results = results.where((i) => i.record.propertyId == propertyId).toList();
+      results = results
+          .where((i) => i.record.propertyId == propertyId)
+          .toList();
     }
     if (unitId != null && unitId.isNotEmpty) {
       results = results.where((i) => i.record.unitId == unitId).toList();
