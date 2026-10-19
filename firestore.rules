@@ -245,6 +245,42 @@ service cloud.firestore {
               )
             )
           )
+          || (
+            (isOperationsStaff() || (hasRole('tenant') && request.resource.data.status in ['closed', 'reopened']))
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'updatedAt', 'closedAt', 'closedBy',
+              'reopenCount', 'reopenedAt', 'reopenedBy', 'reopenReason',
+              'cancelledAt', 'cancelledBy', 'cancellationReason'
+            ])
+            && request.resource.data.updatedAt == request.time
+            && (
+              (
+                resource.data.status == 'resolved'
+                && request.resource.data.status == 'closed'
+                && request.resource.data.closedAt == request.time
+                && request.resource.data.closedBy == request.auth.uid
+              )
+              || (
+                resource.data.status in ['resolved', 'closed']
+                && request.resource.data.status == 'reopened'
+                && request.resource.data.reopenedAt == request.time
+                && request.resource.data.reopenedBy == request.auth.uid
+                && request.resource.data.reopenReason is string
+                && request.resource.data.reopenReason.size() > 0
+                && request.resource.data.reopenCount == resource.data.reopenCount + 1
+              )
+              || (
+                resource.data.status in ['open', 'assigned', 'waiting_for_parts', 'reopened']
+                && request.resource.data.status == 'cancelled'
+                && request.resource.data.cancelledAt == request.time
+                && request.resource.data.cancelledBy == request.auth.uid
+                && request.resource.data.cancellationReason is string
+                && request.resource.data.cancellationReason.size() > 0
+                && (!resource.data.keys().hasAny(['activeVisitId'])
+                  || resource.data.activeVisitId == null)
+              )
+            )
+          )
         );
       allow delete: if false;
     }
@@ -465,6 +501,45 @@ service cloud.firestore {
               || getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.metadata.visitId)).data.completedAt == request.time
             )
             && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == request.resource.data.metadata.newStatus
+          )
+          ||
+          (
+            (
+              (isOperationsStaff() && request.resource.data.eventType in [
+                'COMPLAINT_CLOSED', 'COMPLAINT_REOPENED', 'COMPLAINT_CANCELLED'
+              ])
+              || (hasRole('tenant') && request.resource.data.eventType in [
+                'COMPLAINT_CLOSED', 'COMPLAINT_REOPENED'
+              ])
+            )
+            && request.resource.data.metadata.keys().hasOnly([
+              'previousStatus', 'newStatus', 'operationId', 'reason'
+            ])
+            && request.resource.data.metadata.keys().hasAll([
+              'previousStatus', 'newStatus', 'operationId'
+            ])
+            && request.resource.data.metadata.previousStatus == get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status
+            && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.status == request.resource.data.metadata.newStatus
+            && (
+              (
+                request.resource.data.eventType == 'COMPLAINT_CLOSED'
+                && request.resource.data.metadata.previousStatus == 'resolved'
+                && request.resource.data.metadata.newStatus == 'closed'
+                && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.closedAt == request.time
+              )
+              || (
+                request.resource.data.eventType == 'COMPLAINT_REOPENED'
+                && request.resource.data.metadata.previousStatus in ['resolved', 'closed']
+                && request.resource.data.metadata.newStatus == 'reopened'
+                && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.reopenedAt == request.time
+              )
+              || (
+                request.resource.data.eventType == 'COMPLAINT_CANCELLED'
+                && request.resource.data.metadata.previousStatus in ['open', 'assigned', 'waiting_for_parts', 'reopened']
+                && request.resource.data.metadata.newStatus == 'cancelled'
+                && getAfter(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.cancelledAt == request.time
+              )
+            )
           )
           ||
           (
