@@ -6,11 +6,13 @@ import '../core/enums/user_role.dart';
 import '../core/models/user.dart';
 import '../repositories/complaint_repository.dart';
 import '../repositories/property_repository.dart';
+import '../repositories/rent_repository.dart';
 import '../screens/complaints/complaint_list_screen.dart';
 import '../screens/complaints/technician_queue_screen.dart';
 import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../screens/property/property_browser_screen.dart';
+import '../screens/rent/rent_list_screen.dart';
 import '../services/auth_failure.dart';
 import '../services/auth_service.dart';
 import '../services/reference_data_seed_service.dart';
@@ -24,6 +26,7 @@ class AppShell extends StatefulWidget {
     this.seedService,
     this.complaintRepository,
     this.propertyRepository,
+    this.rentRepository,
   });
 
   final AppUser? profile;
@@ -31,6 +34,7 @@ class AppShell extends StatefulWidget {
   final ReferenceDataSeedService? seedService;
   final ComplaintRepository? complaintRepository;
   final PropertyRepository? propertyRepository;
+  final RentRepository? rentRepository;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -184,6 +188,7 @@ class _AppShellState extends State<AppShell> {
                       authService: widget.authService,
                       complaintRepository: widget.complaintRepository,
                       propertyRepository: widget.propertyRepository,
+                      rentRepository: widget.rentRepository,
                     ),
                   ),
                 ],
@@ -223,11 +228,13 @@ const Map<UserRole, List<_NavigationItem>> _roleNavigation = {
     _NavigationItem('Overview', Icons.dashboard_outlined, Icons.dashboard),
     _NavigationItem('Properties', Icons.apartment_outlined, Icons.apartment),
     _NavigationItem('Complaints', Icons.report_outlined, Icons.report),
+    _NavigationItem('Rent', Icons.receipt_long_outlined, Icons.receipt_long),
     _NavigationItem('Team', Icons.groups_outlined, Icons.groups),
   ],
   UserRole.complaintOperations: [
     _NavigationItem('Overview', Icons.dashboard_outlined, Icons.dashboard),
     _NavigationItem('Complaints', Icons.report_outlined, Icons.report),
+    _NavigationItem('Rent', Icons.receipt_long_outlined, Icons.receipt_long),
     _NavigationItem('Tenants', Icons.people_outline, Icons.people),
   ],
   UserRole.technician: [
@@ -247,6 +254,7 @@ const Map<UserRole, List<_NavigationItem>> _roleNavigation = {
   UserRole.propertyOwner: [
     _NavigationItem('Overview', Icons.dashboard_outlined, Icons.dashboard),
     _NavigationItem('Properties', Icons.apartment_outlined, Icons.apartment),
+    _NavigationItem('Rent', Icons.receipt_long_outlined, Icons.receipt_long),
     _NavigationItem('Reports', Icons.analytics_outlined, Icons.analytics),
   ],
   UserRole.tenant: [
@@ -265,6 +273,7 @@ class _SectionPlaceholder extends StatelessWidget {
     this.authService,
     this.complaintRepository,
     this.propertyRepository,
+    this.rentRepository,
     super.key,
   });
 
@@ -274,6 +283,7 @@ class _SectionPlaceholder extends StatelessWidget {
   final AuthService? authService;
   final ComplaintRepository? complaintRepository;
   final PropertyRepository? propertyRepository;
+  final RentRepository? rentRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -286,6 +296,16 @@ class _SectionPlaceholder extends StatelessWidget {
         authService: authService,
         complaintRepository: complaintRepository,
         propertyRepository: propertyRepository,
+        showAppBar: false,
+      );
+    }
+    if (item.label == 'Rent') {
+      final isOwner = role == UserRole.propertyOwner;
+      final isTenant = role == UserRole.tenant;
+      return RentListScreen(
+        repository: rentRepository,
+        readOnly: isOwner || isTenant,
+        filterTenantId: isTenant ? profile?.id : null,
         showAppBar: false,
       );
     }
