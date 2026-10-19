@@ -30,7 +30,10 @@ enum ActivityEventType {
   needsAnotherVisit('Needs another visit', Icons.event_repeat_outlined),
   noteAdded('Note added', Icons.notes_outlined),
   priorityChanged('Priority changed', Icons.flag_outlined),
-  closed('Complaint closed', Icons.lock_outline);
+  closed('Complaint closed', Icons.lock_outline),
+  waitingForParts('Waiting for parts', Icons.hourglass_top_outlined),
+  workResumed('Work resumed', Icons.play_arrow_outlined),
+  cancelled('Complaint cancelled', Icons.cancel_outlined);
 
   const ActivityEventType(this.label, this.icon);
 
@@ -52,7 +55,14 @@ enum ActivityEventType {
       'INSPECTION_STARTED' => ActivityEventType.inspectionStarted,
       'WORK_STARTED' || 'REPAIR_STARTED' => ActivityEventType.workStarted,
       'PHOTO_UPLOADED' => ActivityEventType.photoUploaded,
-      'PART_ADDED' || 'PART_NEEDED' => ActivityEventType.partAdded,
+      'PART_ADDED' => ActivityEventType.partAdded,
+      'WAITING_FOR_PARTS' ||
+      'WAITING-FOR-PARTS' ||
+      'PART_NEEDED' ||
+      'COMPLAINT_WAITING_FOR_PARTS' =>
+        ActivityEventType.waitingForParts,
+      'WORK_RESUMED' || 'WORK-RESUMED' || 'REPAIR_RESUMED' =>
+        ActivityEventType.workResumed,
       'REPAIR_COMPLETED' => ActivityEventType.repairCompleted,
       'MARKED_RESOLVED' || 'RESOLVED' => ActivityEventType.markedResolved,
       'TENANT_NOTIFIED' => ActivityEventType.tenantNotified,
@@ -61,7 +71,12 @@ enum ActivityEventType {
       'NEEDS_ANOTHER_VISIT' => ActivityEventType.needsAnotherVisit,
       'NOTE_ADDED' || 'INTERNAL_NOTE' => ActivityEventType.noteAdded,
       'PRIORITY_CHANGED' => ActivityEventType.priorityChanged,
-      'COMPLAINT_CLOSED' || 'CLOSED' => ActivityEventType.closed,
+      'CLOSED_WITH_TENANT_CONFIRMATION' ||
+      'CLOSED_WITHOUT_TENANT_CONFIRMATION' ||
+      'COMPLAINT_CLOSED' ||
+      'CLOSED' =>
+        ActivityEventType.closed,
+      'COMPLAINT_CANCELLED' || 'CANCELLED' => ActivityEventType.cancelled,
       _ => ActivityEventType.noteAdded,
     };
   }
@@ -278,13 +293,17 @@ class ComplaintDetailState {
         case ActivityEventType.markedResolved:
         case ActivityEventType.repairCompleted:
           return ComplaintStatus.resolved;
+        case ActivityEventType.waitingForParts:
         case ActivityEventType.partAdded:
           return ComplaintStatus.waitingForParts;
+        case ActivityEventType.workResumed:
         case ActivityEventType.workStarted:
         case ActivityEventType.inspectionStarted:
         case ActivityEventType.arrived:
         case ActivityEventType.travelStarted:
           return ComplaintStatus.inProgress;
+        case ActivityEventType.cancelled:
+          return ComplaintStatus.cancelled;
         case ActivityEventType.assigned:
         case ActivityEventType.reassigned:
         case ActivityEventType.accepted:
@@ -306,6 +325,23 @@ class ComplaintDetailState {
       }
     }
     return complaint!.status;
+  }
+
+  /// Returns the expected date for parts if recorded in an audit event.
+  DateTime? get expectedPartsDate {
+    for (final event in events.reversed) {
+      if (event.type == ActivityEventType.waitingForParts ||
+          event.metadata['expectedDate'] != null) {
+        final raw = event.metadata['expectedDate'];
+        if (raw is String) {
+          final parsed = DateTime.tryParse(raw);
+          if (parsed != null) return parsed;
+        } else if (raw is DateTime) {
+          return raw;
+        }
+      }
+    }
+    return null;
   }
 
   /// Assigned technician identifier derived from assignment events or complaint.
