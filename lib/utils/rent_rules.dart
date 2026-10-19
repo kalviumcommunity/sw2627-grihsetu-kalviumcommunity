@@ -96,6 +96,7 @@ class FollowUpValidationResult {
     this.promisedDateError,
     this.promisedAmountError,
     this.noteError,
+    this.tenantResponseError,
     this.nextFollowUpDateError,
   });
 
@@ -105,6 +106,7 @@ class FollowUpValidationResult {
   final String? promisedDateError;
   final String? promisedAmountError;
   final String? noteError;
+  final String? tenantResponseError;
   final String? nextFollowUpDateError;
 
   String? get firstError =>
@@ -113,16 +115,18 @@ class FollowUpValidationResult {
       promisedDateError ??
       promisedAmountError ??
       noteError ??
+      tenantResponseError ??
       nextFollowUpDateError;
 }
 
-/// Validates follow-up form parameters according to GRIH-032 rules.
+/// Validates follow-up form parameters according to GRIH-032 and GRIH-033 rules.
 FollowUpValidationResult validateFollowUp({
   FollowUpMethod? method,
   FollowUpOutcome? outcome,
   DateTime? promisedDate,
   double? promisedAmount,
   String? note,
+  String? tenantResponse,
   DateTime? nextFollowUpDate,
   required double currentBalance,
   DateTime? now,
@@ -132,6 +136,7 @@ FollowUpValidationResult validateFollowUp({
   String? promisedDateError;
   String? promisedAmountError;
   String? noteError;
+  String? tenantResponseError;
   String? nextFollowUpDateError;
 
   final refNow = now ?? DateTime.now();
@@ -175,14 +180,28 @@ FollowUpValidationResult validateFollowUp({
   // Note validation
   final trimmedNote = (note ?? '').trim();
   if (outcome == FollowUpOutcome.noAnswer) {
-    if (trimmedNote.isNotEmpty && trimmedNote.length > 300) {
+    if (note != null && note.isNotEmpty && trimmedNote.isEmpty) {
+      noteError = 'Note cannot contain only whitespace';
+    } else if (trimmedNote.length > 300) {
       noteError = 'Note cannot exceed 300 characters';
     }
   } else {
-    if (trimmedNote.length < 10) {
+    if (trimmedNote.isEmpty) {
+      noteError = 'Note is required (at least 10 characters)';
+    } else if (trimmedNote.length < 10) {
       noteError = 'Note must be at least 10 characters';
     } else if (trimmedNote.length > 300) {
       noteError = 'Note cannot exceed 300 characters';
+    }
+  }
+
+  // Tenant response validation (if provided)
+  if (tenantResponse != null) {
+    final trimmedResponse = tenantResponse.trim();
+    if (tenantResponse.isNotEmpty && trimmedResponse.isEmpty) {
+      tenantResponseError = 'Tenant response cannot contain only whitespace';
+    } else if (trimmedResponse.length > 300) {
+      tenantResponseError = 'Tenant response cannot exceed 300 characters';
     }
   }
 
@@ -204,6 +223,7 @@ FollowUpValidationResult validateFollowUp({
       promisedDateError == null &&
       promisedAmountError == null &&
       noteError == null &&
+      tenantResponseError == null &&
       nextFollowUpDateError == null;
 
   return FollowUpValidationResult(
@@ -213,6 +233,7 @@ FollowUpValidationResult validateFollowUp({
     promisedDateError: promisedDateError,
     promisedAmountError: promisedAmountError,
     noteError: noteError,
+    tenantResponseError: tenantResponseError,
     nextFollowUpDateError: nextFollowUpDateError,
   );
 }

@@ -47,6 +47,7 @@ class RentFollowUp {
     required this.actor,
     required this.timestamp,
     this.note = '',
+    this.tenantResponse,
     this.promisedDate,
     this.promisedAmount,
     this.nextFollowUpDate,
@@ -59,6 +60,7 @@ class RentFollowUp {
   final String actor;
   final DateTime timestamp;
   final String note;
+  final String? tenantResponse;
   final DateTime? promisedDate;
   final double? promisedAmount;
   final DateTime? nextFollowUpDate;
@@ -71,6 +73,7 @@ class RentFollowUp {
     String? actor,
     DateTime? timestamp,
     String? note,
+    String? tenantResponse,
     DateTime? promisedDate,
     double? promisedAmount,
     DateTime? nextFollowUpDate,
@@ -83,6 +86,7 @@ class RentFollowUp {
       actor: actor ?? this.actor,
       timestamp: timestamp ?? this.timestamp,
       note: note ?? this.note,
+      tenantResponse: tenantResponse ?? this.tenantResponse,
       promisedDate: promisedDate ?? this.promisedDate,
       promisedAmount: promisedAmount ?? this.promisedAmount,
       nextFollowUpDate: nextFollowUpDate ?? this.nextFollowUpDate,
