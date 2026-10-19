@@ -11,6 +11,7 @@ import '../../widgets/status_badge.dart';
 import 'add_follow_up_sheet.dart';
 import 'mark_paid_sheet.dart';
 import 'rent_models.dart';
+import 'widgets/rent_follow_up_history_item.dart';
 
 /// Screen and panel for viewing complete Rent details, payments,
 /// tenant contact shortcuts, and follow-up history timeline.
@@ -500,141 +501,10 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                           )
                         : 'Initial follow-up';
 
-                    return AppCard(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: palette.accentSoft,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      switch (followUp.method) {
-                                        FollowUpMethod.call => Icons.phone,
-                                        FollowUpMethod.message => Icons.chat,
-                                        FollowUpMethod.visit =>
-                                          Icons.person_pin_circle,
-                                        FollowUpMethod.email => Icons.email,
-                                      },
-                                      size: 14,
-                                      color: palette.accent,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      followUp.method.label,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: palette.accent,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  followUp.outcome.label,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        followUp.outcome == FollowUpOutcome.paid
-                                        ? palette.success
-                                        : followUp.outcome ==
-                                              FollowUpOutcome.promisedToPay
-                                        ? palette.warning
-                                        : palette.ink,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                '${followUp.timestamp.day}/${followUp.timestamp.month} ${followUp.timestamp.hour.toString().padLeft(2, '0')}:${followUp.timestamp.minute.toString().padLeft(2, '0')}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: palette.muted,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (followUp.outcome ==
-                                  FollowUpOutcome.promisedToPay &&
-                              followUp.promisedDate != null) ...[
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: palette.warning.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.event_available,
-                                    size: 16,
-                                    color: palette.warning,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'Promised ${followUp.promisedAmount != null ? formatIndianCurrency(followUp.promisedAmount!) : ''} by ${followUp.promisedDate!.day}/${followUp.promisedDate!.month}/${followUp.promisedDate!.year}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: palette.warning,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          if (followUp.note.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              followUp.note,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: palette.ink,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'By ${followUp.actor}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: palette.muted,
-                                ),
-                              ),
-                              Text(
-                                elapsed,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: palette.muted,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                    return RentFollowUpHistoryItem(
+                      key: Key('rent_follow_up_history_item_${followUp.id}'),
+                      followUp: followUp,
+                      elapsed: elapsed,
                     );
                   },
                 );

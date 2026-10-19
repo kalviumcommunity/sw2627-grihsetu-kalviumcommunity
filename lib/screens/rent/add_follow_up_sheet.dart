@@ -79,8 +79,8 @@ class AddFollowUpSheet extends StatefulWidget {
 }
 
 class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
-  FollowUpMethod _method = FollowUpMethod.call;
-  FollowUpOutcome _outcome = FollowUpOutcome.spokeToTenant;
+  FollowUpMethod? _method = FollowUpMethod.call;
+  FollowUpOutcome? _outcome = FollowUpOutcome.spokeToTenant;
 
   final TextEditingController _noteController = TextEditingController();
   final TextEditingController _promisedAmountController =
@@ -157,6 +157,8 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
   }
 
   Future<void> _submit() async {
+    if (_isSubmitting) return;
+
     setState(() {
       _errorMessage = null;
     });
@@ -208,8 +210,8 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
       final followUp = RentFollowUp(
         id: followUpId,
         rentRecordId: widget.item.id,
-        method: _method,
-        outcome: _outcome,
+        method: _method!,
+        outcome: _outcome!,
         actor: widget.actor,
         timestamp: _referenceNow,
         note: _noteController.text.trim(),
@@ -288,7 +290,9 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                 IconButton(
                   tooltip: 'Close',
                   icon: Icon(Icons.close, color: palette.muted),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: _isSubmitting
+                      ? null
+                      : () => Navigator.of(context).pop(),
                 ),
               ],
             ),
@@ -400,8 +404,9 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                         minimumSize: const Size(0, 48),
                         side: BorderSide(color: palette.border),
                       ),
-                      onPressed: () =>
-                          setState(() => _confirmingPayment = false),
+                      onPressed: _isSubmitting
+                          ? null
+                          : () => setState(() => _confirmingPayment = false),
                       child: const Text('Back to edit'),
                     ),
                   ),
@@ -442,6 +447,7 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
               const SizedBox(height: 6),
               SegmentedButton<FollowUpMethod>(
                 key: const Key('follow_up_method_segmented'),
+                emptySelectionAllowed: true,
                 segments: const [
                   ButtonSegment(
                     value: FollowUpMethod.call,
@@ -460,9 +466,12 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                     label: Text('Email'),
                   ),
                 ],
-                selected: {_method},
-                onSelectionChanged: (set) =>
-                    setState(() => _method = set.first),
+                selected: _method != null ? {_method!} : <FollowUpMethod>{},
+                onSelectionChanged: _isSubmitting
+                    ? null
+                    : (set) => setState(
+                        () => _method = set.isEmpty ? null : set.first,
+                      ),
               ),
               const SizedBox(height: AppSpacing.md),
 
@@ -491,9 +500,11 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                 items: FollowUpOutcome.values.map((o) {
                   return DropdownMenuItem(value: o, child: Text(o.label));
                 }).toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _outcome = val);
-                },
+                onChanged: _isSubmitting
+                    ? null
+                    : (val) {
+                        setState(() => _outcome = val);
+                      },
               ),
               const SizedBox(height: AppSpacing.md),
 
@@ -538,7 +549,7 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                             ),
                             icon: const Icon(Icons.calendar_today, size: 16),
                             label: const Text('Change'),
-                            onPressed: _pickPromisedDate,
+                            onPressed: _isSubmitting ? null : _pickPromisedDate,
                           ),
                         ],
                       ),
@@ -547,6 +558,7 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                       TextField(
                         key: const Key('promised_amount_field'),
                         controller: _promisedAmountController,
+                        enabled: !_isSubmitting,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
@@ -610,14 +622,18 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                             child: Text(m.label),
                           );
                         }).toList(),
-                        onChanged: (m) =>
-                            m != null ? setState(() => _paymentMode = m) : null,
+                        onChanged: _isSubmitting
+                            ? null
+                            : (m) => m != null
+                                  ? setState(() => _paymentMode = m)
+                                  : null,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       // Payment Amount
                       TextField(
                         key: const Key('paid_amount_field'),
                         controller: _paidAmountController,
+                        enabled: !_isSubmitting,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
@@ -652,7 +668,7 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                             ),
                             icon: const Icon(Icons.calendar_today, size: 16),
                             label: const Text('Change'),
-                            onPressed: _pickPaymentDate,
+                            onPressed: _isSubmitting ? null : _pickPaymentDate,
                           ),
                         ],
                       ),
@@ -666,6 +682,7 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
               TextField(
                 key: const Key('follow_up_note_field'),
                 controller: _noteController,
+                enabled: !_isSubmitting,
                 maxLines: 3,
                 maxLength: 300,
                 decoration: InputDecoration(
@@ -695,7 +712,9 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                     IconButton(
                       tooltip: 'Clear date',
                       icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () => setState(() => _nextFollowUpDate = null),
+                      onPressed: _isSubmitting
+                          ? null
+                          : () => setState(() => _nextFollowUpDate = null),
                     ),
                   OutlinedButton.icon(
                     key: const Key('pick_next_follow_up_date_button'),
@@ -706,7 +725,7 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
                     label: Text(
                       _nextFollowUpDate == null ? 'Set date' : 'Change',
                     ),
-                    onPressed: _pickNextFollowUpDate,
+                    onPressed: _isSubmitting ? null : _pickNextFollowUpDate,
                   ),
                 ],
               ),
