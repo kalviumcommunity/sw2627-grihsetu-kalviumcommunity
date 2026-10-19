@@ -6,9 +6,8 @@ import '../../../../widgets/app_spacing.dart';
 import 'action_sheet_launcher.dart';
 
 class PartEntry {
-  PartEntry({String name = '', int quantity = 1})
-    : nameController = TextEditingController(text: name),
-      quantity = quantity;
+  PartEntry({String name = '', this.quantity = 1})
+    : nameController = TextEditingController(text: name);
 
   final TextEditingController nameController;
   int quantity;
@@ -332,8 +331,8 @@ class _WaitingForPartsSheetState extends State<WaitingForPartsSheet> {
                         onPressed: _isSubmitting
                             ? null
                             : (isWaiting
-                                ? _submitResumeWork
-                                : _submitPutOnHold),
+                                  ? _submitResumeWork
+                                  : _submitPutOnHold),
                         child: const Text('Retry'),
                       ),
                     ],
@@ -400,6 +399,7 @@ class _WaitingForPartsSheetState extends State<WaitingForPartsSheet> {
                 const SizedBox(height: AppSpacing.xs),
                 DropdownButtonFormField<String>(
                   key: const Key('waiting_reason_dropdown'),
+                  isExpanded: true,
                   initialValue: _selectedReason,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(
@@ -429,11 +429,13 @@ class _WaitingForPartsSheetState extends State<WaitingForPartsSheet> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Required parts (at least 1) *',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: palette.ink,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        'Required parts (at least 1) *',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: palette.ink,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     TextButton.icon(
@@ -468,6 +470,7 @@ class _WaitingForPartsSheetState extends State<WaitingForPartsSheet> {
                         flex: 1,
                         child: DropdownButtonFormField<int>(
                           key: Key('part_qty_dropdown_$i'),
+                          isExpanded: true,
                           initialValue: _parts[i].quantity,
                           decoration: InputDecoration(
                             labelText: 'Qty',

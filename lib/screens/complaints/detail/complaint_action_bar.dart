@@ -223,10 +223,7 @@ class ComplaintActionBar extends StatelessWidget {
   ) {
     final palette = context.palette;
     final currentStatus = state.currentStatus;
-    final allowed = allowedNext(
-      currentStatus,
-      UserRole.technician,
-    );
+    final allowed = allowedNext(currentStatus, UserRole.technician);
 
     if (currentStatus == ComplaintStatus.resolved ||
         currentStatus == ComplaintStatus.closed ||
@@ -313,9 +310,27 @@ class ComplaintActionBar extends StatelessWidget {
       label: const Text('Visit Screen'),
     );
 
+    final holdForPartsButton = allowed.contains(ComplaintStatus.waitingForParts)
+        ? OutlinedButton.icon(
+            key: const Key('tech_hold_parts_button'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(130, 48),
+              foregroundColor: palette.warning,
+              side: BorderSide(color: palette.warning),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => _openWaitingForPartsSheet(context, state),
+            icon: const Icon(Icons.pause_circle_outline, size: 18),
+            label: const Text('Hold for parts'),
+          )
+        : null;
+
     if (!hasAccepted && currentStatus == ComplaintStatus.assigned) {
       return [
         visitScreenButton,
+        ?holdForPartsButton,
         FilledButton.icon(
           key: const Key('tech_accept_job_button'),
           style: FilledButton.styleFrom(
@@ -337,6 +352,7 @@ class ComplaintActionBar extends StatelessWidget {
     if (!hasTravelStarted) {
       return [
         visitScreenButton,
+        ?holdForPartsButton,
         FilledButton.icon(
           key: const Key('tech_start_travel_button'),
           style: FilledButton.styleFrom(
@@ -358,6 +374,7 @@ class ComplaintActionBar extends StatelessWidget {
     if (!hasArrived) {
       return [
         visitScreenButton,
+        ?holdForPartsButton,
         FilledButton.icon(
           key: const Key('tech_arrived_button'),
           style: FilledButton.styleFrom(
@@ -379,6 +396,7 @@ class ComplaintActionBar extends StatelessWidget {
     if (!hasInspection) {
       return [
         visitScreenButton,
+        ?holdForPartsButton,
         FilledButton.icon(
           key: const Key('tech_start_inspection_button'),
           style: FilledButton.styleFrom(
@@ -400,6 +418,7 @@ class ComplaintActionBar extends StatelessWidget {
     if (!hasWorkStarted) {
       return [
         visitScreenButton,
+        ?holdForPartsButton,
         FilledButton.icon(
           key: const Key('tech_start_work_button'),
           style: FilledButton.styleFrom(
@@ -418,27 +437,10 @@ class ComplaintActionBar extends StatelessWidget {
       ];
     }
 
-    final holdForPartsButton = allowed.contains(ComplaintStatus.waitingForParts)
-        ? OutlinedButton.icon(
-            key: const Key('tech_hold_parts_button'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(130, 48),
-              foregroundColor: palette.warning,
-              side: BorderSide(color: palette.warning),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () => _openWaitingForPartsSheet(context, state),
-            icon: const Icon(Icons.pause_circle_outline, size: 18),
-            label: const Text('Hold for parts'),
-          )
-        : null;
-
     // Work is active -> Complete visit or hold for parts
     return [
       visitScreenButton,
-      if (holdForPartsButton != null) holdForPartsButton,
+      ?holdForPartsButton,
       FilledButton.icon(
         key: const Key('tech_complete_visit_button'),
         style: FilledButton.styleFrom(
@@ -521,7 +523,8 @@ class ComplaintActionBar extends StatelessWidget {
       referenceNow: state.referenceNow,
     );
 
-    final isTerminal = currentStatus == ComplaintStatus.resolved ||
+    final isTerminal =
+        currentStatus == ComplaintStatus.resolved ||
         currentStatus == ComplaintStatus.closed ||
         currentStatus == ComplaintStatus.cancelled ||
         state.complaint?.status == ComplaintStatus.resolved ||
@@ -581,7 +584,8 @@ class ComplaintActionBar extends StatelessWidget {
       );
       buttons.add(
         Tooltip(
-          message: tooltip ??
+          message:
+              tooltip ??
               'Reopen window has expired (within 7 days of closing only).',
           child: OutlinedButton.icon(
             key: const Key('staff_reopen_disabled_button'),

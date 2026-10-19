@@ -59,10 +59,10 @@ enum ActivityEventType {
       'WAITING_FOR_PARTS' ||
       'WAITING-FOR-PARTS' ||
       'PART_NEEDED' ||
-      'COMPLAINT_WAITING_FOR_PARTS' =>
-        ActivityEventType.waitingForParts,
-      'WORK_RESUMED' || 'WORK-RESUMED' || 'REPAIR_RESUMED' =>
-        ActivityEventType.workResumed,
+      'COMPLAINT_WAITING_FOR_PARTS' => ActivityEventType.waitingForParts,
+      'WORK_RESUMED' ||
+      'WORK-RESUMED' ||
+      'REPAIR_RESUMED' => ActivityEventType.workResumed,
       'REPAIR_COMPLETED' => ActivityEventType.repairCompleted,
       'MARKED_RESOLVED' || 'RESOLVED' => ActivityEventType.markedResolved,
       'TENANT_NOTIFIED' => ActivityEventType.tenantNotified,
@@ -74,8 +74,7 @@ enum ActivityEventType {
       'CLOSED_WITH_TENANT_CONFIRMATION' ||
       'CLOSED_WITHOUT_TENANT_CONFIRMATION' ||
       'COMPLAINT_CLOSED' ||
-      'CLOSED' =>
-        ActivityEventType.closed,
+      'CLOSED' => ActivityEventType.closed,
       'COMPLAINT_CANCELLED' || 'CANCELLED' => ActivityEventType.cancelled,
       _ => ActivityEventType.noteAdded,
     };

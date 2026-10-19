@@ -75,9 +75,9 @@ class _ReopenSheetState extends State<ReopenSheet> {
     if (_photos.length >= 3) return;
     try {
       final picked = await widget.mediaPicker.pick();
-      if (picked != null && picked.isNotEmpty && mounted) {
+      if (picked != null && mounted) {
         setState(() {
-          _photos.add(picked);
+          _photos.add(picked.name);
           _formValidationError = null;
         });
       }
@@ -279,6 +279,7 @@ class _ReopenSheetState extends State<ReopenSheet> {
               const SizedBox(height: AppSpacing.xs),
               DropdownButtonFormField<String>(
                 key: const Key('reopen_reason_dropdown'),
+                isExpanded: true,
                 initialValue: _selectedReason,
                 decoration: InputDecoration(
                   contentPadding: const EdgeInsets.symmetric(

@@ -44,9 +44,9 @@ Set<ComplaintStatus> allowedNext(
         ComplaintStatus.resolved => const {ComplaintStatus.reopened},
         ComplaintStatus.closed =>
           StatusTransitions.isReopenWindowExpired(
-            closedAt,
-            referenceNow: referenceNow,
-          )
+                closedAt,
+                referenceNow: referenceNow,
+              )
               ? const <ComplaintStatus>{}
               : const {ComplaintStatus.reopened},
         _ => const <ComplaintStatus>{},
@@ -62,9 +62,9 @@ Set<ComplaintStatus> allowedNext(
         },
         ComplaintStatus.closed =>
           StatusTransitions.isReopenWindowExpired(
-            closedAt,
-            referenceNow: referenceNow,
-          )
+                closedAt,
+                referenceNow: referenceNow,
+              )
               ? const <ComplaintStatus>{}
               : const {ComplaintStatus.reopened},
         _ => const <ComplaintStatus>{},

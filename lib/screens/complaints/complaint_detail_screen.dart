@@ -21,7 +21,6 @@ import '../../utils/visit_history.dart' as vh;
 import '../../widgets/repeat_indicator.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/skeleton_box.dart';
-import '../../widgets/status_badge.dart';
 import '../../widgets/visit_summary_widgets.dart';
 import 'detail/activity_timeline.dart';
 import 'detail/complaint_action_bar.dart';
@@ -376,8 +375,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       'Nov',
       'Dec',
     ];
-    final dateStr =
-        date != null ? '${date.day} ${months[date.month - 1]}' : 'pending';
+    final dateStr = date != null
+        ? '${date.day} ${months[date.month - 1]}'
+        : 'pending';
 
     return Container(
       key: const Key('waiting_for_parts_banner'),

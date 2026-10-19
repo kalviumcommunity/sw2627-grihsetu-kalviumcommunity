@@ -2400,10 +2400,8 @@ class InMemoryComplaintRepository implements ComplaintRepository {
         ComplaintAuditEventType.complaintWaitingForParts,
       ),
       ComplaintStatus.inProgress
-          when current.status == ComplaintStatus.waitingForParts => (
-        'work-resumed',
-        ComplaintAuditEventType.visitStarted,
-      ),
+          when current.status == ComplaintStatus.waitingForParts =>
+        ('work-resumed', ComplaintAuditEventType.visitStarted),
       ComplaintStatus.inProgress => (
         'WORK_STARTED',
         ComplaintAuditEventType.visitStarted,
@@ -2439,8 +2437,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     final eventMeta = <String, dynamic>{
       'status': change.to.value,
       'actorRole': change.role ?? 'User',
-      if (change.note != null && change.note!.isNotEmpty)
-        'note': change.note,
+      if (change.note != null && change.note!.isNotEmpty) 'note': change.note,
       if (change.reason != null && change.reason!.isNotEmpty)
         'reason': change.reason,
       if (change.parts != null && change.parts!.isNotEmpty)
@@ -2449,8 +2446,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
         'expectedDate': change.expectedDate!.toIso8601String(),
       if (change.tenantConfirmed != null)
         'tenantConfirmed': change.tenantConfirmed,
-      if (change.photos.isNotEmpty)
-        'photos': change.photos,
+      if (change.photos.isNotEmpty) 'photos': change.photos,
     };
 
     final event = ComplaintAuditEvent(

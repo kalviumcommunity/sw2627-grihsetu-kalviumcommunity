@@ -158,11 +158,10 @@ class _CloseSheetState extends State<CloseSheet> {
         ? 'Close complaint'
         : 'Close without tenant confirmation';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+    return Material(
+      color: palette.surface,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      clipBehavior: Clip.antiAlias,
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
@@ -258,8 +257,10 @@ class _CloseSheetState extends State<CloseSheet> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded,
-                              color: palette.warning),
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: palette.warning,
+                          ),
                           const SizedBox(width: AppSpacing.xs),
                           Text(
                             'Closing is final',
@@ -413,8 +414,7 @@ class _CloseSheetState extends State<CloseSheet> {
                     enabled: !_isSubmitting,
                     maxLines: 3,
                     decoration: InputDecoration(
-                      hintText:
-                          'e.g. Tenant unresponsive for 5 days after physical inspection...',
+                      hintText: 'e.g. Tenant unresponsive for 5 days after physical inspection...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
