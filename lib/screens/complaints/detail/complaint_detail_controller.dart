@@ -514,6 +514,31 @@ class ComplaintDetailController extends ChangeNotifier {
     }
   }
 
+  /// Transitions the complaint status via repository and refreshes state from audit events.
+  Future<Complaint> changeComplaintStatus(StatusChange change) async {
+    final updated = await repository.changeStatus(change);
+    _latestComplaint = updated;
+    final repoEvents = await repository.loadAuditEvents(complaintId);
+    if (repoEvents.isNotEmpty) {
+      final seenIds = <String>{};
+      _latestEvents = repoEvents
+          .where((a) => seenIds.add(a.id))
+          .map((a) => ActivityEvent.fromAuditEvent(a))
+          .toList();
+    }
+    _updateState(
+      ComplaintDetailState(
+        status: ComplaintDetailStatus.data,
+        complaint: _latestComplaint,
+        events: _latestEvents,
+        visits: _latestVisits,
+        referenceNow: _referenceNow,
+      ),
+    );
+    notifyListeners();
+    return updated;
+  }
+
   @override
   void dispose() {
     _isDisposed = true;

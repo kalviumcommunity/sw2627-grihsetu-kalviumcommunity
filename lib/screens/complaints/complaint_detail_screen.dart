@@ -252,6 +252,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (state.currentStatus == ComplaintStatus.waitingForParts) ...[
+                _buildWaitingForPartsBanner(context, state),
+                const SizedBox(height: AppSpacing.md),
+              ],
               _buildHeader(context, state),
               const SizedBox(height: AppSpacing.md),
               _buildMetricsStrip(context, state),
@@ -292,6 +296,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (state.currentStatus == ComplaintStatus.waitingForParts) ...[
+                _buildWaitingForPartsBanner(context, state),
+                const SizedBox(height: AppSpacing.md),
+              ],
               _buildHeader(context, state),
               const SizedBox(height: AppSpacing.md),
               Row(
@@ -346,6 +354,60 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
+  Widget _buildWaitingForPartsBanner(
+    BuildContext context,
+    ComplaintDetailState state,
+  ) {
+    final palette = context.palette;
+    final theme = Theme.of(context);
+    final date = state.expectedPartsDate;
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final dateStr = date != null
+        ? '${date.day} ${months[date.month - 1]}'
+        : 'pending';
+
+    return Container(
+      key: const Key('waiting_for_parts_banner'),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm + 2,
+      ),
+      decoration: BoxDecoration(
+        color: palette.warning.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: palette.warning),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.hourglass_top_outlined, color: palette.warning, size: 20),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Waiting for parts: expected $dateStr',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: palette.ink,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // -------------------------------------------------------------
   // HEADER
   // -------------------------------------------------------------
@@ -365,6 +427,14 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               ComplaintStatusChip(status: state.currentStatus),
+              if (state.currentStatus == ComplaintStatus.reopened ||
+                  c.status == ComplaintStatus.reopened ||
+                  c.reopenCount > 0)
+                const StatusBadge(
+                  key: Key('reopened_header_badge'),
+                  label: 'Reopened',
+                  tone: StatusBadgeTone.warning,
+                ),
               ComplaintPriorityChip(priority: c.priority),
               if (state.isRepeatIssue)
                 RepeatIndicator.recurring(

@@ -245,6 +245,36 @@ abstract interface class ComplaintRepository {
     required String actorId,
     String? role,
   });
+
+  /// Transitions a complaint to a new status according to [change] and appends an audit event.
+  Future<Complaint> changeStatus(StatusChange change);
+}
+
+/// Input payload for changing a complaint status with full audit details.
+class StatusChange {
+  const StatusChange({
+    required this.complaintId,
+    required this.to,
+    required this.actor,
+    this.reason,
+    this.note,
+    this.parts,
+    this.expectedDate,
+    this.role,
+    this.tenantConfirmed,
+    this.photos = const <String>[],
+  });
+
+  final String complaintId;
+  final ComplaintStatus to;
+  final String actor;
+  final String? reason;
+  final String? note;
+  final List<Map<String, dynamic>>? parts;
+  final DateTime? expectedDate;
+  final String? role;
+  final bool? tenantConfirmed;
+  final List<String> photos;
 }
 
 /// Deterministically sorts a technician's assigned complaints for field workflow:
@@ -1069,6 +1099,27 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         },
       );
     });
+  }
+
+  @override
+  Future<Complaint> changeStatus(StatusChange change) async {
+    // TODO: Implement Firestore persistence for changeStatus
+    return updateComplaintStatus(
+      change.complaintId,
+      change.to,
+      actorId: change.actor,
+      note: change.note,
+      role: change.role,
+      metadata: {
+        if (change.reason != null) 'reason': change.reason,
+        if (change.parts != null) 'parts': change.parts,
+        if (change.expectedDate != null)
+          'expectedDate': change.expectedDate!.toIso8601String(),
+        if (change.tenantConfirmed != null)
+          'tenantConfirmed': change.tenantConfirmed,
+        if (change.photos.isNotEmpty) 'photos': change.photos,
+      },
+    );
   }
 
   static AppUser _actorProfile(
@@ -2295,6 +2346,126 @@ class InMemoryComplaintRepository implements ComplaintRepository {
 
     _emit();
     _emitComplaint(complaintId);
+    return updated;
+  }
+
+  @override
+  Future<Complaint> changeStatus(StatusChange change) async {
+    if (simulateFailure) {
+      throw const ComplaintFailure(
+        ComplaintFailureCode.network,
+        'Simulated network failure',
+      );
+    }
+    if (operationDelay > Duration.zero) {
+      await Future<void>.delayed(operationDelay);
+    } else {
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+    }
+
+    final index = _complaints.indexWhere((c) => c.id == change.complaintId);
+    if (index == -1) {
+      throw const ComplaintFailure(ComplaintFailureCode.notFound);
+    }
+
+    final current = _complaints[index];
+    final now = DateTime.now();
+
+    final isReopen = change.to == ComplaintStatus.reopened;
+    final updated = Complaint(
+      id: current.id,
+      tenantId: current.tenantId,
+      propertyId: current.propertyId,
+      unitId: current.unitId,
+      title: current.title,
+      description: current.description,
+      category: current.category,
+      priority: current.priority,
+      status: change.to,
+      currentTechnicianId: current.currentTechnicianId,
+      activeVisitId: current.activeVisitId,
+      visitCount: isReopen ? current.visitCount + 1 : current.visitCount,
+      isRepeatVisit: isReopen ? true : current.isRepeatVisit,
+      reopenCount: isReopen ? current.reopenCount + 1 : current.reopenCount,
+      createdBy: current.createdBy,
+      createdAt: current.createdAt,
+      firstAssignedAt: current.firstAssignedAt,
+      resolvedAt: change.to == ComplaintStatus.resolved
+          ? now
+          : current.resolvedAt,
+      closedAt: change.to == ComplaintStatus.closed ? now : current.closedAt,
+      updatedAt: now,
+    );
+    _complaints[index] = updated;
+
+    final (rawType, eventTypeEnum) = switch (change.to) {
+      ComplaintStatus.waitingForParts => (
+        'waiting-for-parts',
+        ComplaintAuditEventType.complaintWaitingForParts,
+      ),
+      ComplaintStatus.inProgress
+          when current.status == ComplaintStatus.waitingForParts =>
+        ('work-resumed', ComplaintAuditEventType.visitStarted),
+      ComplaintStatus.inProgress => (
+        'WORK_STARTED',
+        ComplaintAuditEventType.visitStarted,
+      ),
+      ComplaintStatus.reopened => (
+        'reopened',
+        ComplaintAuditEventType.complaintReopened,
+      ),
+      ComplaintStatus.closed => (
+        change.tenantConfirmed == true
+            ? 'closed_with_tenant_confirmation'
+            : 'closed_without_tenant_confirmation',
+        ComplaintAuditEventType.complaintClosed,
+      ),
+      ComplaintStatus.cancelled => (
+        'cancelled',
+        ComplaintAuditEventType.complaintCancelled,
+      ),
+      ComplaintStatus.resolved => (
+        'REPAIR_COMPLETED',
+        ComplaintAuditEventType.complaintResolved,
+      ),
+      ComplaintStatus.assigned => (
+        'TECHNICIAN_ASSIGNED',
+        ComplaintAuditEventType.technicianAssigned,
+      ),
+      ComplaintStatus.open => (
+        'COMPLAINT_OPENED',
+        ComplaintAuditEventType.complaintCreated,
+      ),
+    };
+
+    final eventMeta = <String, dynamic>{
+      'status': change.to.value,
+      'actorRole': change.role ?? 'User',
+      if (change.note != null && change.note!.isNotEmpty) 'note': change.note,
+      if (change.reason != null && change.reason!.isNotEmpty)
+        'reason': change.reason,
+      if (change.parts != null && change.parts!.isNotEmpty)
+        'parts': change.parts,
+      if (change.expectedDate != null)
+        'expectedDate': change.expectedDate!.toIso8601String(),
+      if (change.tenantConfirmed != null)
+        'tenantConfirmed': change.tenantConfirmed,
+      if (change.photos.isNotEmpty) 'photos': change.photos,
+    };
+
+    final event = ComplaintAuditEvent(
+      id: '${change.complaintId}_evt_${now.millisecondsSinceEpoch}',
+      complaintId: change.complaintId,
+      eventType: eventTypeEnum,
+      rawEventType: rawType,
+      actorId: change.actor,
+      timestamp: now,
+      metadata: eventMeta,
+    );
+
+    await appendAuditEvent(event);
+    _emit();
+    _emitComplaint(change.complaintId);
     return updated;
   }
 
