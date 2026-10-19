@@ -580,6 +580,85 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Rent records are operational records owned by the office workflow.
+    // Historical identity fields are immutable after creation; follow-up
+    // writes update only the workflow fields used by the atomic repository.
+    match /rent_records/{rentRecordId} {
+      allow read: if isOperationsStaff();
+      allow create: if isOperationsStaff()
+        && request.resource.data.keys().hasOnly([
+          'tenantId', 'propertyId', 'unitId', 'month', 'amountDue', 'dueDate',
+          'status', 'lastFollowUpAt', 'nextFollowUpAt', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'tenantId', 'propertyId', 'unitId', 'month', 'amountDue', 'dueDate',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.tenantId is string
+        && request.resource.data.tenantId.size() > 0
+        && request.resource.data.propertyId is string
+        && request.resource.data.propertyId.size() > 0
+        && request.resource.data.unitId is string
+        && request.resource.data.unitId.size() > 0
+        && request.resource.data.month is string
+        && request.resource.data.month.size() > 0
+        && request.resource.data.amountDue is number
+        && request.resource.data.amountDue >= 0
+        && request.resource.data.dueDate is timestamp
+        && request.resource.data.status == 'due'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && exists(/databases/$(database)/documents/properties/$(request.resource.data.propertyId))
+        && exists(/databases/$(database)/documents/units/$(request.resource.data.unitId))
+        && get(/databases/$(database)/documents/units/$(request.resource.data.unitId)).data.propertyId == request.resource.data.propertyId
+        && exists(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId))
+        && get(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId)).data.propertyId == request.resource.data.propertyId
+        && get(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId)).data.unitId == request.resource.data.unitId;
+      allow update: if isOperationsStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'amountDue', 'dueDate', 'status', 'lastFollowUpAt',
+          'nextFollowUpAt', 'updatedAt'
+        ])
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.status in [
+          'due', 'contacted', 'promised', 'overdue', 'paid'
+        ]
+        && (resource.data.status != 'paid' || request.resource.data.status == 'paid');
+      allow delete: if false;
+    }
+
+    // Follow-ups are append-only. A new contact never updates or deletes an
+    // earlier contact, which keeps the tenant communication history intact.
+    match /rent_follow_ups/{followUpId} {
+      allow read: if isOperationsStaff();
+      allow create: if isOperationsStaff()
+        && request.resource.data.keys().hasOnly([
+          'rentRecordId', 'handledBy', 'createdAt', 'contactMethod', 'notes',
+          'tenantResponse', 'promisedPaymentDate', 'nextFollowUpAt',
+          'previousStatus', 'resultingStatus'
+        ])
+        && request.resource.data.keys().hasAll([
+          'rentRecordId', 'handledBy', 'createdAt', 'contactMethod', 'notes',
+          'tenantResponse', 'nextFollowUpAt', 'previousStatus', 'resultingStatus'
+        ])
+        && request.resource.data.rentRecordId is string
+        && request.resource.data.rentRecordId.size() > 0
+        && request.resource.data.handledBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.contactMethod is string
+        && request.resource.data.contactMethod.size() > 0
+        && (request.resource.data.notes.size() > 0
+          || request.resource.data.tenantResponse.size() > 0)
+        && request.resource.data.previousStatus in [
+          'due', 'contacted', 'promised', 'overdue'
+        ]
+        && request.resource.data.resultingStatus in [
+          'contacted', 'promised'
+        ]
+        && exists(/databases/$(database)/documents/rent_records/$(request.resource.data.rentRecordId));
+      allow update, delete: if false;
+    }
+
     // All future collections remain closed until their authorized workflows
     // and invariants are implemented explicitly.
     match /{document=**} {
