@@ -25,6 +25,7 @@ class RentListScreen extends StatefulWidget {
     this.now,
   });
 
+  final RentStatus? initialStatusFilter;
   final RentRepository? repository;
   final bool readOnly;
   final String? filterTenantId;
@@ -53,6 +54,7 @@ class _RentListScreenState extends State<RentListScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedStatusFilter = widget.initialStatusFilter;
     _loadData();
   }
 
