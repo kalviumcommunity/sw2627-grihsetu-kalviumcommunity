@@ -134,9 +134,49 @@ class ComplaintWriteException extends ComplaintFailure {
     : super(ComplaintFailureCode.write, message);
 }
 
+/// Scope criteria for querying complaints (e.g. for specific roles or locations).
+class ComplaintScope {
+  const ComplaintScope({
+    this.propertyId,
+    this.unitId,
+    this.tenantId,
+    this.technicianId,
+  });
+
+  const ComplaintScope.all() : this();
+
+  const ComplaintScope.forTechnician(String technicianId)
+      : this(technicianId: technicianId);
+
+  const ComplaintScope.forTenant(String tenantId)
+      : this(tenantId: tenantId);
+
+  const ComplaintScope.forProperty(String propertyId)
+      : this(propertyId: propertyId);
+
+  final String? propertyId;
+  final String? unitId;
+  final String? tenantId;
+  final String? technicianId;
+}
+
 /// Application boundary for complaint operations.
 abstract interface class ComplaintRepository {
   Future<Complaint> createComplaint(CreateComplaintInput input);
+
+  /// Returns a snapshot list of complaints matching the given [scope].
+  /// Filtering happens on the client over the loaded list.
+  /// TODO: Add server-side indexed queries when moving to Firestore.
+  Future<List<Complaint>> list({ComplaintScope? scope}) async {
+    if (scope?.technicianId != null) {
+      return watchAssignedComplaints(technicianId: scope!.technicianId!).first;
+    }
+    return watchComplaints(
+      propertyId: scope?.propertyId,
+      unitId: scope?.unitId,
+      tenantId: scope?.tenantId,
+    ).first;
+  }
 
   Stream<List<Complaint>> watchComplaints({
     String? propertyId,
@@ -1414,6 +1454,37 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     _emitComplaint(id);
     _emitAudit(id);
     return complaint;
+  }
+
+  @override
+  Future<List<Complaint>> list({ComplaintScope? scope}) async {
+    // Filtering happens on the client over the loaded list.
+    // TODO: Add server-side indexed queries when moving to Firestore.
+    var result = List<Complaint>.from(_complaints);
+    if (scope != null) {
+      if (scope.propertyId != null && scope.propertyId!.trim().isNotEmpty) {
+        result = result
+            .where((c) => c.propertyId == scope.propertyId!.trim())
+            .toList();
+      }
+      if (scope.unitId != null && scope.unitId!.trim().isNotEmpty) {
+        result =
+            result.where((c) => c.unitId == scope.unitId!.trim()).toList();
+      }
+      if (scope.tenantId != null && scope.tenantId!.trim().isNotEmpty) {
+        result = result
+            .where((c) => c.tenantId == scope.tenantId!.trim())
+            .toList();
+      }
+      if (scope.technicianId != null &&
+          scope.technicianId!.trim().isNotEmpty) {
+        result = result
+            .where((c) => c.currentTechnicianId == scope.technicianId!.trim())
+            .toList();
+      }
+    }
+    _sort(result);
+    return result;
   }
 
   @override
