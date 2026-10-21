@@ -8,7 +8,9 @@ import '../repositories/complaint_repository.dart';
 import '../repositories/property_repository.dart';
 import '../repositories/rent_repository.dart';
 import '../screens/complaints/complaint_list_screen.dart';
+import '../screens/complaints/search/complaint_search_screen.dart';
 import '../screens/complaints/technician_queue_screen.dart';
+import '../utils/complaint_query.dart';
 import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../screens/property/property_browser_screen.dart';
@@ -44,6 +46,7 @@ class _AppShellState extends State<AppShell> {
   late final UserRole _role = widget.profile?.role ?? UserRole.technician;
   int _index = 0;
   bool _isSigningOut = false;
+  ComplaintFilter _complaintFilter = const ComplaintFilter();
 
   static const double _railBreakpoint = 840;
 
@@ -189,6 +192,10 @@ class _AppShellState extends State<AppShell> {
                       complaintRepository: widget.complaintRepository,
                       propertyRepository: widget.propertyRepository,
                       rentRepository: widget.rentRepository,
+                      complaintFilter: _complaintFilter,
+                      onComplaintFilterChanged: (filter) {
+                        _complaintFilter = filter;
+                      },
                     ),
                   ),
                 ],
@@ -254,6 +261,7 @@ const Map<UserRole, List<_NavigationItem>> _roleNavigation = {
   UserRole.propertyOwner: [
     _NavigationItem('Overview', Icons.dashboard_outlined, Icons.dashboard),
     _NavigationItem('Properties', Icons.apartment_outlined, Icons.apartment),
+    _NavigationItem('Complaints', Icons.report_outlined, Icons.report),
     _NavigationItem('Rent', Icons.receipt_long_outlined, Icons.receipt_long),
     _NavigationItem('Reports', Icons.analytics_outlined, Icons.analytics),
   ],
@@ -274,6 +282,8 @@ class _SectionPlaceholder extends StatelessWidget {
     this.complaintRepository,
     this.propertyRepository,
     this.rentRepository,
+    this.complaintFilter,
+    this.onComplaintFilterChanged,
     super.key,
   });
 
@@ -284,6 +294,8 @@ class _SectionPlaceholder extends StatelessWidget {
   final ComplaintRepository? complaintRepository;
   final PropertyRepository? propertyRepository;
   final RentRepository? rentRepository;
+  final ComplaintFilter? complaintFilter;
+  final ValueChanged<ComplaintFilter>? onComplaintFilterChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -291,11 +303,20 @@ class _SectionPlaceholder extends StatelessWidget {
       return const PropertyBrowserScreen(showAppBar: false);
     }
     if (item.label == 'Complaints') {
-      return ComplaintListScreen(
+      ComplaintScope? scope;
+      if (role == UserRole.tenant && profile?.id != null) {
+        scope = ComplaintScope.forTenant(profile!.id);
+      } else if (role == UserRole.technician && profile?.id != null) {
+        scope = ComplaintScope.forTechnician(profile!.id);
+      }
+      return ComplaintSearchScreen(
         profile: profile,
         authService: authService,
-        complaintRepository: complaintRepository,
+        repository: complaintRepository,
         propertyRepository: propertyRepository,
+        scope: scope,
+        initial: complaintFilter,
+        onFilterChanged: onComplaintFilterChanged,
         showAppBar: false,
       );
     }
