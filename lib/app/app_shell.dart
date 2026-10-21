@@ -9,6 +9,7 @@ import '../repositories/property_repository.dart';
 import '../repositories/rent_repository.dart';
 import '../screens/complaints/complaint_list_screen.dart';
 import '../screens/complaints/technician_queue_screen.dart';
+import '../screens/dashboard/operations_dashboard_screen.dart';
 import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../screens/property/property_browser_screen.dart';
@@ -287,6 +288,14 @@ class _SectionPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (item.label == 'Overview' && role.isOperationsStaff) {
+      return OperationsDashboardScreen(
+        profile: profile,
+        complaintRepository: complaintRepository,
+        propertyRepository: propertyRepository,
+        rentRepository: rentRepository,
+      );
+    }
     if (item.label == 'Properties') {
       return const PropertyBrowserScreen(showAppBar: false);
     }
