@@ -5,11 +5,7 @@ import '../../utils/attention_rules.dart';
 import '../../widgets/app_spacing.dart';
 
 class AttentionCard extends StatelessWidget {
-  const AttentionCard({
-    super.key,
-    required this.item,
-    required this.onTap,
-  });
+  const AttentionCard({super.key, required this.item, required this.onTap});
 
   final AttentionItem item;
   final VoidCallback onTap;
@@ -55,14 +51,13 @@ class AttentionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Left severity bar
-                  Container(
-                    width: 5,
-                    color: severityColor,
-                  ),
+                  Container(width: 5, color: severityColor),
                   const SizedBox(width: AppSpacing.sm),
                   // Icon
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
+                    ),
                     child: Center(
                       child: Container(
                         padding: const EdgeInsets.all(8),
@@ -82,7 +77,9 @@ class AttentionCard extends StatelessWidget {
                   // Title, subtitle & oldest age
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm,
+                      ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,7 +89,8 @@ class AttentionCard extends StatelessWidget {
                               Flexible(
                                 child: Text(
                                   item.title,
-                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(
                                         fontWeight: FontWeight.w600,
                                         color: palette.ink,
                                       ),
@@ -103,7 +101,8 @@ class AttentionCard extends StatelessWidget {
                               // Oldest age chip/text
                               Text(
                                 '• ${item.oldestAgeLabel}',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
                                       color: palette.muted,
                                       fontSize: 11,
                                     ),
@@ -113,9 +112,8 @@ class AttentionCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             item.subtitle,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: palette.muted,
-                                ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: palette.muted),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -127,7 +125,10 @@ class AttentionCard extends StatelessWidget {
                   Center(
                     child: Container(
                       margin: const EdgeInsets.only(left: 4, right: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: severityColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -135,9 +136,9 @@ class AttentionCard extends StatelessWidget {
                       child: Text(
                         '${item.count}',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: severityColor,
-                            ),
+                          fontWeight: FontWeight.bold,
+                          color: severityColor,
+                        ),
                       ),
                     ),
                   ),

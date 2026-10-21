@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../core/enums/complaint_audit_event_type.dart';
@@ -40,7 +41,7 @@ abstract interface class DashboardRepository {
 /// TODO: Implement FirestoreDashboardRepository backed by live Firestore streams and queries.
 class InMemoryDashboardRepository implements DashboardRepository {
   InMemoryDashboardRepository({
-    this.delay = const Duration(milliseconds: 150),
+    this.delay = Duration.zero,
     this.shouldFail = false,
   });
 
@@ -52,10 +53,7 @@ class InMemoryDashboardRepository implements DashboardRepository {
       id: 'usr_002',
       name: 'Aman Verma',
       phone: '+91 98765 00001',
-      specialties: [
-        ComplaintCategory.plumbing,
-        ComplaintCategory.electrical,
-      ],
+      specialties: [ComplaintCategory.plumbing, ComplaintCategory.electrical],
       todayJobCount: 3,
       availability: TechnicianAvailability.onJob,
     ),
@@ -63,10 +61,7 @@ class InMemoryDashboardRepository implements DashboardRepository {
       id: 'usr_004',
       name: 'Suresh Raina',
       phone: '+91 98765 00002',
-      specialties: [
-        ComplaintCategory.electrical,
-        ComplaintCategory.appliance,
-      ],
+      specialties: [ComplaintCategory.electrical, ComplaintCategory.appliance],
       todayJobCount: 1,
       availability: TechnicianAvailability.available,
     ),
@@ -74,10 +69,7 @@ class InMemoryDashboardRepository implements DashboardRepository {
       id: 'usr_005',
       name: 'Dinesh Karthik',
       phone: '+91 98765 00003',
-      specialties: [
-        ComplaintCategory.carpentry,
-        ComplaintCategory.general,
-      ],
+      specialties: [ComplaintCategory.structural, ComplaintCategory.cleaning],
       todayJobCount: 4,
       availability: TechnicianAvailability.onJob,
     ),
@@ -85,52 +77,61 @@ class InMemoryDashboardRepository implements DashboardRepository {
       id: 'usr_006',
       name: 'Mohit Sharma',
       phone: '+91 98765 00004',
-      specialties: [
-        ComplaintCategory.security,
-        ComplaintCategory.civil,
-      ],
+      specialties: [ComplaintCategory.security, ComplaintCategory.commonArea],
       todayJobCount: 0,
       availability: TechnicianAvailability.offDuty,
     ),
   ];
 
-  static List<ComplaintAuditEvent> generateSampleEvents(List<Complaint> complaints) {
+  static List<ComplaintAuditEvent> generateSampleEvents(
+    List<Complaint> complaints,
+  ) {
     final events = <ComplaintAuditEvent>[];
     for (final c in complaints) {
-      events.add(ComplaintAuditEvent(
-        id: 'evt_${c.id}_created',
-        complaintId: c.id,
-        eventType: ComplaintAuditEventType.complaintCreated,
-        actorId: c.createdBy,
-        actorRole: UserRole.complaintOperations,
-        timestamp: c.createdAt,
-        details: {'title': c.title},
-      ));
-      if (c.firstAssignedAt != null) {
-        events.add(ComplaintAuditEvent(
-          id: 'evt_${c.id}_assigned',
+      events.add(
+        ComplaintAuditEvent(
+          id: 'evt_${c.id}_created',
           complaintId: c.id,
-          eventType: ComplaintAuditEventType.technicianAssigned,
-          actorId: 'usr_001',
+          eventType: ComplaintAuditEventType.complaintCreated,
+          actorId: c.createdBy,
           actorRole: UserRole.complaintOperations,
-          timestamp: c.firstAssignedAt,
-          details: {'technicianId': c.currentTechnicianId ?? 'usr_002'},
-        ));
+          timestamp: c.createdAt,
+          details: {'title': c.title},
+        ),
+      );
+      if (c.firstAssignedAt != null) {
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_assigned',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.technicianAssigned,
+            actorId: 'usr_001',
+            actorRole: UserRole.complaintOperations,
+            timestamp: c.firstAssignedAt,
+            details: {'technicianId': c.currentTechnicianId ?? 'usr_002'},
+          ),
+        );
       }
       if (c.resolvedAt != null) {
-        events.add(ComplaintAuditEvent(
-          id: 'evt_${c.id}_resolved',
-          complaintId: c.id,
-          eventType: ComplaintAuditEventType.complaintResolved,
-          actorId: c.currentTechnicianId ?? 'usr_002',
-          actorRole: UserRole.technician,
-          timestamp: c.resolvedAt,
-          details: {'status': 'resolved'},
-        ));
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_resolved',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.complaintResolved,
+            actorId: c.currentTechnicianId ?? 'usr_002',
+            actorRole: UserRole.technician,
+            timestamp: c.resolvedAt,
+            details: {'status': 'resolved'},
+          ),
+        );
       }
     }
     // Sort descending by timestamp
-    events.sort((a, b) => (b.timestamp ?? DateTime(2000)).compareTo(a.timestamp ?? DateTime(2000)));
+    events.sort(
+      (a, b) => (b.timestamp ?? DateTime(2000)).compareTo(
+        a.timestamp ?? DateTime(2000),
+      ),
+    );
     return events.take(8).toList();
   }
 
@@ -141,7 +142,9 @@ class InMemoryDashboardRepository implements DashboardRepository {
     }
 
     if (shouldFail) {
-      throw Exception('Failed to load dashboard data. Check your network connection.');
+      throw Exception(
+        'Failed to load dashboard data. Check your network connection.',
+      );
     }
 
     final effectiveNow = now ?? DateTime.now();

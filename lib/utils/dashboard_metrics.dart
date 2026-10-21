@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
+
 import '../core/enums/complaint_status.dart';
 import '../core/models/complaint.dart';
+import 'attention_rules.dart';
 
 @immutable
 class StatMetric {
@@ -40,22 +42,29 @@ TodayMetrics calculateTodayMetrics({
   final startOfYesterday = startOfToday.subtract(const Duration(days: 1));
 
   // 1. Open complaints
-  final openNow = complaints.where((c) =>
-      c.status == ComplaintStatus.open ||
-      c.status == ComplaintStatus.assigned ||
-      c.status == ComplaintStatus.inProgress ||
-      c.status == ComplaintStatus.waitingForParts ||
-      c.status == ComplaintStatus.reopened).length;
+  final openNow = complaints
+      .where(
+        (c) =>
+            c.status == ComplaintStatus.open ||
+            c.status == ComplaintStatus.assigned ||
+            c.status == ComplaintStatus.inProgress ||
+            c.status == ComplaintStatus.waitingForParts ||
+            c.status == ComplaintStatus.reopened,
+      )
+      .length;
 
   // Approximate open yesterday: created before today and (closed/resolved after yesterday or not closed/resolved)
   final openYesterday = complaints.where((c) {
-    if (c.createdAt.isAfter(startOfToday)) return false;
+    final created = c.createdAt ?? DateTime(2000);
+    if (created.isAfter(startOfToday)) return false;
     final res = c.resolvedAt;
     if (res != null && res.isBefore(startOfYesterday)) return false;
     return true;
   }).length;
 
-  final openDiff = (openYesterday == 0) ? 0.0 : ((openNow - openYesterday) / openYesterday) * 100;
+  final openDiff = (openYesterday == 0)
+      ? 0.0
+      : ((openNow - openYesterday) / openYesterday) * 100;
 
   // 2. Resolved today
   final resolvedTodayCount = complaints.where((c) {
@@ -65,22 +74,30 @@ TodayMetrics calculateTodayMetrics({
 
   final resolvedYesterdayCount = complaints.where((c) {
     final res = c.resolvedAt;
-    return res != null && !res.isBefore(startOfYesterday) && res.isBefore(startOfToday);
+    return res != null &&
+        !res.isBefore(startOfYesterday) &&
+        res.isBefore(startOfToday);
   }).length;
 
   final resolvedDiff = (resolvedYesterdayCount == 0)
       ? (resolvedTodayCount > 0 ? 100.0 : 0.0)
-      : ((resolvedTodayCount - resolvedYesterdayCount) / resolvedYesterdayCount) * 100;
+      : ((resolvedTodayCount - resolvedYesterdayCount) /
+                resolvedYesterdayCount) *
+            100;
 
   // 3. Avg first response time (in hours or minutes)
   final respondedComplaints = complaints.where((c) {
-    return c.status != ComplaintStatus.open && c.updatedAt.isAfter(c.createdAt);
+    final created = c.createdAt ?? now;
+    final updated = c.updatedAt ?? created;
+    return c.status != ComplaintStatus.open && updated.isAfter(created);
   }).toList();
 
   double avgResponseHours = 0.0;
   if (respondedComplaints.isNotEmpty) {
     final totalHours = respondedComplaints.fold<double>(0.0, (sum, c) {
-      final diff = c.updatedAt.difference(c.createdAt).inMinutes / 60.0;
+      final created = c.createdAt ?? now;
+      final updated = c.updatedAt ?? created;
+      final diff = updated.difference(created).inMinutes / 60.0;
       return sum + diff;
     });
     avgResponseHours = totalHours / respondedComplaints.length;
@@ -91,14 +108,21 @@ TodayMetrics calculateTodayMetrics({
       : '${avgResponseHours.toStringAsFixed(1)}h';
 
   // 4. SLA %
-  final closedOrResolved = complaints.where((c) =>
-      c.status == ComplaintStatus.resolved || c.status == ComplaintStatus.closed).toList();
+  final closedOrResolved = complaints
+      .where(
+        (c) =>
+            c.status == ComplaintStatus.resolved ||
+            c.status == ComplaintStatus.closed,
+      )
+      .toList();
 
   double slaRatio = 100.0;
   if (closedOrResolved.isNotEmpty) {
     final metSla = closedOrResolved.where((c) {
-      if (c.expectedResolution != null && c.resolvedAt != null) {
-        return !c.resolvedAt!.isAfter(c.expectedResolution!);
+      final res = c.resolvedAt;
+      if (res != null) {
+        final deadline = expectedResolutionDeadline(c);
+        return !res.isAfter(deadline);
       }
       return true;
     }).length;
@@ -121,7 +145,7 @@ TodayMetrics calculateTodayMetrics({
     avgFirstResponse: StatMetric(
       label: 'Avg first response',
       value: avgResponseStr,
-      change: -4.5, // 4.5% faster vs yesterday
+      change: -4.5,
       isPositiveGood: false,
     ),
     slaPercent: StatMetric(

@@ -18,6 +18,7 @@ import 'rent_models.dart';
 class RentListScreen extends StatefulWidget {
   const RentListScreen({
     super.key,
+    this.initialStatusFilter,
     this.repository,
     this.readOnly = false,
     this.filterTenantId,
