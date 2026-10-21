@@ -7,7 +7,6 @@ import '../core/models/user.dart';
 import '../repositories/complaint_repository.dart';
 import '../repositories/property_repository.dart';
 import '../repositories/rent_repository.dart';
-import '../screens/complaints/complaint_list_screen.dart';
 import '../screens/complaints/search/complaint_search_screen.dart';
 import '../screens/complaints/technician_queue_screen.dart';
 import '../utils/complaint_query.dart';

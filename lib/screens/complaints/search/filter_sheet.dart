@@ -134,13 +134,11 @@ class _FilterSheetState extends State<FilterSheet> {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final theme = Theme.of(context);
-    final matchingCount =
-        applyFilter(widget.allComplaints, _current).length;
+    final matchingCount = applyFilter(widget.allComplaints, _current).length;
 
     final properties = widget.properties ?? SampleFixtures.sampleProperties;
     final units = widget.units ?? SampleFixtures.sampleUnits;
-    final technicians =
-        widget.technicians ?? SampleFixtures.sampleUsers;
+    final technicians = widget.technicians ?? SampleFixtures.sampleUsers;
 
     return Shortcuts(
       shortcuts: <LogicalKeySet, Intent>{
@@ -267,12 +265,11 @@ class _FilterSheetState extends State<FilterSheet> {
                           Semantics(
                             label: 'Filter by repeat visits only',
                             child: AppSwitch(
-                              label: 'Repeat only',
+                              title: 'Repeat only',
                               value: _current.repeatOnly,
                               onChanged: (val) {
                                 setState(() {
-                                  _current =
-                                      _current.copyWith(repeatOnly: val);
+                                  _current = _current.copyWith(repeatOnly: val);
                                 });
                               },
                             ),
@@ -281,12 +278,13 @@ class _FilterSheetState extends State<FilterSheet> {
                           Semantics(
                             label: 'Filter by SLA overdue complaints only',
                             child: AppSwitch(
-                              label: 'Overdue only (SLA breached)',
+                              title: 'Overdue only (SLA breached)',
                               value: _current.overdueOnly,
                               onChanged: (val) {
                                 setState(() {
-                                  _current =
-                                      _current.copyWith(overdueOnly: val);
+                                  _current = _current.copyWith(
+                                    overdueOnly: val,
+                                  );
                                 });
                               },
                             ),
@@ -314,15 +312,15 @@ class _FilterSheetState extends State<FilterSheet> {
                               selected: selected,
                               onSelected: (active) {
                                 setState(() {
-                                  final next =
-                                      Set<ComplaintStatus>.from(_current.statuses);
+                                  final next = Set<ComplaintStatus>.from(
+                                    _current.statuses,
+                                  );
                                   if (active) {
                                     next.add(s);
                                   } else {
                                     next.remove(s);
                                   }
-                                  _current =
-                                      _current.copyWith(statuses: next);
+                                  _current = _current.copyWith(statuses: next);
                                 });
                               },
                               backgroundColor: palette.surface,
@@ -367,14 +365,16 @@ class _FilterSheetState extends State<FilterSheet> {
                               onSelected: (active) {
                                 setState(() {
                                   final next = Set<ComplaintPriority>.from(
-                                      _current.priorities);
+                                    _current.priorities,
+                                  );
                                   if (active) {
                                     next.add(p);
                                   } else {
                                     next.remove(p);
                                   }
-                                  _current =
-                                      _current.copyWith(priorities: next);
+                                  _current = _current.copyWith(
+                                    priorities: next,
+                                  );
                                 });
                               },
                               backgroundColor: palette.surface,
@@ -419,14 +419,16 @@ class _FilterSheetState extends State<FilterSheet> {
                               onSelected: (active) {
                                 setState(() {
                                   final next = Set<ComplaintCategory>.from(
-                                      _current.categories);
+                                    _current.categories,
+                                  );
                                   if (active) {
                                     next.add(c);
                                   } else {
                                     next.remove(c);
                                   }
-                                  _current =
-                                      _current.copyWith(categories: next);
+                                  _current = _current.copyWith(
+                                    categories: next,
+                                  );
                                 });
                               },
                               backgroundColor: palette.surface,
@@ -720,10 +722,7 @@ class _FilterSheetState extends State<FilterSheet> {
     final palette = context.palette;
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: AppSpacing.xs,
-        top: AppSpacing.xs,
-      ),
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs, top: AppSpacing.xs),
       child: Text(
         title,
         style: theme.textTheme.labelLarge?.copyWith(

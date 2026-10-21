@@ -236,8 +236,10 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
       );
     }
 
-    final pattern =
-        RegExp(words.map(RegExp.escape).join('|'), caseSensitive: false);
+    final pattern = RegExp(
+      words.map(RegExp.escape).join('|'),
+      caseSensitive: false,
+    );
     final matches = pattern.allMatches(displayTitle).toList();
     if (matches.isEmpty) {
       return Text(
@@ -273,10 +275,7 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
     }
     if (lastEnd < displayTitle.length) {
       spans.add(
-        TextSpan(
-          text: displayTitle.substring(lastEnd),
-          style: textStyle,
-        ),
+        TextSpan(text: displayTitle.substring(lastEnd), style: textStyle),
       );
     }
 
@@ -354,7 +353,8 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
               ),
               const SizedBox(width: AppSpacing.sm),
               Semantics(
-                label: 'Open filters sheet. Active count: ${_filter.activeCount}',
+                label:
+                    'Open filters sheet. Active count: ${_filter.activeCount}',
                 button: true,
                 child: Badge(
                   isLabelVisible: _filter.activeCount > 0,
@@ -426,11 +426,9 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
                 count: _allComplaints
                     .where((c) => c.status == ComplaintStatus.open)
                     .length,
-                isSelected:
-                    _filter.statuses.contains(ComplaintStatus.open),
+                isSelected: _filter.statuses.contains(ComplaintStatus.open),
                 onTap: () {
-                  final has =
-                      _filter.statuses.contains(ComplaintStatus.open);
+                  final has = _filter.statuses.contains(ComplaintStatus.open);
                   _updateFilter(
                     _filter.copyWith(
                       statuses: has
@@ -444,10 +442,12 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
                 context,
                 label: 'Unassigned',
                 count: _allComplaints
-                    .where((c) =>
-                        c.currentTechnicianId == null ||
-                        c.currentTechnicianId!.isEmpty ||
-                        c.currentTechnicianId!.toLowerCase() == 'unassigned')
+                    .where(
+                      (c) =>
+                          c.currentTechnicianId == null ||
+                          c.currentTechnicianId!.isEmpty ||
+                          c.currentTechnicianId!.toLowerCase() == 'unassigned',
+                    )
                     .length,
                 isSelected: _filter.technicianId?.toLowerCase() == 'unassigned',
                 onTap: () {
@@ -467,16 +467,19 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
                 count: _allComplaints
                     .where((c) => c.priority == ComplaintPriority.urgent)
                     .length,
-                isSelected:
-                    _filter.priorities.contains(ComplaintPriority.urgent),
+                isSelected: _filter.priorities.contains(
+                  ComplaintPriority.urgent,
+                ),
                 onTap: () {
-                  final has = _filter.priorities
-                      .contains(ComplaintPriority.urgent);
+                  final has = _filter.priorities.contains(
+                    ComplaintPriority.urgent,
+                  );
                   _updateFilter(
                     _filter.copyWith(
                       priorities: has
-                          ? _filter.priorities
-                              .difference({ComplaintPriority.urgent})
+                          ? _filter.priorities.difference({
+                              ComplaintPriority.urgent,
+                            })
                           : {..._filter.priorities, ComplaintPriority.urgent},
                     ),
                   );
@@ -512,22 +515,24 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
                 context,
                 label: 'Waiting for parts',
                 count: _allComplaints
-                    .where((c) =>
-                        c.status == ComplaintStatus.waitingForParts)
+                    .where((c) => c.status == ComplaintStatus.waitingForParts)
                     .length,
-                isSelected: _filter.statuses
-                    .contains(ComplaintStatus.waitingForParts),
+                isSelected: _filter.statuses.contains(
+                  ComplaintStatus.waitingForParts,
+                ),
                 onTap: () {
-                  final has = _filter.statuses
-                      .contains(ComplaintStatus.waitingForParts);
+                  final has = _filter.statuses.contains(
+                    ComplaintStatus.waitingForParts,
+                  );
                   _updateFilter(
                     _filter.copyWith(
                       statuses: has
-                          ? _filter.statuses.difference(
-                              {ComplaintStatus.waitingForParts})
+                          ? _filter.statuses.difference({
+                              ComplaintStatus.waitingForParts,
+                            })
                           : {
                               ..._filter.statuses,
-                              ComplaintStatus.waitingForParts
+                              ComplaintStatus.waitingForParts,
                             },
                     ),
                   );
@@ -539,16 +544,17 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
                 count: _allComplaints
                     .where((c) => c.status == ComplaintStatus.resolved)
                     .length,
-                isSelected:
-                    _filter.statuses.contains(ComplaintStatus.resolved),
+                isSelected: _filter.statuses.contains(ComplaintStatus.resolved),
                 onTap: () {
-                  final has = _filter.statuses
-                      .contains(ComplaintStatus.resolved);
+                  final has = _filter.statuses.contains(
+                    ComplaintStatus.resolved,
+                  );
                   _updateFilter(
                     _filter.copyWith(
                       statuses: has
-                          ? _filter.statuses
-                              .difference({ComplaintStatus.resolved})
+                          ? _filter.statuses.difference({
+                              ComplaintStatus.resolved,
+                            })
                           : {..._filter.statuses, ComplaintStatus.resolved},
                     ),
                   );
@@ -623,17 +629,13 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
         const SizedBox(height: AppSpacing.sm),
 
         // Result list or states
-        Expanded(
-          child: _buildBody(context, filtered),
-        ),
+        Expanded(child: _buildBody(context, filtered)),
       ],
     );
 
     return Scaffold(
       appBar: widget.showAppBar
-          ? AppBar(
-              title: const Text('Search Complaints'),
-            )
+          ? AppBar(title: const Text('Search Complaints'))
           : null,
       backgroundColor: palette.canvas,
       body: SafeArea(
@@ -687,18 +689,15 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
 
   Widget _buildBody(BuildContext context, List<Complaint> filtered) {
     if (_isLoading) {
-      return const Padding(
+      return const SingleChildScrollView(
         padding: EdgeInsets.all(AppSpacing.md),
-        child: SkeletonList(itemCount: 4, spacing: AppSpacing.sm),
+        child: SkeletonList(itemCount: 3, spacing: AppSpacing.sm),
       );
     }
 
     if (_errorMessage != null) {
       return Center(
-        child: ErrorState(
-          message: _errorMessage!,
-          onRetry: _loadComplaints,
-        ),
+        child: ErrorState(message: _errorMessage!, onRetry: _loadComplaints),
       );
     }
 

@@ -146,13 +146,12 @@ class ComplaintScope {
   const ComplaintScope.all() : this();
 
   const ComplaintScope.forTechnician(String technicianId)
-      : this(technicianId: technicianId);
+    : this(technicianId: technicianId);
 
-  const ComplaintScope.forTenant(String tenantId)
-      : this(tenantId: tenantId);
+  const ComplaintScope.forTenant(String tenantId) : this(tenantId: tenantId);
 
   const ComplaintScope.forProperty(String propertyId)
-      : this(propertyId: propertyId);
+    : this(propertyId: propertyId);
 
   final String? propertyId;
   final String? unitId;
@@ -372,6 +371,21 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     firestore: _firestore,
     identity: _identity,
   );
+
+  @override
+  Future<List<Complaint>> list({ComplaintScope? scope}) async {
+    // Filtering happens on the client over the loaded list.
+    // TODO: Add server-side indexed queries when moving to Firestore.
+    if (scope?.technicianId != null && scope!.technicianId!.trim().isNotEmpty) {
+      return watchAssignedComplaints(technicianId: scope.technicianId!.trim())
+          .first;
+    }
+    return watchComplaints(
+      propertyId: scope?.propertyId,
+      unitId: scope?.unitId,
+      tenantId: scope?.tenantId,
+    ).first;
+  }
 
   @override
   Stream<List<Complaint>> watchComplaints({
@@ -1468,16 +1482,14 @@ class InMemoryComplaintRepository implements ComplaintRepository {
             .toList();
       }
       if (scope.unitId != null && scope.unitId!.trim().isNotEmpty) {
-        result =
-            result.where((c) => c.unitId == scope.unitId!.trim()).toList();
+        result = result.where((c) => c.unitId == scope.unitId!.trim()).toList();
       }
       if (scope.tenantId != null && scope.tenantId!.trim().isNotEmpty) {
         result = result
             .where((c) => c.tenantId == scope.tenantId!.trim())
             .toList();
       }
-      if (scope.technicianId != null &&
-          scope.technicianId!.trim().isNotEmpty) {
+      if (scope.technicianId != null && scope.technicianId!.trim().isNotEmpty) {
         result = result
             .where((c) => c.currentTechnicianId == scope.technicianId!.trim())
             .toList();

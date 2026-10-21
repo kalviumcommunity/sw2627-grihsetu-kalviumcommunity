@@ -20,11 +20,7 @@ enum ComplaintSort {
 
 /// Representation of an active filter chip displayed in UI.
 class FilterChipData {
-  const FilterChipData({
-    required this.id,
-    required this.label,
-    this.onRemove,
-  });
+  const FilterChipData({required this.id, required this.label, this.onRemove});
 
   final String id;
   final String label;
@@ -126,8 +122,9 @@ class ComplaintFilter {
       categories: categories ?? this.categories,
       propertyId: clearPropertyId ? null : (propertyId ?? this.propertyId),
       unitId: clearUnitId ? null : (unitId ?? this.unitId),
-      technicianId:
-          clearTechnicianId ? null : (technicianId ?? this.technicianId),
+      technicianId: clearTechnicianId
+          ? null
+          : (technicianId ?? this.technicianId),
       repeatOnly: repeatOnly ?? this.repeatOnly,
       overdueOnly: overdueOnly ?? this.overdueOnly,
       createdDateRange: clearCreatedDateRange
@@ -156,18 +153,18 @@ class ComplaintFilter {
 
   @override
   int get hashCode => Object.hash(
-        text,
-        Object.hashAll(statuses),
-        Object.hashAll(priorities),
-        Object.hashAll(categories),
-        propertyId,
-        unitId,
-        technicianId,
-        repeatOnly,
-        overdueOnly,
-        createdDateRange,
-        sort,
-      );
+    text,
+    Object.hashAll(statuses),
+    Object.hashAll(priorities),
+    Object.hashAll(categories),
+    propertyId,
+    unitId,
+    technicianId,
+    repeatOnly,
+    overdueOnly,
+    createdDateRange,
+    sort,
+  );
 
   static bool _setEquals<T>(Set<T> a, Set<T> b) {
     if (a.length != b.length) return false;
@@ -195,9 +192,7 @@ List<FilterChipData> describe(ComplaintFilter filter) {
       FilterChipData(
         id: 'status_${status.name}',
         label: status.displayLabel,
-        onRemove: (f) => f.copyWith(
-          statuses: f.statuses.difference({status}),
-        ),
+        onRemove: (f) => f.copyWith(statuses: f.statuses.difference({status})),
       ),
     );
   }
@@ -207,9 +202,8 @@ List<FilterChipData> describe(ComplaintFilter filter) {
       FilterChipData(
         id: 'priority_${priority.name}',
         label: priority.displayLabel,
-        onRemove: (f) => f.copyWith(
-          priorities: f.priorities.difference({priority}),
-        ),
+        onRemove: (f) =>
+            f.copyWith(priorities: f.priorities.difference({priority})),
       ),
     );
   }
@@ -219,9 +213,8 @@ List<FilterChipData> describe(ComplaintFilter filter) {
       FilterChipData(
         id: 'category_${category.name}',
         label: category.displayLabel,
-        onRemove: (f) => f.copyWith(
-          categories: f.categories.difference({category}),
-        ),
+        onRemove: (f) =>
+            f.copyWith(categories: f.categories.difference({category})),
       ),
     );
   }
@@ -427,8 +420,7 @@ List<Complaint> applyFilter(
     }
 
     // 7. Technician (including "Unassigned")
-    if (filter.technicianId != null &&
-        filter.technicianId!.trim().isNotEmpty) {
+    if (filter.technicianId != null && filter.technicianId!.trim().isNotEmpty) {
       final tech = filter.technicianId!.trim();
       final isUnassigned = tech.toLowerCase() == 'unassigned';
       if (isUnassigned) {
@@ -497,10 +489,12 @@ List<Complaint> applyFilter(
       });
     case ComplaintSort.lastUpdated:
       filtered.sort((a, b) {
-        final aDate = a.updatedAt ??
+        final aDate =
+            a.updatedAt ??
             a.createdAt ??
             DateTime.fromMillisecondsSinceEpoch(0);
-        final bDate = b.updatedAt ??
+        final bDate =
+            b.updatedAt ??
             b.createdAt ??
             DateTime.fromMillisecondsSinceEpoch(0);
         return bDate.compareTo(aDate);
@@ -517,8 +511,8 @@ List<Complaint> applyFilter(
 }
 
 int _priorityRank(ComplaintPriority priority) => switch (priority) {
-      ComplaintPriority.urgent => 4,
-      ComplaintPriority.high => 3,
-      ComplaintPriority.medium => 2,
-      ComplaintPriority.low => 1,
-    };
+  ComplaintPriority.urgent => 4,
+  ComplaintPriority.high => 3,
+  ComplaintPriority.medium => 2,
+  ComplaintPriority.low => 1,
+};
