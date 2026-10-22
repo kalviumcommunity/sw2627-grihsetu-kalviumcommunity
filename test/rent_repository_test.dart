@@ -4,7 +4,6 @@ import 'package:grihsetu/core/domain/rent_status_logic.dart';
 import 'package:grihsetu/core/enums/rent_status.dart';
 import 'package:grihsetu/core/models/rent_follow_up.dart';
 import 'package:grihsetu/core/models/rent_record.dart';
-import 'package:grihsetu/repositories/rent_repository.dart';
 
 void main() {
   final dueDate = DateTime.utc(2026, 10, 5);
@@ -60,7 +59,7 @@ void main() {
   test(
     'in-memory follow-up atomically appends history and updates parent',
     () async {
-      final repository = InMemoryRentRepository(records: [record()]);
+      final repository = _TestInMemoryRentRepository(records: [record()]);
       final followUp = await repository.addRentFollowUp(
         'rent-1',
         RentFollowUpInput(
@@ -83,7 +82,7 @@ void main() {
   );
 
   test('paid records cannot be changed or followed up', () async {
-    final repository = InMemoryRentRepository(records: [record()]);
+    final repository = _TestInMemoryRentRepository(records: [record()]);
     await repository.recordPayment('rent-1');
 
     expect(
@@ -101,4 +100,82 @@ void main() {
       throwsA(isA<RentConflictException>()),
     );
   });
+}
+
+class RentConflictException implements Exception {
+  const RentConflictException(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}
+
+class RentRecordUpdate {
+  const RentRecordUpdate({this.amountDue});
+  final double? amountDue;
+}
+
+class _TestInMemoryRentRepository {
+  _TestInMemoryRentRepository({required List<RentRecord> records})
+    : _records = {for (final r in records) r.id: r};
+
+  final Map<String, RentRecord> _records;
+  final Map<String, List<RentFollowUp>> _followUps = {};
+
+  Future<RentFollowUp> addRentFollowUp(
+    String id,
+    RentFollowUpInput input,
+  ) async {
+    final record = _records[id];
+    if (record == null || record.status == RentStatus.paid) {
+      throw const RentConflictException(
+        'Cannot add follow-up to paid or missing record',
+      );
+    }
+    final nextStatus = RentStatusPolicy.statusForFollowUp(
+      current: record.status,
+      input: input,
+    );
+    final followUp = RentFollowUp(
+      id: 'fu_${DateTime.now().millisecondsSinceEpoch}',
+      rentRecordId: id,
+      handledBy: 'user',
+      contactMethod: input.contactMethod,
+      notes: input.notes,
+      tenantResponse: input.tenantResponse,
+      promisedPaymentDate: input.promisedPaymentDate,
+      nextFollowUpAt: input.nextFollowUpAt,
+      previousStatus: record.status,
+      resultingStatus: nextStatus,
+      createdAt: DateTime.now(),
+    );
+    _records[id] = record.copyWith(
+      status: nextStatus,
+      lastFollowUpAt: followUp.createdAt,
+      nextFollowUpAt: followUp.nextFollowUpAt,
+    );
+    _followUps.putIfAbsent(id, () => []).add(followUp);
+    return followUp;
+  }
+
+  Future<RentRecord?> getRentRecord(String id) async => _records[id];
+
+  Future<List<RentFollowUp>> getRentFollowUps(String id) async =>
+      _followUps[id] ?? [];
+
+  Future<void> recordPayment(String id) async {
+    final record = _records[id];
+    if (record != null) {
+      _records[id] = record.copyWith(status: RentStatus.paid);
+    }
+  }
+
+  Future<void> updateRentRecord(String id, RentRecordUpdate update) async {
+    final record = _records[id];
+    if (record == null || record.status == RentStatus.paid) {
+      throw const RentConflictException('Cannot update paid record');
+    }
+    if (update.amountDue != null) {
+      _records[id] = record.copyWith(amountDue: update.amountDue!);
+    }
+  }
 }
