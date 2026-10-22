@@ -45,7 +45,16 @@ Use a 4px base: `4, 8, 12, 16, 20, 24, 32, 40`. Standard card padding is 20px; p
 ```dart
 AppCard(onTap: openComplaint, child: const Text('Kitchen sink leak'));
 SectionHeader(title: 'Open work', trailing: TextButton(onPressed: seeAll, child: const Text('See all')));
-StatTile(label: 'Open complaints', value: '12', delta: '3 resolved today');
+StatTile(label: 'Open complaints', value: '12', delta: '3 resolved today', icon: Icons.report_outlined, onTap: openComplaints);
+AttentionListTile(
+  title: 'Riya Sharma',
+  subtitle: 'Green Valley Heights • Unit 102',
+  leadingIcon: Icons.phone_forwarded,
+  statusLabel: 'Due today',
+  trailingIcon: Icons.chevron_right,
+  onTap: openDetails,
+);
+RentFollowUpsDue(items: followUpDueItems, onItemTap: openRentDetail);
 EmptyState(icon: Icons.inbox_outlined, title: 'All caught up', message: 'New updates appear here.');
 ErrorState(message: 'Try again in a moment.', onRetry: reload);
 SkeletonBox(width: 160, height: 20);
@@ -53,7 +62,16 @@ const SkeletonList(itemCount: 3);
 AuditTimeline(events: events); // Oldest first; newest event receives the pulse.
 ```
 
-AppCard supports optional tap/hover feedback. SectionHeader accepts an optional trailing action. StatTile accepts an optional delta. EmptyState accepts an optional action label and callback. ErrorState always offers Retry. SkeletonBox pulses without shimmer; SkeletonList repeats a card placeholder. AuditTimeline supports 1–30 events with actor, role, timestamp, optional note, and optional tone.
+AppCard supports optional tap/hover feedback. SectionHeader accepts an optional trailing action. StatTile accepts label/title, value, optional delta, optional icon, and optional onTap for KPI navigation; long values automatically scale without overflow. AttentionListTile accepts prepared display data (title, subtitle, leading icon/widget, status badge/tone, urgent indicator, trailing text/icon, onTap) for operational queues. RentFollowUpsDue renders prepared `RentFollowUpDueItem` models using AttentionListTile and handles empty states via EmptyState.
+
+### Follow-up view model preparation and eligibility
+Presentation widgets are purely deterministic and perform no repository access or Firestore queries. View-model data preparation is handled by `prepareRentFollowUpsDue(items, now: refTime)`:
+- **Paid records excluded**: Rent items with `isPaid`, zero balance, or evaluated as `RentStatus.paid` are excluded from actionable follow-ups.
+- **Explicit dates only**: An item requires `record.nextFollowUpAt` or `lastFollowUp.nextFollowUpDate`; no dates are fabricated.
+- **Due status**: Evaluated relative to a provided or current reference date. Items with scheduled dates strictly before today's calendar date are flagged `isOverdue` and styled with semantic danger tokens; items on today's date are labeled `Due today`.
+- **Prioritization**: Overdue items are sorted first (most overdue first), followed by items due today and upcoming items.
+
+EmptyState accepts an optional action label and callback. ErrorState always offers Retry. SkeletonBox pulses without shimmer; SkeletonList repeats a card placeholder. AuditTimeline supports 1–30 events with actor, role, timestamp, optional note, and optional tone.
 
 ## Status, priority, and category chips
 
