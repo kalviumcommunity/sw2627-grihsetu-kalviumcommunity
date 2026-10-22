@@ -21,8 +21,20 @@ service cloud.firestore {
       return hasRole('property_operations');
     }
 
+    function isComplaintOperations() {
+      return hasRole('complaint_operations');
+    }
+
     function isTechnician() {
       return hasRole('technician');
+    }
+
+    function isPropertyOwner() {
+      return hasRole('property_owner');
+    }
+
+    function isTenant() {
+      return hasRole('tenant');
     }
 
     match /users/{userId} {
@@ -57,12 +69,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Reference data is readable only by authenticated operational roles.
+    // Reference data is readable by operations, property owners, and tenants.
     // Property Operations may seed the minimum reference records used by the
     // current GRIH-012 helper; updates and deletes remain closed until their
     // dedicated CRUD workflow is implemented.
     match /properties/{propertyId} {
-      allow read: if isOperationsStaff();
+      allow read: if isOperationsStaff() || isPropertyOwner() || isTenant();
       allow create: if isPropertyOperations()
         && request.resource.data.keys().hasOnly([
           'id', 'name', 'address', 'status', 'isActive', 'createdAt', 'updatedAt'
@@ -77,7 +89,7 @@ service cloud.firestore {
     }
 
     match /units/{unitId} {
-      allow read: if isOperationsStaff();
+      allow read: if isOperationsStaff() || isPropertyOwner() || isTenant();
       allow create: if isPropertyOperations()
         && request.resource.data.keys().hasOnly([
           'id', 'propertyId', 'unitNumber', 'floor', 'status',
@@ -94,7 +106,16 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      allow read: if isOperationsStaff();
+      allow read: if isOperationsStaff()
+        || isPropertyOwner()
+        || (
+          isTenant()
+          && (
+            resource.data.linkedUserId == request.auth.uid
+            || resource.data.id == request.auth.uid
+            || tenantId == request.auth.uid
+          )
+        );
       allow create: if isPropertyOperations()
         && request.resource.data.keys().hasOnly([
           'id', 'name', 'fullName', 'phone', 'email', 'propertyId', 'unitId',
@@ -118,12 +139,36 @@ service cloud.firestore {
 
     match /complaints/{complaintId} {
       allow read: if isOperationsStaff()
+        || isPropertyOwner()
         || (
           hasRole('technician')
           && resource.data.currentTechnicianId == request.auth.uid
-          && resource.data.status in ['open', 'assigned', 'in_progress', 'waiting_for_parts', 'reopened']
+        )
+        || (
+          hasRole('tenant')
+          && (
+            resource.data.tenantId == request.auth.uid
+            || resource.data.createdBy == request.auth.uid
+            || (
+              exists(/databases/$(database)/documents/tenants/$(resource.data.tenantId))
+              && get(/databases/$(database)/documents/tenants/$(resource.data.tenantId)).data.linkedUserId == request.auth.uid
+            )
+          )
         );
-      allow create: if isOperationsStaff()
+      allow create: if (
+          isOperationsStaff()
+          || (
+            hasRole('tenant')
+            && (
+              request.resource.data.tenantId == request.auth.uid
+              || request.resource.data.createdBy == request.auth.uid
+              || (
+                exists(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId))
+                && get(/databases/$(database)/documents/tenants/$(request.resource.data.tenantId)).data.linkedUserId == request.auth.uid
+              )
+            )
+          )
+        )
         && request.resource.data.keys().hasOnly([
           'tenantId', 'propertyId', 'unitId', 'title', 'description',
           'category', 'priority', 'status', 'currentTechnicianId',
@@ -139,6 +184,9 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
+        && request.resource.data.visitCount == 0
+        && request.resource.data.isRepeatVisit == false
+        && request.resource.data.reopenCount == 0
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.description is string
@@ -246,7 +294,21 @@ service cloud.firestore {
             )
           )
           || (
-            (isOperationsStaff() || (hasRole('tenant') && request.resource.data.status in ['closed', 'reopened']))
+            (
+              isOperationsStaff()
+              || (
+                hasRole('tenant')
+                && request.resource.data.status in ['closed', 'reopened']
+                && (
+                  resource.data.tenantId == request.auth.uid
+                  || resource.data.createdBy == request.auth.uid
+                  || (
+                    exists(/databases/$(database)/documents/tenants/$(resource.data.tenantId))
+                    && get(/databases/$(database)/documents/tenants/$(resource.data.tenantId)).data.linkedUserId == request.auth.uid
+                  )
+                )
+              )
+            )
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'status', 'updatedAt', 'closedAt', 'closedBy',
               'reopenCount', 'reopenedAt', 'reopenedBy', 'reopenReason',
@@ -287,9 +349,24 @@ service cloud.firestore {
 
     match /maintenance_visits/{visitId} {
       allow read: if isOperationsStaff()
+        || isPropertyOwner()
         || (
           isTechnician()
-          && get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.currentTechnicianId == request.auth.uid
+          && (
+            resource.data.technicianId == request.auth.uid
+            || get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.currentTechnicianId == request.auth.uid
+          )
+        )
+        || (
+          hasRole('tenant')
+          && (
+            get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.tenantId == request.auth.uid
+            || get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.createdBy == request.auth.uid
+            || (
+              exists(/databases/$(database)/documents/tenants/$(get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.tenantId))
+              && get(/databases/$(database)/documents/tenants/$(get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.tenantId)).data.linkedUserId == request.auth.uid
+            )
+          )
         );
       allow create: if isTechnician()
         && request.resource.data.keys().hasOnly([
@@ -344,7 +421,15 @@ service cloud.firestore {
     }
 
     match /technician_assignments/{assignmentId} {
-      allow read: if isOperationsStaff();
+      allow read: if isOperationsStaff()
+        || isPropertyOwner()
+        || (
+          hasRole('technician')
+          && (
+            resource.data.newTechnicianId == request.auth.uid
+            || resource.data.previousTechnicianId == request.auth.uid
+          )
+        );
       allow create: if isOperationsStaff()
         && request.resource.data.keys().hasOnly([
           'complaintId', 'previousTechnicianId', 'newTechnicianId',
@@ -377,11 +462,23 @@ service cloud.firestore {
 
     match /audit_events/{eventId} {
       allow read: if isOperationsStaff()
+        || isPropertyOwner()
         || (
           isTechnician()
           && get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.currentTechnicianId == request.auth.uid
+        )
+        || (
+          hasRole('tenant')
+          && (
+            get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.tenantId == request.auth.uid
+            || get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.createdBy == request.auth.uid
+            || (
+              exists(/databases/$(database)/documents/tenants/$(get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.tenantId))
+              && get(/databases/$(database)/documents/tenants/$(get(/databases/$(database)/documents/complaints/$(resource.data.complaintId)).data.tenantId)).data.linkedUserId == request.auth.uid
+            )
+          )
         );
-      allow create: if (isOperationsStaff() || isTechnician())
+      allow create: if (isOperationsStaff() || isTechnician() || hasRole('tenant'))
         && request.resource.data.keys().hasOnly([
           'complaintId', 'eventType', 'actorId', 'actorRole', 'createdAt',
           'metadata', 'previousValue', 'newValue', 'reason', 'schemaVersion'
@@ -584,7 +681,18 @@ service cloud.firestore {
     // Historical identity fields are immutable after creation; follow-up
     // writes update only the workflow fields used by the atomic repository.
     match /rent_records/{rentRecordId} {
-      allow read: if isOperationsStaff();
+      allow read: if isOperationsStaff()
+        || isPropertyOwner()
+        || (
+          hasRole('tenant')
+          && (
+            resource.data.tenantId == request.auth.uid
+            || (
+              exists(/databases/$(database)/documents/tenants/$(resource.data.tenantId))
+              && get(/databases/$(database)/documents/tenants/$(resource.data.tenantId)).data.linkedUserId == request.auth.uid
+            )
+          )
+        );
       allow create: if isOperationsStaff()
         && request.resource.data.keys().hasOnly([
           'tenantId', 'propertyId', 'unitId', 'month', 'amountDue', 'dueDate',
@@ -630,7 +738,7 @@ service cloud.firestore {
     // Follow-ups are append-only. A new contact never updates or deletes an
     // earlier contact, which keeps the tenant communication history intact.
     match /rent_follow_ups/{followUpId} {
-      allow read: if isOperationsStaff();
+      allow read: if isOperationsStaff() || isPropertyOwner();
       allow create: if isOperationsStaff()
         && request.resource.data.keys().hasOnly([
           'rentRecordId', 'handledBy', 'createdAt', 'contactMethod', 'notes',
