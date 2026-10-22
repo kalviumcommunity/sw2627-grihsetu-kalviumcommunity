@@ -274,3 +274,22 @@ Technicians view active complaints assigned to them in real time.
   - `status`: `ASCENDING`
 - Declared in `firestore.indexes.json`.
 
+## Role-Based Access Control and Immutability Matrix
+
+The Firestore Security Rules enforce strict role separation across the five PRD user roles and complete audit immutability:
+
+| Collection | Operations Staff (`property_operations`, `complaint_operations`) | Technician | Property Owner | Tenant | Audit Immutability Invariants |
+|---|---|---|---|---|---|
+| `users` | Read all | Read self, update self profile | Read self, update self profile | Read self, update self profile | Client cannot elevate `role`, change `uid`, or `delete` users. |
+| `properties` | Read all, create (`property_operations`) | Denied | Read all | Read all | `allow update, delete: if false;` |
+| `units` | Read all, create (`property_operations`) | Denied | Read all | Read all | `allow update, delete: if false;` |
+| `tenants` | Read all, create (`property_operations`) | Denied | Read all | Read own profile record | `allow update, delete: if false;` |
+| `complaints` | Read all, create, assign technician, close/reopen/cancel | Read assigned, update visit workflow (`in_progress`, `waiting_for_parts`, `resolved`) | Read all | Read own complaints, create initial complaint, close/reopen own complaints | `allow delete: if false;`. Creation locked to server timestamps and initial counts. Updates strictly restricted to authorized state machine transitions. |
+| `maintenance_visits` | Read all | Read assigned, create start visit, update visit completion | Read all | Read visits for own complaints | `allow delete: if false;`. Visits can only be completed once while `completedAt == null`; completed visits are immutable. |
+| `technician_assignments` | Read all, create assignment/reassignment | Read assigned work | Read all | Denied | `allow update, delete: if false;`. Append-only assignment log. |
+| `audit_events` | Read all, create complaint/assignment/status events | Read for assigned complaints, create visit events | Read for properties | Read for own complaints, create create/close/reopen events | `allow update, delete: if false;`. Must match `actorId == auth.uid`, `createdAt == request.time`, `schemaVersion == 1`, valid event metadata. |
+| `rent_records` | Read all, create, update payment status | Denied | Read all | Read own rent records | `allow delete: if false;`. Identity and month fields immutable after create. |
+| `rent_follow_ups` | Read all, create append-only follow-up | Denied | Read all | Denied | `allow update, delete: if false;`. Append-only communication log. |
+| All other paths | Denied | Denied | Denied | Denied | Default catch-all `allow read, write: if false;`. |
+
+
