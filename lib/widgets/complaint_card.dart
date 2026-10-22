@@ -22,6 +22,9 @@ class ComplaintCard extends StatelessWidget {
     this.onTap,
     this.selected = false,
     this.bottomAction,
+    this.titleWidget,
+    this.technicianName,
+    this.lastUpdated,
   });
 
   final Complaint complaint;
@@ -30,6 +33,9 @@ class ComplaintCard extends StatelessWidget {
   final VoidCallback? onTap;
   final bool selected;
   final Widget? bottomAction;
+  final Widget? titleWidget;
+  final String? technicianName;
+  final DateTime? lastUpdated;
 
   String get _displayPropertyName {
     final name = propertyName?.trim();
@@ -101,15 +107,18 @@ class ComplaintCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
 
           // Title
-          Text(
-            complaint.title.isEmpty ? 'Untitled complaint' : complaint.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: palette.ink,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          titleWidget ??
+              Text(
+                complaint.title.isEmpty
+                    ? 'Untitled complaint'
+                    : complaint.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: palette.ink,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
           const SizedBox(height: AppSpacing.xs),
 
           // Location and unit context
@@ -137,14 +146,32 @@ class ComplaintCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          // Bottom row: Category chip and Creation date
+          // Bottom row: Category chip, Technician, and Date/Updated
           Wrap(
             spacing: AppSpacing.md,
             runSpacing: AppSpacing.xs,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               ComplaintCategoryChip(category: complaint.category),
-              if (dateStr.isNotEmpty)
+              if (technicianName != null && technicianName!.trim().isNotEmpty)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.engineering_outlined,
+                      size: 14,
+                      color: palette.muted,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      technicianName!,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: palette.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              if (lastUpdated != null || dateStr.isNotEmpty)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -155,7 +182,9 @@ class ComplaintCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      dateStr,
+                      lastUpdated != null
+                          ? 'Updated ${_formatDate(lastUpdated)}'
+                          : dateStr,
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: palette.muted,
                       ),
