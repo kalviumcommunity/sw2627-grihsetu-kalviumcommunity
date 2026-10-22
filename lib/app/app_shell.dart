@@ -10,6 +10,7 @@ import '../repositories/rent_repository.dart';
 import '../screens/complaints/search/complaint_search_screen.dart';
 import '../screens/complaints/technician_queue_screen.dart';
 import '../utils/complaint_query.dart';
+import '../screens/dashboard/operations_dashboard_screen.dart';
 import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../screens/property/property_browser_screen.dart';
@@ -298,6 +299,17 @@ class _SectionPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (item.label == 'Overview') {
+      final isOwner = role == UserRole.propertyOwner;
+      return OperationsDashboardScreen(
+        profile: profile,
+        authService: authService,
+        complaintRepository: complaintRepository,
+        propertyRepository: propertyRepository,
+        rentRepository: rentRepository,
+        readOnly: isOwner,
+      );
+    }
     if (item.label == 'Properties') {
       return const PropertyBrowserScreen(showAppBar: false);
     }
