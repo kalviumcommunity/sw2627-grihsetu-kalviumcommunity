@@ -8,6 +8,7 @@ import '../../repositories/complaint_repository.dart';
 import '../../repositories/property_repository.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_palette.dart';
+import '../../utils/validators.dart';
 import '../../widgets/app_dropdown.dart';
 import '../../widgets/app_loading_button.dart';
 import '../../widgets/app_spacing.dart';
@@ -174,9 +175,11 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
                 enabled: !_busy,
                 textInputAction: TextInputAction.next,
                 label: 'Complaint title',
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Complaint title is required.'
-                    : null,
+                validator: (value) => Validators.requiredText(
+                  value,
+                  field: 'Complaint title',
+                  message: 'Complaint title is required.',
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               AppTextField(
@@ -185,9 +188,11 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
                 minLines: 4,
                 maxLines: 7,
                 label: 'Description',
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Complaint description is required.'
-                    : null,
+                validator: (value) => Validators.requiredText(
+                  value,
+                  field: 'Complaint description',
+                  message: 'Complaint description is required.',
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               AppDropdown<ComplaintCategory>(

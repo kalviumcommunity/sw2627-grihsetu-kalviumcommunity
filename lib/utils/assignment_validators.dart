@@ -1,4 +1,5 @@
 import '../core/enums/complaint_category.dart';
+import 'validators.dart';
 
 /// Available scheduling time slots.
 enum AssignmentSlot {
@@ -68,23 +69,19 @@ abstract final class AssignmentValidators {
   }
 
   /// Validates that visit date is not in past and not beyond 14 days ahead.
-  static String? validateVisitDate(DateTime? date, {DateTime? now}) {
-    if (date == null) return null;
-    final reference = now ?? DateTime.now();
-    final todayStart = DateTime(reference.year, reference.month, reference.day);
-    final targetDay = DateTime(date.year, date.month, date.day);
-
-    if (targetDay.isBefore(todayStart)) {
-      return 'Visit date cannot be in the past.';
-    }
-
-    final maxDate = todayStart.add(const Duration(days: maxScheduleDaysAhead));
-    if (targetDay.isAfter(maxDate)) {
-      return 'Visit date cannot be more than $maxScheduleDaysAhead days ahead.';
-    }
-
-    return null;
-  }
+  static String? validateVisitDate(DateTime? date, {DateTime? now}) =>
+      Validators.date(
+        date,
+        field: 'Visit date',
+        isRequired: false,
+        now: now,
+        allowPast: false,
+        allowToday: true,
+        maxDaysAhead: maxScheduleDaysAhead,
+        pastError: 'Visit date cannot be in the past.',
+        maxDateError:
+            'Visit date cannot be more than $maxScheduleDaysAhead days ahead.',
+      );
 
   /// Validates that a slot is selected if a visit date is specified.
   static String? validateSlot(DateTime? date, AssignmentSlot? slot) {
@@ -100,12 +97,14 @@ abstract final class AssignmentValidators {
     String? currentTechnicianId,
     bool isReassign = false,
   }) {
-    if (selectedTechnicianId == null || selectedTechnicianId.trim().isEmpty) {
-      return 'Please select a technician.';
-    }
+    final requiredError = Validators.requiredText(
+      selectedTechnicianId,
+      message: 'Please select a technician.',
+    );
+    if (requiredError != null) return requiredError;
     if (isReassign &&
         currentTechnicianId != null &&
-        selectedTechnicianId.trim() == currentTechnicianId.trim()) {
+        selectedTechnicianId!.trim() == currentTechnicianId.trim()) {
       return 'Please select a different technician than the currently assigned one.';
     }
     return null;

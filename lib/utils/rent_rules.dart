@@ -1,6 +1,7 @@
 import '../core/enums/rent_status.dart';
 import '../core/models/rent_record.dart';
 import '../screens/rent/rent_models.dart';
+import 'validators.dart';
 
 /// Formats a monetary amount into Indian digit grouping with the ₹ currency symbol.
 /// Examples: 500 -> ₹500, 25000 -> ₹25,000, 125000 -> ₹1,25,000, 10000000 -> ₹1,00,00,000.
@@ -140,7 +141,6 @@ FollowUpValidationResult validateFollowUp({
   String? nextFollowUpDateError;
 
   final refNow = now ?? DateTime.now();
-  final today = DateTime(refNow.year, refNow.month, refNow.day);
 
   if (method == null) {
     methodError = 'Follow-up method is required';
@@ -152,69 +152,74 @@ FollowUpValidationResult validateFollowUp({
 
   // Promise fields validation
   if (outcome == FollowUpOutcome.promisedToPay) {
-    if (promisedDate == null) {
-      promisedDateError = 'Promised date is required';
-    } else {
-      final pDay = DateTime(
-        promisedDate.year,
-        promisedDate.month,
-        promisedDate.day,
-      );
-      final maxDate = today.add(const Duration(days: 30));
-      if (pDay.isBefore(today)) {
-        promisedDateError = 'Promised date cannot be in the past';
-      } else if (pDay.isAfter(maxDate)) {
-        promisedDateError = 'Promised date cannot be more than 30 days ahead';
-      }
-    }
+    promisedDateError = Validators.date(
+      promisedDate,
+      field: 'Promised date',
+      isRequired: true,
+      now: refNow,
+      allowPast: false,
+      allowToday: true,
+      maxDaysAhead: 30,
+      requiredError: 'Promised date is required',
+      pastError: 'Promised date cannot be in the past',
+      maxDateError: 'Promised date cannot be more than 30 days ahead',
+    );
 
-    if (promisedAmount == null) {
-      promisedAmountError = 'Promised amount is required';
-    } else if (promisedAmount < 1) {
-      promisedAmountError = 'Promised amount must be at least ₹1';
-    } else if (promisedAmount > currentBalance) {
-      promisedAmountError = 'Promised amount cannot exceed balance';
-    }
+    promisedAmountError = Validators.amountValue(
+      promisedAmount,
+      field: 'Promised amount',
+      isRequired: true,
+      min: 1,
+      max: currentBalance,
+      requiredError: 'Promised amount is required',
+      minError: 'Promised amount must be at least ₹1',
+      maxError: 'Promised amount cannot exceed balance',
+    );
   }
 
   // Note validation
-  final trimmedNote = (note ?? '').trim();
   if (outcome == FollowUpOutcome.noAnswer) {
-    if (note != null && note.isNotEmpty && trimmedNote.isEmpty) {
-      noteError = 'Note cannot contain only whitespace';
-    } else if (trimmedNote.length > 300) {
-      noteError = 'Note cannot exceed 300 characters';
-    }
+    noteError = Validators.optionalText(
+      note,
+      field: 'Note',
+      maxLength: 300,
+      whitespaceError: 'Note cannot contain only whitespace',
+      maxLengthError: 'Note cannot exceed 300 characters',
+    );
   } else {
-    if (trimmedNote.isEmpty) {
-      noteError = 'Note is required (at least 10 characters)';
-    } else if (trimmedNote.length < 10) {
-      noteError = 'Note must be at least 10 characters';
-    } else if (trimmedNote.length > 300) {
-      noteError = 'Note cannot exceed 300 characters';
-    }
+    noteError = Validators.requiredText(
+      note,
+      field: 'Note',
+      minLength: 10,
+      maxLength: 300,
+      message: 'Note is required (at least 10 characters)',
+      minLengthError: 'Note must be at least 10 characters',
+      maxLengthError: 'Note cannot exceed 300 characters',
+    );
   }
 
   // Tenant response validation (if provided)
   if (tenantResponse != null) {
-    final trimmedResponse = tenantResponse.trim();
-    if (tenantResponse.isNotEmpty && trimmedResponse.isEmpty) {
-      tenantResponseError = 'Tenant response cannot contain only whitespace';
-    } else if (trimmedResponse.length > 300) {
-      tenantResponseError = 'Tenant response cannot exceed 300 characters';
-    }
+    tenantResponseError = Validators.optionalText(
+      tenantResponse,
+      field: 'Tenant response',
+      maxLength: 300,
+      whitespaceError: 'Tenant response cannot contain only whitespace',
+      maxLengthError: 'Tenant response cannot exceed 300 characters',
+    );
   }
 
   // Next follow-up date validation
   if (nextFollowUpDate != null) {
-    final nextDay = DateTime(
-      nextFollowUpDate.year,
-      nextFollowUpDate.month,
-      nextFollowUpDate.day,
+    nextFollowUpDateError = Validators.date(
+      nextFollowUpDate,
+      field: 'Next follow-up date',
+      isRequired: false,
+      now: refNow,
+      allowPast: false,
+      allowToday: false,
+      pastError: 'Next follow-up date must be after today',
     );
-    if (!nextDay.isAfter(today)) {
-      nextFollowUpDateError = 'Next follow-up date must be after today';
-    }
   }
 
   final isValid =

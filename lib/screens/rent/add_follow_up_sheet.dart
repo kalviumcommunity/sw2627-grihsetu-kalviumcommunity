@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../repositories/rent_repository.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/rent_rules.dart';
+import '../../utils/validators.dart';
 import '../../widgets/app_spacing.dart';
 import 'rent_models.dart';
 
@@ -164,7 +165,7 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
     });
 
     final double? promisedAmount = _outcome == FollowUpOutcome.promisedToPay
-        ? double.tryParse(_promisedAmountController.text.trim())
+        ? Validators.tryParseAmount(_promisedAmountController.text)
         : null;
 
     final validation = validateFollowUp(
@@ -187,16 +188,17 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
 
     // If outcome is Paid and hasn't gone through confirmation step, show confirm step
     if (_outcome == FollowUpOutcome.paid && !_confirmingPayment) {
-      final paidAmount =
-          double.tryParse(_paidAmountController.text.trim()) ?? 0.0;
-      if (paidAmount <= 0) {
-        setState(
-          () => _errorMessage = 'Payment amount must be greater than ₹0',
-        );
-        return;
-      }
-      if (paidAmount > widget.item.balance) {
-        setState(() => _errorMessage = 'Payment amount cannot exceed balance');
+      final paidAmountError = Validators.amount(
+        _paidAmountController.text,
+        field: 'Payment amount',
+        isRequired: true,
+        min: 0.01,
+        max: widget.item.balance,
+        minError: 'Payment amount must be greater than ₹0',
+        maxError: 'Payment amount cannot exceed balance',
+      );
+      if (paidAmountError != null) {
+        setState(() => _errorMessage = paidAmountError);
         return;
       }
       setState(() => _confirmingPayment = true);
