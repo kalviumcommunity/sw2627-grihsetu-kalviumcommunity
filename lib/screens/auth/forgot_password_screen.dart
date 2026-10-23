@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../services/auth_failure.dart';
 import '../../services/auth_service.dart';
+import '../../services/errors/app_failure.dart';
+import '../../services/errors/firebase_error_mapper.dart';
 import '../../utils/validators.dart';
+import '../../widgets/app_snack.dart';
+import '../../widgets/error_banner.dart';
 import 'auth_layout.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -19,6 +22,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _email = TextEditingController();
   bool _busy = false;
   bool _sent = false;
+  AppFailure? _failure;
 
   AuthService get _authService => widget.authService ?? AuthService.firebase();
 
@@ -30,14 +34,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _sendResetLink() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _failure = null;
+    });
     try {
       await _authService.sendPasswordResetEmail(_email.text);
       if (mounted) setState(() => _sent = true);
-    } on AuthFailure catch (error) {
+    } catch (error, stackTrace) {
+      final failure = FirebaseErrorMapper.map(error, stackTrace);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        setState(() => _failure = failure);
+        AppSnack.error(context, failure);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -77,6 +85,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_failure != null) ...[
+              ErrorBanner(
+                failure: _failure,
+                onDismiss: () => setState(() => _failure = null),
+                onRetry: _failure!.retryable ? _sendResetLink : null,
+              ),
+              const SizedBox(height: 16),
+            ],
             TextFormField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,

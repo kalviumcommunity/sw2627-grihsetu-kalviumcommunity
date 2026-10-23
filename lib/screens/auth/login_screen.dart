@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 
-import '../../services/auth_failure.dart';
 import '../../services/auth_service.dart';
+import '../../services/errors/app_failure.dart';
+import '../../services/errors/firebase_error_mapper.dart';
 import '../../utils/validators.dart';
+import '../../widgets/error_banner.dart';
 import 'auth_layout.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
@@ -23,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   bool _hide = true;
   bool _busy = false;
-  String? _error;
+  AppFailure? _failure;
 
   AuthService get _authService => widget.authService ?? AuthService.firebase();
 
@@ -38,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_form.currentState!.validate()) return;
     setState(() {
       _busy = true;
-      _error = null;
+      _failure = null;
     });
     try {
       await _authService.signIn(
@@ -48,12 +49,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
-    } on AuthFailure catch (error) {
-      if (kDebugMode) {
-        debugPrint('[Auth] login UI received failure: ${error.code.name}');
-      }
+    } catch (error, stackTrace) {
+      final failure = FirebaseErrorMapper.map(error, stackTrace);
       if (!mounted) return;
-      setState(() => _error = error.message);
+      setState(() => _failure = failure);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -69,6 +68,14 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_failure != null) ...[
+              ErrorBanner(
+                failure: _failure,
+                onDismiss: () => setState(() => _failure = null),
+                onRetry: _failure!.retryable ? _submit : null,
+              ),
+              const SizedBox(height: 16),
+            ],
             TextFormField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
@@ -113,13 +120,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Text('Forgot password?'),
               ),
             ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _busy ? null : _submit,

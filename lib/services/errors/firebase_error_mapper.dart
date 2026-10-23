@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
+import '../auth_failure.dart';
 import 'app_failure.dart';
 
 /// Centralized mapper that transforms Firebase, network, and system exceptions
@@ -17,6 +18,68 @@ abstract final class FirebaseErrorMapper {
 
     if (error is AppFailure) {
       return error;
+    }
+
+    if (error is AuthFailure) {
+      return switch (error.code) {
+        AuthFailureCode.invalidCredentials ||
+        AuthFailureCode.userDisabled => InvalidCredentialsFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+        AuthFailureCode.weakPassword => WeakPasswordFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+        AuthFailureCode.emailAlreadyInUse => EmailInUseFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+        AuthFailureCode.tooManyRequests => RateLimitedFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+        AuthFailureCode.networkError => NetworkFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+        AuthFailureCode.unauthenticated => UnauthenticatedFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+        AuthFailureCode.permissionDenied => PermissionDeniedFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+        AuthFailureCode.serviceUnavailable => UnavailableFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+        AuthFailureCode.invalidInput ||
+        AuthFailureCode.invalidEmail => ValidationFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+        AuthFailureCode.profileNotFound => NotFoundFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+        _ => UnknownFailure(
+          userMessage: error.message,
+          code: error.code.name,
+          original: error,
+        ),
+      };
     }
 
     if (error is SocketException) {
