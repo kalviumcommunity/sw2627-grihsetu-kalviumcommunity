@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:fake_async/fake_async.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grihsetu/services/errors/app_failure.dart';
@@ -122,61 +121,60 @@ void main() {
       expect(attempts, equals(1));
     });
 
-    test(
-      'retries retryable failure up to max retries then throws AppFailure',
-      () {
-        fakeAsync((async) {
-          int attempts = 0;
-          Object? capturedError;
+    test('retries retryable failure up to max retries then throws AppFailure with exponential backoff', () async {
+      int attempts = 0;
+      Object? capturedError;
+      final recordedDelays = <Duration>[];
 
-          runGuarded<void>(() async {
+      try {
+        await runGuarded<void>(
+          () async {
             attempts++;
             throw const NetworkFailure();
-          }, retries: 2).catchError((e) {
-            capturedError = e;
-          });
+          },
+          retries: 2,
+          delayFn: (delay) async {
+            recordedDelays.add(delay);
+          },
+        );
+      } catch (e) {
+        capturedError = e;
+      }
 
-          async.flushMicrotasks();
-          expect(attempts, equals(1));
-
-          // 1st retry after 400ms
-          async.elapse(const Duration(milliseconds: 400));
-          async.flushMicrotasks();
-          expect(attempts, equals(2));
-
-          // 2nd retry after 1200ms
-          async.elapse(const Duration(milliseconds: 1200));
-          async.flushMicrotasks();
-          expect(attempts, equals(3));
-
-          expect(capturedError, isA<NetworkFailure>());
-        });
-      },
-    );
+      expect(attempts, equals(3));
+      expect(
+        recordedDelays,
+        equals([
+          const Duration(milliseconds: 400),
+          const Duration(milliseconds: 1200),
+        ]),
+      );
+      expect(capturedError, isA<NetworkFailure>());
+    });
 
     test(
       'retries retryable failure and succeeds before exhausting retries',
-      () {
-        fakeAsync((async) {
-          int attempts = 0;
-          String? result;
+      () async {
+        int attempts = 0;
+        final recordedDelays = <Duration>[];
 
-          runGuarded(() async {
+        final result = await runGuarded<String>(
+          () async {
             attempts++;
             if (attempts == 1) {
               throw const NetworkFailure();
             }
             return 'recovered';
-          }, retries: 2).then((v) => result = v);
+          },
+          retries: 2,
+          delayFn: (delay) async {
+            recordedDelays.add(delay);
+          },
+        );
 
-          async.flushMicrotasks();
-          expect(attempts, equals(1));
-
-          async.elapse(const Duration(milliseconds: 400));
-          async.flushMicrotasks();
-          expect(attempts, equals(2));
-          expect(result, equals('recovered'));
-        });
+        expect(attempts, equals(2));
+        expect(recordedDelays, equals([const Duration(milliseconds: 400)]));
+        expect(result, equals('recovered'));
       },
     );
   });

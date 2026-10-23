@@ -137,6 +137,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
   final Map<String, String?> _errors = {};
   bool _isSubmitting = false;
   AppFailure? _submissionFailure;
+  String? _submissionError;
 
   @override
   void initState() {
@@ -486,6 +487,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
     setState(() {
       _isSubmitting = true;
       _submissionFailure = null;
+      _submissionError = null;
     });
 
     try {
@@ -550,6 +552,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
         setState(() {
           _isSubmitting = false;
           _submissionFailure = FirebaseErrorMapper.map(e, st);
+          _submissionError = 'Failed to submit visit: $e';
         });
       }
     }
@@ -596,14 +599,18 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
           child: Column(
             children: [
               // Retry banner if submission failed
-              if (_submissionFailure != null)
+              if (_submissionFailure != null || _submissionError != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
                   ),
                   child: ErrorBanner(
                     failure: _submissionFailure,
-                    onDismiss: () => setState(() => _submissionFailure = null),
+                    message: _submissionError,
+                    onDismiss: () => setState(() {
+                      _submissionFailure = null;
+                      _submissionError = null;
+                    }),
                     onRetry: _submissionFailure?.retryable == true
                         ? _submitForm
                         : null,

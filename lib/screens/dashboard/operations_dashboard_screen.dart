@@ -42,8 +42,9 @@ class OperationsDashboardScreen extends StatefulWidget {
     this.authService,
     this.profile,
     this.readOnly = false,
-    this.referenceNow,
-  });
+    DateTime? referenceNow,
+    DateTime? now,
+  }) : referenceNow = referenceNow ?? now;
 
   final DashboardRepository? dashboardRepository;
   final ComplaintRepository? complaintRepository;
@@ -65,6 +66,7 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
 
   bool _isLoading = true;
   AppFailure? _failure;
+  String? _errorMessage;
   DashboardSnapshot? _snapshot;
   bool _showAllAttention = false;
 
@@ -95,6 +97,7 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
         final failure = FirebaseErrorMapper.map(e, st);
         setState(() {
           _failure = failure;
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
           _isLoading = false;
         });
       }
@@ -185,7 +188,11 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
           child: Center(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              child: ErrorState(failure: _failure, onRetry: _load),
+              child: ErrorState(
+                failure: _failure,
+                message: _errorMessage,
+                onRetry: _load,
+              ),
             ),
           ),
         ),

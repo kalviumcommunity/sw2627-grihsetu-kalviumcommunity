@@ -137,7 +137,7 @@ class ErrorState extends StatelessWidget {
         icon ??
         (failure != null ? _iconForFailure(failure!) : Icons.error_outline);
     final resolvedMessage =
-        failure?.userMessage ?? message ?? 'An error occurred.';
+        message ?? failure?.userMessage ?? 'An error occurred.';
     final canRetry = (failure == null || failure!.retryable) && onRetry != null;
 
     return LayoutBuilder(

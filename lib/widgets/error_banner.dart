@@ -25,7 +25,7 @@ class ErrorBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final theme = Theme.of(context);
-    final text = failure?.userMessage ?? message ?? 'An error occurred.';
+    final text = message ?? failure?.userMessage ?? 'An error occurred.';
     final canRetry = (failure == null || failure!.retryable) && onRetry != null;
 
     return Semantics(
