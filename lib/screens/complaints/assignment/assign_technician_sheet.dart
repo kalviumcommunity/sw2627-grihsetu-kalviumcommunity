@@ -3,11 +3,14 @@ import 'package:flutter/services.dart';
 
 import 'package:grihsetu/core/models/complaint.dart';
 import 'package:grihsetu/repositories/assignment_repository.dart';
+import 'package:grihsetu/services/errors/app_failure.dart';
+import 'package:grihsetu/services/errors/firebase_error_mapper.dart';
 import 'package:grihsetu/theme/app_palette.dart';
 import 'package:grihsetu/utils/assignment_validators.dart';
 import 'package:grihsetu/widgets/app_spacing.dart';
 import 'package:grihsetu/widgets/complaint_card.dart';
 import 'package:grihsetu/widgets/empty_state.dart';
+import 'package:grihsetu/widgets/error_banner.dart';
 import 'package:grihsetu/widgets/error_state.dart';
 import 'package:grihsetu/widgets/skeleton_box.dart';
 
@@ -104,7 +107,7 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
   TechnicianFilter _activeFilter = TechnicianFilter.all;
   List<TechnicianOption>? _technicians;
   bool _isLoading = true;
-  String? _loadError;
+  AppFailure? _loadFailure;
 
   String? _selectedTechnicianId;
   ReassignmentReason? _selectedReason;
@@ -112,7 +115,7 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
   AssignmentSlot? _selectedSlot;
 
   bool _isSubmitting = false;
-  String? _submitError;
+  AppFailure? _submitFailure;
 
   @override
   void initState() {
@@ -131,7 +134,7 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
   Future<void> _loadTechnicians() async {
     setState(() {
       _isLoading = true;
-      _loadError = null;
+      _loadFailure = null;
     });
     try {
       final list = await widget.repository.loadTechnicians(widget.complaint);
@@ -141,10 +144,10 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() {
-          _loadError = e.toString();
+          _loadFailure = FirebaseErrorMapper.map(e, st);
           _isLoading = false;
         });
       }
@@ -232,7 +235,7 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
 
     setState(() {
       _isSubmitting = true;
-      _submitError = null;
+      _submitFailure = null;
     });
 
     try {
@@ -252,11 +255,11 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
       if (mounted) {
         Navigator.of(context).pop(result);
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _submitError = e.toString().replaceFirst('Exception: ', '');
+          _submitFailure = FirebaseErrorMapper.map(e, st);
         });
       }
     }
@@ -343,40 +346,15 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
                         ),
 
                         // Submission Error Banner
-                        if (_submitError != null) ...[
+                        if (_submitFailure != null) ...[
                           const SizedBox(height: AppSpacing.md),
-                          Container(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            decoration: BoxDecoration(
-                              color: palette.danger.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: palette.danger.withValues(alpha: 0.4),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  color: palette.danger,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: Text(
-                                    _submitError!,
-                                    style: TextStyle(
-                                      color: palette.danger,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: _submitAssignment,
-                                  child: const Text('Retry'),
-                                ),
-                              ],
-                            ),
+                          ErrorBanner(
+                            failure: _submitFailure,
+                            onDismiss: () =>
+                                setState(() => _submitFailure = null),
+                            onRetry: _submitFailure?.retryable == true
+                                ? _submitAssignment
+                                : null,
                           ),
                         ],
                       ],
@@ -637,11 +615,8 @@ class _AssignTechnicianSheetState extends State<AssignTechnicianSheet> {
       );
     }
 
-    if (_loadError != null) {
-      return ErrorState(
-        message: 'Could not load technician roster. Check your connection and try again.',
-        onRetry: _loadTechnicians,
-      );
+    if (_loadFailure != null) {
+      return ErrorState(failure: _loadFailure, onRetry: _loadTechnicians);
     }
 
     if (_technicians == null || _technicians!.isEmpty) {

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../repositories/rent_repository.dart';
+import '../../services/errors/app_failure.dart';
+import '../../services/errors/firebase_error_mapper.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/rent_rules.dart';
 import '../../widgets/app_spacing.dart';
+import '../../widgets/error_banner.dart';
 import 'rent_models.dart';
 
 /// Modal bottom sheet (phones) or 420px dialog (wide screens)
@@ -85,7 +88,7 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
 
   bool _confirming = false;
   bool _isSubmitting = false;
-  String? _errorMessage;
+  AppFailure? _failure;
 
   @override
   void initState() {
@@ -119,16 +122,22 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
   }
 
   Future<void> _submit() async {
-    setState(() => _errorMessage = null);
+    setState(() => _failure = null);
     final amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
     if (amount <= 0) {
-      setState(() => _errorMessage = 'Payment amount must be greater than ₹0');
+      setState(
+        () => _failure = const ValidationFailure(
+          userMessage: 'Payment amount must be greater than ₹0',
+        ),
+      );
       return;
     }
     if (amount > widget.item.balance) {
       setState(
-        () => _errorMessage =
-            'Amount cannot exceed balance of ${formatIndianCurrency(widget.item.balance)}',
+        () => _failure = ValidationFailure(
+          userMessage:
+              'Amount cannot exceed balance of ${formatIndianCurrency(widget.item.balance)}',
+        ),
       );
       return;
     }
@@ -170,11 +179,11 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
       if (mounted) {
         Navigator.of(context).pop(finalItem);
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _errorMessage = 'Failed to record payment: $e';
+          _failure = FirebaseErrorMapper.map(e, st);
         });
       }
     }
@@ -221,17 +230,11 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
             ),
             const SizedBox(height: AppSpacing.md),
 
-            if (_errorMessage != null) ...[
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: palette.danger.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: palette.danger, fontSize: 13),
-                ),
+            if (_failure != null) ...[
+              ErrorBanner(
+                failure: _failure,
+                onDismiss: () => setState(() => _failure = null),
+                onRetry: _failure?.retryable == true ? _submit : null,
               ),
               const SizedBox(height: AppSpacing.md),
             ],

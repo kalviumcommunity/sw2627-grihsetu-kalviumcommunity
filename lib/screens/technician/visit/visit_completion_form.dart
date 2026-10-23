@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../repositories/complaint_repository.dart';
+import '../../../services/errors/app_failure.dart';
+import '../../../services/errors/firebase_error_mapper.dart';
 import '../../../services/media_picker.dart';
 import '../../../theme/app_palette.dart';
 import '../../../utils/visit_validators.dart';
@@ -10,6 +12,7 @@ import '../../../widgets/app_loading_button.dart';
 import '../../../widgets/app_spacing.dart';
 import '../../../widgets/app_switch.dart';
 import '../../../widgets/app_text_field.dart';
+import '../../../widgets/error_banner.dart';
 import 'visit_models.dart';
 import 'visit_success_screen.dart';
 
@@ -133,7 +136,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
   // Validation & Submission
   final Map<String, String?> _errors = {};
   bool _isSubmitting = false;
-  String? _submissionError;
+  AppFailure? _submissionFailure;
 
   @override
   void initState() {
@@ -482,7 +485,7 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
 
     setState(() {
       _isSubmitting = true;
-      _submissionError = null;
+      _submissionFailure = null;
     });
 
     try {
@@ -542,11 +545,11 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
           partsCount: _parts.length,
         );
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _submissionError = 'Failed to submit visit: $e';
+          _submissionFailure = FirebaseErrorMapper.map(e, st);
         });
       }
     }
@@ -593,30 +596,17 @@ class _VisitCompletionFormState extends State<VisitCompletionForm> {
           child: Column(
             children: [
               // Retry banner if submission failed
-              if (_submissionError != null)
-                Container(
-                  width: double.infinity,
-                  color: palette.danger.withValues(alpha: 0.15),
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: palette.danger,
-                        size: 20,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          _submissionError!,
-                          style: TextStyle(color: palette.danger, fontSize: 13),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _submitForm,
-                        child: const Text('Retry'),
-                      ),
-                    ],
+              if (_submissionFailure != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
+                  child: ErrorBanner(
+                    failure: _submissionFailure,
+                    onDismiss: () => setState(() => _submissionFailure = null),
+                    onRetry: _submissionFailure?.retryable == true
+                        ? _submitForm
+                        : null,
                   ),
                 ),
 

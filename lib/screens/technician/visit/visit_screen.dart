@@ -12,6 +12,7 @@ import '../../../utils/action_feedback.dart';
 import '../../../utils/date_time_formatters.dart' as dtf;
 import '../../../utils/visit_validators.dart';
 import '../../../widgets/app_card.dart';
+import '../../../widgets/app_snack.dart';
 import '../../../widgets/app_spacing.dart';
 import '../../../widgets/complaint_chips.dart';
 import '../../../widgets/empty_state.dart';
@@ -209,7 +210,7 @@ class _VisitScreenState extends State<VisitScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ActionFeedback.showError(context, 'Failed to update step: $e');
+        AppSnack.error(context, e);
       }
     } finally {
       if (mounted) {
@@ -252,7 +253,7 @@ class _VisitScreenState extends State<VisitScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ActionFeedback.showError(context, 'Could not upload photo: $e');
+        AppSnack.error(context, e);
       }
     }
   }

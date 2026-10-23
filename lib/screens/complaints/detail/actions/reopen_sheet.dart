@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../../../services/errors/app_failure.dart';
+import '../../../../services/errors/firebase_error_mapper.dart';
 import '../../../../services/media_picker.dart';
 import '../../../../theme/app_palette.dart';
 import '../../../../utils/complaint_validators.dart';
 import '../../../../widgets/app_spacing.dart';
+import '../../../../widgets/error_banner.dart';
 import 'action_sheet_launcher.dart';
 
 class ReopenResult {
@@ -63,7 +66,7 @@ class _ReopenSheetState extends State<ReopenSheet> {
   final List<String> _photos = [];
 
   bool _isSubmitting = false;
-  String? _errorMessage;
+  AppFailure? _failure;
   String? _formValidationError;
 
   @override
@@ -115,7 +118,7 @@ class _ReopenSheetState extends State<ReopenSheet> {
 
     setState(() {
       _isSubmitting = true;
-      _errorMessage = null;
+      _failure = null;
       _formValidationError = null;
     });
 
@@ -132,10 +135,10 @@ class _ReopenSheetState extends State<ReopenSheet> {
       if (mounted) {
         Navigator.of(context).pop(payload);
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _failure = FirebaseErrorMapper.map(e, st);
           _isSubmitting = false;
         });
       }
@@ -212,32 +215,11 @@ class _ReopenSheetState extends State<ReopenSheet> {
               ],
 
               // Error banner with retry keeping entries
-              if (_errorMessage != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: palette.danger.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: palette.danger),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: palette.danger),
-                      const SizedBox(width: AppSpacing.xs),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: palette.danger,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _isSubmitting ? null : _submit,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
+              if (_failure != null) ...[
+                ErrorBanner(
+                  failure: _failure,
+                  onDismiss: () => setState(() => _failure = null),
+                  onRetry: _isSubmitting ? null : _submit,
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],

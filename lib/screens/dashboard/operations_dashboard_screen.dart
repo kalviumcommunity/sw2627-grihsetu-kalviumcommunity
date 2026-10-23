@@ -14,12 +14,15 @@ import '../../repositories/dashboard_repository.dart';
 import '../../repositories/property_repository.dart';
 import '../../repositories/rent_repository.dart';
 import '../../services/auth_service.dart';
+import '../../services/errors/app_failure.dart';
+import '../../services/errors/firebase_error_mapper.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/attention_rules.dart';
 import '../../utils/complaint_query.dart';
 import '../../utils/dashboard_metrics.dart';
 import '../../utils/visit_history.dart';
 import '../../widgets/app_spacing.dart';
+import '../../widgets/error_banner.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_box.dart';
 import '../complaints/complaint_detail_screen.dart';
@@ -61,7 +64,7 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
       widget.dashboardRepository ?? InMemoryDashboardRepository();
 
   bool _isLoading = true;
-  String? _errorMessage;
+  AppFailure? _failure;
   DashboardSnapshot? _snapshot;
   bool _showAllAttention = false;
 
@@ -76,7 +79,7 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
   Future<void> _load() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _failure = null;
     });
 
     try {
@@ -87,10 +90,11 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
+        final failure = FirebaseErrorMapper.map(e, st);
         setState(() {
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _failure = failure;
           _isLoading = false;
         });
       }
@@ -174,14 +178,14 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
       );
     }
 
-    if (_errorMessage != null && _snapshot == null) {
+    if (_failure != null && _snapshot == null) {
       return Scaffold(
         backgroundColor: palette.canvas,
         body: SafeArea(
           child: Center(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              child: ErrorState(message: _errorMessage!, onRetry: _load),
+              child: ErrorState(failure: _failure, onRetry: _load),
             ),
           ),
         ),
@@ -215,6 +219,14 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (_failure != null) ...[
+                  ErrorBanner(
+                    failure: _failure,
+                    onDismiss: () => setState(() => _failure = null),
+                    onRetry: _failure!.retryable ? _load : null,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
                 // 1. Greeting header
                 _GreetingHeader(
                   now: _now,

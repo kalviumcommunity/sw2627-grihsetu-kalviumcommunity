@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../repositories/rent_repository.dart';
+import '../../services/errors/app_failure.dart';
+import '../../services/errors/firebase_error_mapper.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/rent_rules.dart';
 import '../../utils/validators.dart';
 import '../../widgets/app_spacing.dart';
+import '../../widgets/error_banner.dart';
 import 'rent_models.dart';
 
 /// Modal bottom sheet (phones) or 420px dialog (tablets/desktops)
@@ -97,7 +100,7 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
   bool _confirmingPayment = false;
 
   bool _isSubmitting = false;
-  String? _errorMessage;
+  AppFailure? _failure;
 
   @override
   void initState() {
@@ -161,7 +164,7 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
     if (_isSubmitting) return;
 
     setState(() {
-      _errorMessage = null;
+      _failure = null;
     });
 
     final double? promisedAmount = _outcome == FollowUpOutcome.promisedToPay
@@ -181,7 +184,9 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
 
     if (!validation.isValid) {
       setState(() {
-        _errorMessage = validation.firstError;
+        _failure = ValidationFailure(
+          userMessage: validation.firstError ?? 'Validation error',
+        );
       });
       return;
     }
@@ -198,7 +203,9 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
         maxError: 'Payment amount cannot exceed balance',
       );
       if (paidAmountError != null) {
-        setState(() => _errorMessage = paidAmountError);
+        setState(
+          () => _failure = ValidationFailure(userMessage: paidAmountError),
+        );
         return;
       }
       setState(() => _confirmingPayment = true);
@@ -249,11 +256,11 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
       if (mounted) {
         Navigator.of(context).pop(updatedItem);
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _errorMessage = 'Failed to record follow-up: $e';
+          _failure = FirebaseErrorMapper.map(e, st);
         });
       }
     }
@@ -339,17 +346,11 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
               const SizedBox(height: AppSpacing.md),
             ],
 
-            if (_errorMessage != null) ...[
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: palette.danger.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: palette.danger, fontSize: 13),
-                ),
+            if (_failure != null) ...[
+              ErrorBanner(
+                failure: _failure,
+                onDismiss: () => setState(() => _failure = null),
+                onRetry: _failure?.retryable == true ? _submit : null,
               ),
               const SizedBox(height: AppSpacing.md),
             ],

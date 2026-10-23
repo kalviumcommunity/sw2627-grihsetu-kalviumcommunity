@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/enums/rent_status.dart';
 import '../../repositories/rent_repository.dart';
+import '../../services/errors/app_failure.dart';
+import '../../services/errors/firebase_error_mapper.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/rent_rules.dart';
 import '../../widgets/app_card.dart';
@@ -42,7 +44,7 @@ class _RentListScreenState extends State<RentListScreen> {
       widget.repository ?? InMemoryRentRepository();
 
   bool _isLoading = true;
-  String? _errorMessage;
+  AppFailure? _failure;
   List<RentItem> _items = [];
 
   // Filter & Search states
@@ -64,7 +66,7 @@ class _RentListScreenState extends State<RentListScreen> {
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _failure = null;
     });
 
     try {
@@ -78,11 +80,11 @@ class _RentListScreenState extends State<RentListScreen> {
           }
         });
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = e.toString();
+          _failure = FirebaseErrorMapper.map(e, st);
         });
       }
     }
@@ -215,11 +217,8 @@ class _RentListScreenState extends State<RentListScreen> {
       );
     }
 
-    if (_errorMessage != null) {
-      return ErrorState(
-        message: 'Could not load rent records: $_errorMessage',
-        onRetry: _loadData,
-      );
+    if (_failure != null) {
+      return ErrorState(failure: _failure, onRetry: _loadData);
     }
 
     if (_items.isEmpty) {
