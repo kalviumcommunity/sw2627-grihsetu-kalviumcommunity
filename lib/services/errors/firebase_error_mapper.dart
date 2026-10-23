@@ -33,6 +33,41 @@ abstract final class FirebaseErrorMapper {
       );
     }
 
+    if (error is FormatException || error is ArgumentError) {
+      return ValidationFailure(
+        userMessage: 'The provided data is invalid. Please check your inputs.',
+        original: error,
+      );
+    }
+
+    try {
+      final dynamic e = error;
+      if (e.code is Enum &&
+          e.code.toString().contains('ComplaintFailureCode')) {
+        final codeName = (e.code as Enum).name;
+        final message =
+            (e.message as String?) ?? 'A complaint operation error occurred.';
+        return switch (codeName) {
+          'validation' => ValidationFailure(
+            userMessage: message,
+            original: error,
+          ),
+          'unauthenticated' => UnauthenticatedFailure(
+            userMessage: message,
+            original: error,
+          ),
+          'permissionDenied' => PermissionDeniedFailure(
+            userMessage: message,
+            original: error,
+          ),
+          'notFound' => NotFoundFailure(userMessage: message, original: error),
+          'network' => NetworkFailure(userMessage: message, original: error),
+          'conflict' => ConflictFailure(userMessage: message, original: error),
+          _ => UnknownFailure(userMessage: message, original: error),
+        };
+      }
+    } catch (_) {}
+
     if (error is FirebaseException) {
       return _mapFirebaseException(error);
     }

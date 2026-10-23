@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/constants/firestore_collections.dart';
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/tenant.dart';
+import '../services/errors/app_failure.dart';
+import '../services/errors/run_guarded.dart';
 import 'reference_data_repositories.dart';
 
 export 'reference_data_repositories.dart' show TenantRepository;
@@ -29,15 +31,18 @@ class InMemoryTenantRepository implements TenantRepository {
       await Future<void>.delayed(simulatedDelay);
     }
     if (debugSimulateFailure) {
-      throw StateError('Simulated tenant repository failure');
+      throw const UnavailableFailure(
+        userMessage: 'Tenant service temporarily unavailable. Please retry.',
+        retryable: true,
+      );
     }
   }
 
   @override
-  Future<Tenant?> getById(String tenantId) async {
+  Future<Tenant?> getById(String tenantId) => runGuarded(() async {
     await _checkDelayAndFailure();
     return _tenants[tenantId];
-  }
+  });
 
   @override
   Stream<List<Tenant>> watchForProperty(String propertyId) async* {
@@ -56,17 +61,17 @@ class InMemoryTenantRepository implements TenantRepository {
   }
 
   @override
-  Future<String> create(Tenant tenant) async {
+  Future<String> create(Tenant tenant) => runGuarded(() async {
     await _checkDelayAndFailure();
     _tenants[tenant.id] = tenant;
     return tenant.id;
-  }
+  });
 
   @override
-  Future<void> update(Tenant tenant) async {
+  Future<void> update(Tenant tenant) => runGuarded(() async {
     await _checkDelayAndFailure();
     _tenants[tenant.id] = tenant;
-  }
+  });
 }
 
 /// Firestore-backed implementation of [TenantRepository] matching PRD and
@@ -78,18 +83,14 @@ class FirestoreTenantRepository implements TenantRepository {
   final FirebaseFirestore _firestore;
 
   @override
-  Future<Tenant?> getById(String tenantId) async {
-    try {
-      final doc = await _firestore
-          .collection(FirestoreCollections.tenants)
-          .doc(tenantId)
-          .get();
-      if (!doc.exists || doc.data() == null) return null;
-      return Tenant.fromMap(doc.data()!, id: doc.id);
-    } catch (e) {
-      throw StateError('Failed to fetch tenant: $e');
-    }
-  }
+  Future<Tenant?> getById(String tenantId) => runGuarded(() async {
+    final doc = await _firestore
+        .collection(FirestoreCollections.tenants)
+        .doc(tenantId)
+        .get();
+    if (!doc.exists || doc.data() == null) return null;
+    return Tenant.fromMap(doc.data()!, id: doc.id);
+  });
 
   @override
   Stream<List<Tenant>> watchForProperty(String propertyId) {
@@ -118,27 +119,31 @@ class FirestoreTenantRepository implements TenantRepository {
   }
 
   @override
-  Future<String> create(Tenant tenant) async {
+  Future<String> create(Tenant tenant) => runGuarded(() async {
     final validationErrors = tenant.validate();
     if (validationErrors.isNotEmpty) {
-      throw ArgumentError('Invalid tenant: ${validationErrors.join(", ")}');
+      throw ValidationFailure(
+        userMessage: 'Invalid tenant: ${validationErrors.join(", ")}',
+      );
     }
     final ref = _firestore.collection(FirestoreCollections.tenants).doc();
     final data = FirestoreRepositoryPayloads.forCreate(tenant.toMap());
     await ref.set(data);
     return ref.id;
-  }
+  });
 
   @override
-  Future<void> update(Tenant tenant) async {
+  Future<void> update(Tenant tenant) => runGuarded(() async {
     final validationErrors = tenant.validate();
     if (validationErrors.isNotEmpty) {
-      throw ArgumentError('Invalid tenant: ${validationErrors.join(", ")}');
+      throw ValidationFailure(
+        userMessage: 'Invalid tenant: ${validationErrors.join(", ")}',
+      );
     }
     final ref = _firestore
         .collection(FirestoreCollections.tenants)
         .doc(tenant.id);
     final data = FirestoreRepositoryPayloads.forUpdate(tenant.toMap());
     await ref.update(data);
-  }
+  });
 }

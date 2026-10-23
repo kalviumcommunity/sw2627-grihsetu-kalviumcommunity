@@ -19,6 +19,8 @@ import '../services/complaint_audit_service.dart';
 import '../services/maintenance_visit_service.dart';
 import '../services/technician_assignment_service.dart';
 import '../screens/technician/visit/visit_models.dart';
+import '../services/errors/app_failure.dart';
+import '../services/errors/run_guarded.dart';
 import '../utils/visit_validators.dart';
 
 const String complaintCreatedEventType = 'COMPLAINT_CREATED';
@@ -459,7 +461,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<Complaint> createComplaint(CreateComplaintInput input) async {
+  Future<Complaint> createComplaint(
+    CreateComplaintInput input,
+  ) => runGuarded(() async {
     final user = _identity.currentUser;
     if (user == null || user.uid.trim().isEmpty) {
       throw const ComplaintAuthenticationException();
@@ -588,7 +592,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     } catch (error) {
       throw ComplaintWriteException(error.toString());
     }
-  }
+  });
 
   Future<void> _validateReferences(
     Transaction transaction,
@@ -658,13 +662,13 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<Complaint?> loadComplaint(String id) async {
+  Future<Complaint?> loadComplaint(String id) => runGuarded(() async {
     final doc = await _firestore
         .collection(FirestoreCollections.complaints)
         .doc(id.trim())
         .get();
     return doc.exists ? Complaint.fromMap(doc.data()!, id: doc.id) : null;
-  }
+  });
 
   @override
   Stream<List<ComplaintAuditEvent>> watchAuditEvents(String complaintId) {
@@ -686,21 +690,22 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<List<ComplaintAuditEvent>> loadAuditEvents(String complaintId) async {
-    final snapshot = await _firestore
-        .collection(FirestoreCollections.auditEvents)
-        .where('complaintId', isEqualTo: complaintId.trim())
-        .get();
-    final events = snapshot.docs.map((doc) {
-      return ComplaintAuditEvent.fromMap(doc.data(), id: doc.id);
-    }).toList();
-    events.sort((a, b) {
-      final aTime = a.createdAt ?? DateTime(0);
-      final bTime = b.createdAt ?? DateTime(0);
-      return aTime.compareTo(bTime);
-    });
-    return events;
-  }
+  Future<List<ComplaintAuditEvent>> loadAuditEvents(String complaintId) =>
+      runGuarded(() async {
+        final snapshot = await _firestore
+            .collection(FirestoreCollections.auditEvents)
+            .where('complaintId', isEqualTo: complaintId.trim())
+            .get();
+        final events = snapshot.docs.map((doc) {
+          return ComplaintAuditEvent.fromMap(doc.data(), id: doc.id);
+        }).toList();
+        events.sort((a, b) {
+          final aTime = a.createdAt ?? DateTime(0);
+          final bTime = b.createdAt ?? DateTime(0);
+          return aTime.compareTo(bTime);
+        });
+        return events;
+      });
 
   @override
   Stream<List<MaintenanceVisit>> watchMaintenanceVisits(String complaintId) {
@@ -708,17 +713,19 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<List<MaintenanceVisit>> loadMaintenanceVisits(String complaintId) {
-    return _visitService.getMaintenanceVisits(complaintId);
-  }
+  Future<List<MaintenanceVisit>> loadMaintenanceVisits(String complaintId) =>
+      runGuarded(() async {
+        return _visitService.getMaintenanceVisits(complaintId);
+      });
 
   @override
-  Future<void> appendAuditEvent(ComplaintAuditEvent event) async {
-    final ref = _firestore
-        .collection(FirestoreCollections.auditEvents)
-        .doc(event.id.isNotEmpty ? event.id : null);
-    await ref.set(event.toFirestoreMap());
-  }
+  Future<void> appendAuditEvent(ComplaintAuditEvent event) =>
+      runGuarded(() async {
+        final ref = _firestore
+            .collection(FirestoreCollections.auditEvents)
+            .doc(event.id.isNotEmpty ? event.id : null);
+        await ref.set(event.toFirestoreMap());
+      });
 
   @override
   Future<Complaint> updateComplaintStatus(
@@ -728,7 +735,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     String? note,
     String? role,
     Map<String, dynamic>? metadata,
-  }) async {
+  }) => runGuarded(() async {
     final complaintRef = _firestore
         .collection(FirestoreCollections.complaints)
         .doc(complaintId.trim());
@@ -796,7 +803,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
 
     final updated = await loadComplaint(complaintId);
     return updated!;
-  }
+  });
 
   @override
   Future<Complaint> updateComplaintPriority(
@@ -804,7 +811,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     ComplaintPriority newPriority, {
     required String actorId,
     String? reason,
-  }) async {
+  }) => runGuarded(() async {
     final complaintRef = _firestore
         .collection(FirestoreCollections.complaints)
         .doc(complaintId.trim());
@@ -831,7 +838,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
 
     final updated = await loadComplaint(complaintId);
     return updated!;
-  }
+  });
 
   @override
   Future<Complaint> assignComplaintTechnician(
@@ -842,7 +849,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     String? role,
     DateTime? scheduledDate,
     String? timeSlot,
-  }) async {
+  }) => runGuarded(() async {
     final current = await loadComplaint(complaintId.trim());
     if (current == null) {
       throw const ComplaintFailure(ComplaintFailureCode.notFound);
@@ -868,7 +875,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     } on TechnicianAssignmentFailure catch (error) {
       throw ComplaintFailure(ComplaintFailureCode.write, error.message);
     }
-  }
+  });
 
   @override
   Future<Complaint> advanceVisitStep(
@@ -878,7 +885,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     String? role,
     String? note,
     List<String>? photos,
-  }) async {
+  }) => runGuarded(() async {
     final normalizedComplaintId = _validId(complaintId, 'Complaint ID');
     final authenticatedActorId = _requireActorId(actorId);
 
@@ -937,7 +944,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     } on FirebaseException catch (error) {
       throw _fromFirebaseException(error);
     }
-  }
+  });
 
   @override
   Future<void> addVisitPhoto(
@@ -946,7 +953,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     required String group,
     required String actorId,
     String? role,
-  }) async {
+  }) => runGuarded(() async {
     final normalizedComplaintId = _validId(complaintId, 'Complaint ID');
     final normalizedUrl = photoUrl.trim();
     final normalizedGroup = group.trim().toLowerCase();
@@ -964,7 +971,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         'note': 'Photo uploaded ($normalizedGroup evidence)',
       },
     );
-  }
+  });
 
   @override
   Future<void> addPart(
@@ -972,7 +979,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     VisitPartInput part, {
     required String actorId,
     String? role,
-  }) async {
+  }) => runGuarded(() async {
     final normalizedComplaintId = _validId(complaintId, 'Complaint ID');
     final nameError = VisitValidators.validatePartName(part.name);
     final quantityError = VisitValidators.validatePartQuantity(part.quantity);
@@ -993,7 +1000,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         'note': 'Part added: ${part.name.trim()} (x${part.quantity})',
       },
     );
-  }
+  });
 
   @override
   Future<Complaint> completeVisit(
@@ -1001,7 +1008,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     VisitCompletionInput completion, {
     required String actorId,
     String? role,
-  }) async {
+  }) => runGuarded(() async {
     final normalizedComplaintId = _validId(complaintId, 'Complaint ID');
     final actor = _requireActorId(actorId);
     try {
@@ -1026,7 +1033,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     } on FirebaseException catch (error) {
       throw _fromFirebaseException(error);
     }
-  }
+  });
 
   @override
   Future<Complaint> requestFollowUpVisit(
@@ -1034,7 +1041,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     FollowUpRequestInput request, {
     required String actorId,
     String? role,
-  }) async {
+  }) => runGuarded(() async {
     final normalizedComplaintId = _validId(complaintId, 'Complaint ID');
     _requireActorId(actorId);
     final followUpNotes = [
@@ -1068,7 +1075,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     } on FirebaseException catch (error) {
       throw _fromFirebaseException(error);
     }
-  }
+  });
 
   String _requireActorId(String actorId) {
     final authenticatedId = _identity.currentUser?.uid.trim();
@@ -1228,6 +1235,20 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   final Duration streamDelay;
   bool simulateFailure = false;
   Duration operationDelay = Duration.zero;
+
+  Future<void> _checkDelayAndFailure() async {
+    if (operationDelay > Duration.zero) {
+      await Future<void>.delayed(operationDelay);
+    }
+    if (simulateFailure) {
+      throw const UnavailableFailure(
+        userMessage:
+            'Complaint service is temporarily unavailable. Please retry.',
+        retryable: true,
+      );
+    }
+  }
+
   final StreamController<List<Complaint>> _controller =
       StreamController<List<Complaint>>.broadcast();
   final Map<String, StreamController<Complaint?>> _complaintControllers = {};
@@ -1425,53 +1446,56 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<Complaint> createComplaint(CreateComplaintInput input) async {
-    final validationErrors = input.validate();
-    if (validationErrors.isNotEmpty) {
-      throw ComplaintValidationException(validationErrors.join(' '));
-    }
-    final id = input.submissionId?.trim().isNotEmpty == true
-        ? input.submissionId!.trim()
-        : 'complaint_${DateTime.now().millisecondsSinceEpoch}';
-    final now = DateTime.now();
-    final complaint = Complaint(
-      id: id,
-      tenantId: input.tenantId.trim(),
-      propertyId: input.propertyId.trim(),
-      unitId: input.unitId.trim(),
-      title: input.title.trim(),
-      description: input.description.trim(),
-      category: input.category,
-      priority: input.priority,
-      status: ComplaintStatus.open,
-      createdBy: 'in_memory_user',
-      createdAt: now,
-    );
-    _complaints.add(complaint);
+  Future<Complaint> createComplaint(CreateComplaintInput input) =>
+      runGuarded(() async {
+        await _checkDelayAndFailure();
+        final validationErrors = input.validate();
+        if (validationErrors.isNotEmpty) {
+          throw ComplaintValidationException(validationErrors.join(' '));
+        }
+        final id = input.submissionId?.trim().isNotEmpty == true
+            ? input.submissionId!.trim()
+            : 'complaint_${DateTime.now().millisecondsSinceEpoch}';
+        final now = DateTime.now();
+        final complaint = Complaint(
+          id: id,
+          tenantId: input.tenantId.trim(),
+          propertyId: input.propertyId.trim(),
+          unitId: input.unitId.trim(),
+          title: input.title.trim(),
+          description: input.description.trim(),
+          category: input.category,
+          priority: input.priority,
+          status: ComplaintStatus.open,
+          createdBy: 'in_memory_user',
+          createdAt: now,
+        );
+        _complaints.add(complaint);
 
-    final initialEvent = ComplaintAuditEvent(
-      id: '${id}_evt_created',
-      complaintId: id,
-      eventType: ComplaintAuditEventType.complaintCreated,
-      actorId: 'in_memory_user',
-      timestamp: now,
-      metadata: {
-        'category': input.category.displayLabel,
-        'priority': input.priority.displayLabel,
-        'actorName': 'Tenant',
-        'actorRole': 'Tenant',
-      },
-    );
-    _auditEvents[id] = [initialEvent];
+        final initialEvent = ComplaintAuditEvent(
+          id: '${id}_evt_created',
+          complaintId: id,
+          eventType: ComplaintAuditEventType.complaintCreated,
+          actorId: 'in_memory_user',
+          timestamp: now,
+          metadata: {
+            'category': input.category.displayLabel,
+            'priority': input.priority.displayLabel,
+            'actorName': 'Tenant',
+            'actorRole': 'Tenant',
+          },
+        );
+        _auditEvents[id] = [initialEvent];
 
-    _emit();
-    _emitComplaint(id);
-    _emitAudit(id);
-    return complaint;
-  }
+        _emit();
+        _emitComplaint(id);
+        _emitAudit(id);
+        return complaint;
+      });
 
   @override
-  Future<List<Complaint>> list({ComplaintScope? scope}) async {
+  Future<List<Complaint>> list({ComplaintScope? scope}) => runGuarded(() async {
+    await _checkDelayAndFailure();
     // Filtering happens on the client over the loaded list.
     // TODO: Add server-side indexed queries when moving to Firestore.
     var result = List<Complaint>.from(_complaints);
@@ -1497,7 +1521,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     }
     _sort(result);
     return result;
-  }
+  });
 
   @override
   Stream<List<Complaint>> watchComplaints({
@@ -1583,12 +1607,13 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<Complaint?> loadComplaint(String id) async {
+  Future<Complaint?> loadComplaint(String id) => runGuarded(() async {
+    await _checkDelayAndFailure();
     if (streamDelay > Duration.zero) {
       await Future<void>.delayed(streamDelay);
     }
     return _complaints.where((c) => c.id == id).firstOrNull;
-  }
+  });
 
   @override
   Stream<List<ComplaintAuditEvent>> watchAuditEvents(String complaintId) {
@@ -1615,20 +1640,22 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<List<ComplaintAuditEvent>> loadAuditEvents(String complaintId) async {
-    if (streamDelay > Duration.zero) {
-      await Future<void>.delayed(streamDelay);
-    }
-    final events = List<ComplaintAuditEvent>.from(
-      _auditEvents[complaintId] ?? <ComplaintAuditEvent>[],
-    );
-    events.sort((a, b) {
-      final aTime = a.createdAt ?? DateTime(0);
-      final bTime = b.createdAt ?? DateTime(0);
-      return aTime.compareTo(bTime);
-    });
-    return events;
-  }
+  Future<List<ComplaintAuditEvent>> loadAuditEvents(String complaintId) =>
+      runGuarded(() async {
+        await _checkDelayAndFailure();
+        if (streamDelay > Duration.zero) {
+          await Future<void>.delayed(streamDelay);
+        }
+        final events = List<ComplaintAuditEvent>.from(
+          _auditEvents[complaintId] ?? <ComplaintAuditEvent>[],
+        );
+        events.sort((a, b) {
+          final aTime = a.createdAt ?? DateTime(0);
+          final bTime = b.createdAt ?? DateTime(0);
+          return aTime.compareTo(bTime);
+        });
+        return events;
+      });
 
   @override
   Stream<List<MaintenanceVisit>> watchMaintenanceVisits(String complaintId) {
@@ -1645,9 +1672,11 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<List<MaintenanceVisit>> loadMaintenanceVisits(String complaintId) {
-    return Future<List<MaintenanceVisit>>.value(_sortedVisits(complaintId));
-  }
+  Future<List<MaintenanceVisit>> loadMaintenanceVisits(String complaintId) =>
+      runGuarded(() async {
+        await _checkDelayAndFailure();
+        return _sortedVisits(complaintId);
+      });
 
   List<MaintenanceVisit> _sortedVisits(String complaintId) {
     final visits = List<MaintenanceVisit>.from(
@@ -1668,11 +1697,13 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<void> appendAuditEvent(ComplaintAuditEvent event) async {
-    final list = _auditEvents.putIfAbsent(event.complaintId, () => []);
-    list.add(event);
-    _emitAudit(event.complaintId);
-  }
+  Future<void> appendAuditEvent(ComplaintAuditEvent event) =>
+      runGuarded(() async {
+        await _checkDelayAndFailure();
+        final list = _auditEvents.putIfAbsent(event.complaintId, () => []);
+        list.add(event);
+        _emitAudit(event.complaintId);
+      });
 
   @override
   Future<Complaint> updateComplaintStatus(
@@ -1682,7 +1713,8 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     String? note,
     String? role,
     Map<String, dynamic>? metadata,
-  }) async {
+  }) => runGuarded(() async {
+    await _checkDelayAndFailure();
     final index = _complaints.indexWhere((c) => c.id == complaintId);
     if (index == -1) {
       throw const ComplaintFailure(ComplaintFailureCode.notFound);
@@ -1760,7 +1792,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     _emit();
     _emitComplaint(complaintId);
     return updated;
-  }
+  });
 
   @override
   Future<Complaint> updateComplaintPriority(
@@ -1768,7 +1800,8 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     ComplaintPriority newPriority, {
     required String actorId,
     String? reason,
-  }) async {
+  }) => runGuarded(() async {
+    await _checkDelayAndFailure();
     final index = _complaints.indexWhere((c) => c.id == complaintId);
     if (index == -1) {
       throw const ComplaintFailure(ComplaintFailureCode.notFound);
@@ -1816,7 +1849,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     _emit();
     _emitComplaint(complaintId);
     return updated;
-  }
+  });
 
   @override
   Future<Complaint> assignComplaintTechnician(
@@ -1827,7 +1860,8 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     String? role,
     DateTime? scheduledDate,
     String? timeSlot,
-  }) async {
+  }) => runGuarded(() async {
+    await _checkDelayAndFailure();
     final index = _complaints.indexWhere((c) => c.id == complaintId);
     if (index == -1) {
       throw const ComplaintFailure(ComplaintFailureCode.notFound);
@@ -1889,7 +1923,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     _emit();
     _emitComplaint(complaintId);
     return updated;
-  }
+  });
 
   @override
   Stream<List<Complaint>> watchAssignedComplaints({
@@ -1960,7 +1994,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     String? role,
     String? note,
     List<String>? photos,
-  }) async {
+  }) => runGuarded(() async {
     if (simulateFailure) {
       throw const ComplaintWriteException(
         'Simulated repository write failure.',
@@ -2056,7 +2090,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     _emit();
     _emitComplaint(complaintId);
     return updated;
-  }
+  });
 
   @override
   Future<void> addVisitPhoto(
@@ -2065,7 +2099,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     required String group,
     required String actorId,
     String? role,
-  }) async {
+  }) => runGuarded(() async {
     if (simulateFailure) {
       throw const ComplaintWriteException(
         'Simulated repository write failure.',
@@ -2093,7 +2127,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
 
     await appendAuditEvent(event);
     _emitComplaint(complaintId);
-  }
+  });
 
   @override
   Future<void> addPart(
@@ -2101,7 +2135,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     VisitPartInput part, {
     required String actorId,
     String? role,
-  }) async {
+  }) => runGuarded(() async {
     if (simulateFailure) {
       throw const ComplaintWriteException(
         'Simulated repository write failure.',
@@ -2130,7 +2164,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
 
     await appendAuditEvent(event);
     _emitComplaint(complaintId);
-  }
+  });
 
   @override
   Future<Complaint> completeVisit(
@@ -2138,7 +2172,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     VisitCompletionInput completion, {
     required String actorId,
     String? role,
-  }) async {
+  }) => runGuarded(() async {
     if (simulateFailure) {
       throw const ComplaintWriteException(
         'Simulated repository write failure.',
@@ -2275,7 +2309,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     _emit();
     _emitComplaint(complaintId);
     return updated;
-  }
+  });
 
   void _replaceInMemoryVisit({
     required String complaintId,
