@@ -58,20 +58,25 @@ Unit-number reservation must be transaction-backed, and cross-document
 property/unit validation must be enforced by the eventual trusted write path
 and security rules.
 
-## Tenant context view (GRIH-045)
+## Shared form validation and domain rules (GRIH-042)
 
-`TenantDetailContextScreen` and `TenantDetailContextPanel` provide a read-only, staff-facing context view for a tenant's profile, location (property and unit), active and historical complaints, and rent follow-up history.
+Form validation is layered between generic input validation primitives and domain-specific workflow rules:
 
-### Entry points
-- Tenant selection within `TenantPickerScreen` / property browser flows (`TenantDetailContextScreen.open`).
-- Tenant card / action badge on `RentDetailScreen` (`rent_view_tenant_context_button`).
+### Shared validation primitives (`lib/utils/validators.dart`)
+- **`requiredText`**: Rejects `null`, empty strings, and whitespace-only input. Supports field labels, custom messages, and optional min/max lengths.
+- **`optionalText`**: Allows `null` and empty strings. If input is provided, rejects whitespace-only values and enforces optional length constraints.
+- **`email`**: Rejects missing or malformed addresses while trimming leading/trailing whitespace.
+- **`phone`**: Validates 10-digit Indian mobile numbers starting with 6–9.
+- **`name`**, **`password`**, **`confirmPassword`**: Core authentication constraints.
+- **`amount` / `amountValue`**: Numeric validation supporting required/optional presence, finite/non-NaN checks, and configurable `min`/`max` ranges with custom error messages.
+- **`tryParseAmount`**: Safe parsing of numeric strings to nullable `double`.
+- **`date`**: Reusable calendar-date validation with injected reference time (`now`), configurable past checks (`allowPast`, `allowToday`), `minDate`, `maxDate`, and `maxDaysAhead` windows.
+- **`dateOnly`**: Normalizes `DateTime` instances to midnight calendar dates.
 
-### Repository sources
-- **Tenant:** `TenantRepository` (`InMemoryTenantRepository` seeded with sample fixtures, or `FirestoreTenantRepository` reading from the `tenants/{tenantId}` document).
-- **Complaints:** `ComplaintRepository.watchComplaints(tenantId: tenantId)` or `PropertyRepository.getComplaints(tenantId: tenantId)`. Active vs historical classification is based on `ComplaintStatus.terminalStatuses` (`resolved`, `closed`, and `cancelled` are historical; all other statuses including `reopened` are classified as active).
-- **Rent & Follow-ups:** `RentRepository.list(tenantId: tenantId)` returning enriched `RentItem` records.
-- **Property & Unit:** `PropertyRepository.getProperty(propertyId)` and `UnitRepository.getUnit(unitId)` for resolved location context.
+### Domain-specific validators
+- **Complaints (`lib/utils/complaint_validators.dart`)**: Title (5–80 chars), description (20–1000 chars, or 40+ for urgent), attachments (up to 5, <= 10MB), reopen reason, and reopen explanation (>= 15 chars).
+- **Visits (`lib/utils/visit_validators.dart`)**: Workflow step transitions, parts used rows and costs, found/repaired/notes descriptions (10–500 chars), evidence photos, and suggested visit dates (0–14 days).
+- **Rent follow-up (`lib/utils/rent_rules.dart`)**: `validateFollowUp` coordinates outcome-dependent rules: promised dates (today to +30 days) and amounts (<= outstanding balance), note requirements for contact vs. no-answer, tenant responses, and next follow-up dates (strictly after today).
 
-### Data-source limitations
-- Rent data currently uses `InMemoryRentRepository` (sample fixtures) in application runtime and tests; live Firestore rent streams are not yet wired for production tenant rent records.
-- Tenant context relies on existing operational office roles (`admin`, `staff`); non-operational roles (`technician`, `tenant`) are restricted. Tenant self-service or tenant portal authentication is intentionally out of scope.
+### Deterministic unit testing
+Validators and domain rules accept an explicit reference date/time (`now` / `today`) to ensure tests remain completely deterministic and clock-independent without live Firebase or network dependencies.

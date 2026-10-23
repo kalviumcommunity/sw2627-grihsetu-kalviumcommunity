@@ -1,4 +1,5 @@
 import '../screens/complaints/complaint_draft.dart';
+import 'validators.dart';
 
 /// Sequential steps in a technician's on-site visit workflow.
 enum VisitWorkflowStep {
@@ -122,13 +123,15 @@ abstract final class VisitValidators {
   // ==========================================
 
   /// Part name must be 2-60 characters.
-  static String? validatePartName(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return 'Part name is required.';
-    if (trimmed.length < 2) return 'Part name must be at least 2 characters.';
-    if (trimmed.length > 60) return 'Part name must be 60 characters or fewer.';
-    return null;
-  }
+  static String? validatePartName(String value) => Validators.requiredText(
+    value,
+    field: 'Part name',
+    minLength: 2,
+    maxLength: 60,
+    message: 'Part name is required.',
+    minLengthError: 'Part name must be at least 2 characters.',
+    maxLengthError: 'Part name must be 60 characters or fewer.',
+  );
 
   /// Quantity must be between 1 and 99.
   static String? validatePartQuantity(int quantity) {
@@ -139,13 +142,15 @@ abstract final class VisitValidators {
   }
 
   /// Optional cost must be between 0 and 100,000 when given.
-  static String? validatePartCost(double? cost) {
-    if (cost == null) return null;
-    if (cost < 0 || cost > 100000) {
-      return 'Cost must be between 0 and 100,000.';
-    }
-    return null;
-  }
+  static String? validatePartCost(double? cost) => Validators.amountValue(
+    cost,
+    field: 'Cost',
+    isRequired: false,
+    min: 0,
+    max: 100000,
+    minError: 'Cost must be between 0 and 100,000.',
+    maxError: 'Cost must be between 0 and 100,000.',
+  );
 
   /// Parts used rule: repeatable row list; zero parts allowed via [noPartsUsed] checkbox.
   /// One of the two is required.
@@ -220,43 +225,38 @@ abstract final class VisitValidators {
   // ==========================================
 
   /// What was found: required, 10-500 characters.
-  static String? validateFound(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return 'Please describe what was found.';
-    if (trimmed.length < 10) {
-      return 'Description must be at least 10 characters.';
-    }
-    if (trimmed.length > 500) {
-      return 'Description must be 500 characters or fewer.';
-    }
-    return null;
-  }
+  static String? validateFound(String value) => Validators.requiredText(
+    value,
+    field: 'Description',
+    minLength: 10,
+    maxLength: 500,
+    message: 'Please describe what was found.',
+    minLengthError: 'Description must be at least 10 characters.',
+    maxLengthError: 'Description must be 500 characters or fewer.',
+  );
 
   /// What was repaired: required, 10-500 characters.
-  static String? validateRepaired(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return 'Please describe what was repaired.';
-    if (trimmed.length < 10) {
-      return 'Description must be at least 10 characters.';
-    }
-    if (trimmed.length > 500) {
-      return 'Description must be 500 characters or fewer.';
-    }
-    return null;
-  }
+  static String? validateRepaired(String value) => Validators.requiredText(
+    value,
+    field: 'Description',
+    minLength: 10,
+    maxLength: 500,
+    message: 'Please describe what was repaired.',
+    minLengthError: 'Description must be at least 10 characters.',
+    maxLengthError: 'Description must be 500 characters or fewer.',
+  );
 
   /// Resolution notes for tenant: required, 20-500 characters.
-  static String? validateTenantResolutionNotes(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return 'Tenant resolution notes are required.';
-    if (trimmed.length < 20) {
-      return 'Tenant notes must be at least 20 characters.';
-    }
-    if (trimmed.length > 500) {
-      return 'Tenant notes must be 500 characters or fewer.';
-    }
-    return null;
-  }
+  static String? validateTenantResolutionNotes(String value) =>
+      Validators.requiredText(
+        value,
+        field: 'Tenant resolution notes',
+        minLength: 20,
+        maxLength: 500,
+        message: 'Tenant resolution notes are required.',
+        minLengthError: 'Tenant notes must be at least 20 characters.',
+        maxLengthError: 'Tenant notes must be 500 characters or fewer.',
+      );
 
   // ==========================================
   // Needs Another Visit Rules
@@ -271,47 +271,41 @@ abstract final class VisitValidators {
       return 'Please select a reason for the follow-up visit.';
     }
     if (reason == FollowUpReason.other) {
-      final noteTrimmed = (otherNote ?? '').trim();
-      if (noteTrimmed.isEmpty) {
-        return 'Please specify the reason (at least 10 characters).';
-      }
-      if (noteTrimmed.length < 10) {
-        return 'Reason note must be at least 10 characters.';
-      }
-      if (noteTrimmed.length > 500) {
-        return 'Reason note must be 500 characters or fewer.';
-      }
+      return Validators.requiredText(
+        otherNote,
+        minLength: 10,
+        maxLength: 500,
+        message: 'Please specify the reason (at least 10 characters).',
+        minLengthError: 'Reason note must be at least 10 characters.',
+        maxLengthError: 'Reason note must be 500 characters or fewer.',
+      );
     }
     return null;
   }
 
   /// Details note for follow-up: required, 10-500 characters.
-  static String? validateFollowUpDetails(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return 'Follow-up details are required.';
-    if (trimmed.length < 10) {
-      return 'Details must be at least 10 characters.';
-    }
-    if (trimmed.length > 500) {
-      return 'Details must be 500 characters or fewer.';
-    }
-    return null;
-  }
+  static String? validateFollowUpDetails(String value) =>
+      Validators.requiredText(
+        value,
+        field: 'Follow-up details',
+        minLength: 10,
+        maxLength: 500,
+        message: 'Follow-up details are required.',
+        minLengthError: 'Details must be at least 10 characters.',
+        maxLengthError: 'Details must be 500 characters or fewer.',
+      );
 
   /// Suggested next visit date: optional, today to +14 days.
-  static String? validateSuggestedDate(DateTime? date, {DateTime? today}) {
-    if (date == null) return null;
-    final now = today ?? DateTime.now();
-    final start = DateTime(now.year, now.month, now.day);
-    final target = DateTime(date.year, date.month, date.day);
-
-    if (target.isBefore(start)) {
-      return 'Suggested date cannot be in the past.';
-    }
-    final maxDate = start.add(const Duration(days: 14));
-    if (target.isAfter(maxDate)) {
-      return 'Suggested date must be within 14 days.';
-    }
-    return null;
-  }
+  static String? validateSuggestedDate(DateTime? date, {DateTime? today}) =>
+      Validators.date(
+        date,
+        field: 'Suggested date',
+        isRequired: false,
+        now: today,
+        allowPast: false,
+        allowToday: true,
+        maxDaysAhead: 14,
+        pastError: 'Suggested date cannot be in the past.',
+        maxDateError: 'Suggested date must be within 14 days.',
+      );
 }

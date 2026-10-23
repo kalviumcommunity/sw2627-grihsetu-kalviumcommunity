@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../services/media_picker.dart';
 import '../../../../theme/app_palette.dart';
+import '../../../../utils/complaint_validators.dart';
 import '../../../../widgets/app_spacing.dart';
 import 'action_sheet_launcher.dart';
 
@@ -97,16 +98,8 @@ class _ReopenSheetState extends State<ReopenSheet> {
   }
 
   String? _validate() {
-    if (_selectedReason == null || _selectedReason!.isEmpty) {
-      return 'Please select a reason for reopening.';
-    }
-
-    final note = _noteController.text.trim();
-    if (note.length < 15) {
-      return 'Note must be at least 15 characters describing the issue.';
-    }
-
-    return null;
+    return ComplaintValidators.reopenReason(_selectedReason) ??
+        ComplaintValidators.reopenExplanation(_noteController.text);
   }
 
   Future<void> _submit() async {
