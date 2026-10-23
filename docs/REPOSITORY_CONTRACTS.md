@@ -57,3 +57,21 @@ The contracts do not claim that Firestore or the client enforces uniqueness.
 Unit-number reservation must be transaction-backed, and cross-document
 property/unit validation must be enforced by the eventual trusted write path
 and security rules.
+
+## Tenant context view (GRIH-045)
+
+`TenantDetailContextScreen` and `TenantDetailContextPanel` provide a read-only, staff-facing context view for a tenant's profile, location (property and unit), active and historical complaints, and rent follow-up history.
+
+### Entry points
+- Tenant selection within `TenantPickerScreen` / property browser flows (`TenantDetailContextScreen.open`).
+- Tenant card / action badge on `RentDetailScreen` (`rent_view_tenant_context_button`).
+
+### Repository sources
+- **Tenant:** `TenantRepository` (`InMemoryTenantRepository` seeded with sample fixtures, or `FirestoreTenantRepository` reading from the `tenants/{tenantId}` document).
+- **Complaints:** `ComplaintRepository.watchComplaints(tenantId: tenantId)` or `PropertyRepository.getComplaints(tenantId: tenantId)`. Active vs historical classification is based on `ComplaintStatus.terminalStatuses` (`resolved`, `closed`, and `cancelled` are historical; all other statuses including `reopened` are classified as active).
+- **Rent & Follow-ups:** `RentRepository.list(tenantId: tenantId)` returning enriched `RentItem` records.
+- **Property & Unit:** `PropertyRepository.getProperty(propertyId)` and `UnitRepository.getUnit(unitId)` for resolved location context.
+
+### Data-source limitations
+- Rent data currently uses `InMemoryRentRepository` (sample fixtures) in application runtime and tests; live Firestore rent streams are not yet wired for production tenant rent records.
+- Tenant context relies on existing operational office roles (`admin`, `staff`); non-operational roles (`technician`, `tenant`) are restricted. Tenant self-service or tenant portal authentication is intentionally out of scope.

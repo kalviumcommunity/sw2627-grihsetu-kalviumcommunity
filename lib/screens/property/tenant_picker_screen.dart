@@ -8,6 +8,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_box.dart';
 import 'property_browse_panels.dart';
 import 'property_view_models.dart';
+import '../tenant/tenant_detail_context_screen.dart';
 
 class TenantPickerScreen extends StatefulWidget {
   const TenantPickerScreen({
@@ -73,8 +74,15 @@ class _TenantPickerScreenState extends State<TenantPickerScreen> {
             return TenantListPanel(
               tenants: unit.tenants,
               selectedId: _selectedTenantId,
-              onSelected: (tenant) =>
-                  setState(() => _selectedTenantId = tenant.tenant.id),
+              onSelected: (tenant) {
+                setState(() => _selectedTenantId = tenant.tenant.id);
+                TenantDetailContextScreen.open(
+                  context,
+                  tenantId: tenant.tenant.id,
+                  initialTenant: tenant.tenant,
+                  propertyRepository: _repository,
+                );
+              },
             );
           },
         ),
