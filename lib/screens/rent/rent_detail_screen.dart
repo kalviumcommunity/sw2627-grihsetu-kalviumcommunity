@@ -12,6 +12,7 @@ import 'add_follow_up_sheet.dart';
 import 'mark_paid_sheet.dart';
 import 'rent_models.dart';
 import 'widgets/rent_follow_up_history_item.dart';
+import '../tenant/tenant_detail_context_screen.dart';
 
 /// Screen and panel for viewing complete Rent details, payments,
 /// tenant contact shortcuts, and follow-up history timeline.
@@ -370,22 +371,48 @@ class _RentDetailScreenState extends State<RentDetailScreen> {
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _item.tenantName,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: palette.ink,
+                  child: InkWell(
+                    key: const Key('rent_tenant_info_tap'),
+                    onTap: () {
+                      TenantDetailContextScreen.open(
+                        context,
+                        tenantId: _item.tenant.id,
+                        initialTenant: _item.tenant,
+                        rentRepository: widget.repository,
+                        referenceNow: _referenceNow,
+                      );
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _item.tenantName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: palette.ink,
+                          ),
                         ),
-                      ),
-                      Text(
-                        _item.tenantPhone,
-                        style: TextStyle(fontSize: 13, color: palette.muted),
-                      ),
-                    ],
+                        Text(
+                          _item.tenantPhone,
+                          style: TextStyle(fontSize: 13, color: palette.muted),
+                        ),
+                      ],
+                    ),
                   ),
+                ),
+                IconButton(
+                  key: const Key('rent_view_tenant_context_button'),
+                  tooltip: 'View tenant context',
+                  icon: Icon(Icons.badge_outlined, color: palette.accent),
+                  onPressed: () {
+                    TenantDetailContextScreen.open(
+                      context,
+                      tenantId: _item.tenant.id,
+                      initialTenant: _item.tenant,
+                      rentRepository: widget.repository,
+                      referenceNow: _referenceNow,
+                    );
+                  },
                 ),
                 IconButton(
                   key: const Key('rent_contact_call_button'),
