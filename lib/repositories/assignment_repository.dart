@@ -72,6 +72,18 @@ class TechnicianOption {
     previousVisitsToUnit: previousVisitsToUnit ?? this.previousVisitsToUnit,
     isBestMatch: isBestMatch ?? this.isBestMatch,
   );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TechnicianOption &&
+          id == other.id &&
+          todayJobCount == other.todayJobCount &&
+          availability == other.availability &&
+          isBestMatch == other.isBestMatch;
+
+  @override
+  int get hashCode => Object.hash(id, todayJobCount, availability, isBestMatch);
 }
 
 /// Request parameters for an assignment or reassignment.

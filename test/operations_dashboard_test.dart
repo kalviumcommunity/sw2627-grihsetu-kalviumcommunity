@@ -362,4 +362,10 @@ class _MockDashboardRepository implements DashboardRepository {
   Future<DashboardSnapshot> load({DateTime? now}) async {
     return snapshot;
   }
+
+  @override
+  Stream<DashboardSnapshot> watch({
+    DateTime? now,
+    Duration debounce = const Duration(milliseconds: 100),
+  }) => Stream.value(snapshot);
 }
