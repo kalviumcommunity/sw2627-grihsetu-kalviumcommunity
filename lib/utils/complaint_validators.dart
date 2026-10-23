@@ -19,29 +19,53 @@ abstract final class ComplaintValidators {
   static String? category(ComplaintDraft draft) =>
       draft.category == null ? 'Choose a complaint category' : null;
 
-  static String? title(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return 'Title is required';
-    if (trimmed.length < 5) return 'Title must be at least 5 characters';
-    if (trimmed.length > 80) return 'Title must be 80 characters or fewer';
-    return null;
-  }
+  static String? title(String value) => Validators.requiredText(
+    value,
+    field: 'Title',
+    minLength: 5,
+    maxLength: 80,
+    message: 'Title is required',
+    minLengthError: 'Title must be at least 5 characters',
+    maxLengthError: 'Title must be 80 characters or fewer',
+  );
 
   static String? description(
     String value, {
     ComplaintPriority priority = ComplaintPriority.medium,
   }) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return 'Description is required';
-    if (trimmed.length < 20)
-      return 'Description must be at least 20 characters';
-    if (trimmed.length > 1000)
-      return 'Description must be 1000 characters or fewer';
-    if (priority == ComplaintPriority.urgent && trimmed.length < 40) {
-      return 'Urgent complaints need at least 40 characters';
-    }
-    return null;
+    final minLength = priority == ComplaintPriority.urgent ? 40 : 20;
+    final minError = priority == ComplaintPriority.urgent
+        ? 'Urgent complaints need at least 40 characters'
+        : 'Description must be at least 20 characters';
+    return Validators.requiredText(
+      value,
+      field: 'Description',
+      minLength: minLength,
+      maxLength: 1000,
+      message: 'Description is required',
+      minLengthError: minError,
+      maxLengthError: 'Description must be 1000 characters or fewer',
+    );
   }
+
+  /// Validates complaint reopen reason.
+  static String? reopenReason(String? reason) => Validators.requiredText(
+    reason,
+    message: 'Please select a reason for reopening.',
+  );
+
+  /// Validates complaint reopen explanation note (minimum 15 characters).
+  static String? reopenExplanation(String? note) => Validators.requiredText(
+    note,
+    minLength: 15,
+    message: 'Note must be at least 15 characters describing the issue.',
+    minLengthError: 'Note must be at least 15 characters describing the issue.',
+    maxLength: 500,
+    maxLengthError: 'Note must be 500 characters or fewer.',
+  );
+
+  /// Alias for [reopenExplanation].
+  static String? reopenNote(String? note) => reopenExplanation(note);
 
   static String? attachments(List<ComplaintAttachmentStub> items) {
     if (items.length > 5) return 'You can add up to 5 attachments';
@@ -54,12 +78,18 @@ abstract final class ComplaintValidators {
   static String? visit(ComplaintDraft draft, {DateTime? today}) {
     final date = draft.preferredVisitDate;
     if (date == null) return null;
-    final start = _dateOnly(today ?? DateTime.now());
-    final selected = _dateOnly(date);
-    if (selected.isBefore(start)) return 'Visit date cannot be in the past';
-    if (selected.isAfter(start.add(const Duration(days: 14)))) {
-      return 'Visit date must be within the next 14 days';
-    }
+    final dateError = Validators.date(
+      date,
+      field: 'Visit date',
+      isRequired: false,
+      now: today,
+      allowPast: false,
+      allowToday: true,
+      maxDaysAhead: 14,
+      pastError: 'Visit date cannot be in the past',
+      maxDateError: 'Visit date must be within the next 14 days',
+    );
+    if (dateError != null) return dateError;
     if (draft.preferredVisitSlot == null) return 'Choose a preferred time slot';
     return null;
   }
@@ -83,7 +113,4 @@ abstract final class ComplaintValidators {
     if (visit(draft, today: today) case final error?) 'visit': error,
     if (phone(draft.contactPhone) case final error?) 'phone': error,
   });
-
-  static DateTime _dateOnly(DateTime date) =>
-      DateTime(date.year, date.month, date.day);
 }
