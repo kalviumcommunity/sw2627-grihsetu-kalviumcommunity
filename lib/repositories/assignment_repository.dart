@@ -7,6 +7,7 @@ import '../services/errors/app_failure.dart';
 import '../services/errors/run_guarded.dart';
 import '../utils/assignment_validators.dart';
 import '../widgets/audit_timeline.dart';
+import 'complaint_store.dart';
 
 /// Availability state for a technician.
 enum TechnicianAvailability {
@@ -126,10 +127,12 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
   InMemoryAssignmentRepository({
     this.simulatedDelay = const Duration(milliseconds: 60),
     this.simulateFailure = false,
-  });
+    ComplaintStore? store,
+  }) : _store = store ?? ComplaintStore.instance;
 
   final Duration simulatedDelay;
   bool simulateFailure;
+  final ComplaintStore _store;
 
   // Internal catalog of available technician fixtures.
   final List<TechnicianOption> _technicians = [
@@ -291,6 +294,9 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
       firstAssignedAt: complaint.firstAssignedAt ?? now,
       updatedAt: now,
     );
+
+    // Update canonical complaint store so list, detail, queue, and dashboard update in sync
+    _store.addOrUpdate(updated);
 
     // Build user-facing audit timeline event.
     final String title;

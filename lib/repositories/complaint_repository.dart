@@ -22,6 +22,7 @@ import '../screens/technician/visit/visit_models.dart';
 import '../services/errors/app_failure.dart';
 import '../services/errors/run_guarded.dart';
 import '../utils/visit_validators.dart';
+import 'complaint_store.dart';
 
 const String complaintCreatedEventType = 'COMPLAINT_CREATED';
 
@@ -360,11 +361,14 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   FirestoreComplaintRepository({
     FirebaseFirestore? firestore,
     AuthenticatedUserProvider? identity,
+    ComplaintStore? store,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
-       _identity = identity ?? AuthService.firebase();
+       _identity = identity ?? AuthService.firebase(),
+       _store = store ?? ComplaintStore.instance;
 
   final FirebaseFirestore _firestore;
   final AuthenticatedUserProvider _identity;
+  final ComplaintStore _store;
   late final ComplaintAuditWriter _auditWriter = ComplaintAuditWriter(
     firestore: _firestore,
     identity: _identity,
@@ -430,6 +434,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         return b.id.compareTo(a.id);
       });
 
+      _store.addOrUpdateAll(complaints);
       return complaints;
     });
   }
@@ -572,7 +577,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
 
         // Server timestamps are unresolved until Firestore acknowledges the
         // write, so this result intentionally carries nullable dates.
-        return Complaint(
+        final created = Complaint(
           id: complaintRef.id,
           tenantId: input.tenantId.trim(),
           propertyId: input.propertyId.trim(),
@@ -584,6 +589,8 @@ class FirestoreComplaintRepository implements ComplaintRepository {
           status: ComplaintStatus.open,
           createdBy: actorId,
         );
+        _store.addOrUpdate(created);
+        return created;
       });
     } on ComplaintFailure {
       rethrow;
@@ -802,6 +809,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     });
 
     final updated = await loadComplaint(complaintId);
+    if (updated != null) _store.addOrUpdate(updated);
     return updated!;
   });
 
@@ -837,6 +845,7 @@ class FirestoreComplaintRepository implements ComplaintRepository {
     });
 
     final updated = await loadComplaint(complaintId);
+    if (updated != null) _store.addOrUpdate(updated);
     return updated!;
   });
 
@@ -859,19 +868,23 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       identity: _identity,
     );
     try {
+      final Complaint assigned;
       if (current.currentTechnicianId == null ||
           current.currentTechnicianId!.trim().isEmpty) {
-        return await service.assignTechnician(
+        assigned = await service.assignTechnician(
           complaintId: current.id,
           technicianId: technicianId,
           reason: reason,
         );
+      } else {
+        assigned = await service.reassignTechnician(
+          complaintId: current.id,
+          newTechnicianId: technicianId,
+          reason: reason,
+        );
       }
-      return await service.reassignTechnician(
-        complaintId: current.id,
-        newTechnicianId: technicianId,
-        reason: reason,
-      );
+      _store.addOrUpdate(assigned);
+      return assigned;
     } on TechnicianAssignmentFailure catch (error) {
       throw ComplaintFailure(ComplaintFailureCode.write, error.message);
     }
@@ -924,7 +937,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
           if (photos != null && photos.isNotEmpty) 'photos': photos,
         },
       );
-      return (await loadComplaint(normalizedComplaintId))!;
+      final updated = (await loadComplaint(normalizedComplaintId))!;
+      _store.addOrUpdate(updated);
+      return updated;
     } on ComplaintFailure {
       rethrow;
     } on MaintenanceVisitFailure catch (error) {
@@ -1027,7 +1042,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         followUpRequired: false,
         resolutionSummary: completion.tenantResolutionNotes,
       );
-      return (await loadComplaint(normalizedComplaintId))!;
+      final updated = (await loadComplaint(normalizedComplaintId))!;
+      _store.addOrUpdate(updated);
+      return updated;
     } on MaintenanceVisitFailure catch (error) {
       throw ComplaintFailure(ComplaintFailureCode.write, error.message);
     } on FirebaseException catch (error) {
@@ -1069,7 +1086,9 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         followUpNotes: followUpNotes,
         resolutionSummary: request.details,
       );
-      return (await loadComplaint(normalizedComplaintId))!;
+      final updated = (await loadComplaint(normalizedComplaintId))!;
+      _store.addOrUpdate(updated);
+      return updated;
     } on MaintenanceVisitFailure catch (error) {
       throw ComplaintFailure(ComplaintFailureCode.write, error.message);
     } on FirebaseException catch (error) {
@@ -1219,16 +1238,39 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     List<Complaint>? initialComplaints,
     Map<String, List<ComplaintAuditEvent>>? initialAuditEvents,
     this.streamDelay = Duration.zero,
-  }) : _complaints = List.of(
-         initialComplaints ?? SampleFixtures.sampleComplaints,
+    ComplaintStore? store,
+  }) : _store = store ?? ComplaintStore.instance,
+       _complaints = List.of(
+         initialComplaints ??
+             (store != null ? store.snapshot : SampleFixtures.sampleComplaints),
        ),
        _auditEvents = initialAuditEvents != null
            ? Map.from(initialAuditEvents)
            : <String, List<ComplaintAuditEvent>>{} {
+    _store.addOrUpdateAll(_complaints);
     _seedDefaultEvents();
     _emit();
+    _storeSubscription = _store.watchAll().listen((list) {
+      var changed = false;
+      for (final updated in list) {
+        final index = _complaints.indexWhere((c) => c.id == updated.id);
+        if (index == -1) {
+          _complaints.add(updated);
+          changed = true;
+        } else if (_complaints[index] != updated) {
+          _complaints[index] = updated;
+          changed = true;
+          _emitComplaint(updated.id);
+        }
+      }
+      if (changed) {
+        _emit();
+      }
+    });
   }
 
+  final ComplaintStore _store;
+  StreamSubscription<List<Complaint>>? _storeSubscription;
   final List<Complaint> _complaints;
   final Map<String, List<ComplaintAuditEvent>> _auditEvents;
   final Map<String, List<MaintenanceVisit>> _maintenanceVisits = {};
@@ -1398,6 +1440,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     } else {
       _complaints[index] = complaint;
     }
+    _store.addOrUpdate(complaint);
     _emit();
     _emitComplaint(complaint.id);
   }
@@ -1471,6 +1514,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
           createdAt: now,
         );
         _complaints.add(complaint);
+        _store.addOrUpdate(complaint);
 
         final initialEvent = ComplaintAuditEvent(
           id: '${id}_evt_created',
@@ -1749,6 +1793,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
+    _store.addOrUpdate(updated);
 
     final eventType = switch (newStatus) {
       ComplaintStatus.open => 'COMPLAINT_OPENED',
@@ -1831,6 +1876,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
+    _store.addOrUpdate(updated);
 
     final event = ComplaintAuditEvent(
       id: '${complaintId}_evt_${now.millisecondsSinceEpoch}',
@@ -1896,6 +1942,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
+    _store.addOrUpdate(updated);
 
     final event = ComplaintAuditEvent(
       id: '${complaintId}_evt_${now.millisecondsSinceEpoch}',
@@ -2068,6 +2115,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
+    _store.addOrUpdate(updated);
 
     final event = ComplaintAuditEvent(
       id: '${complaintId}_evt_${now.millisecondsSinceEpoch}',
@@ -2253,6 +2301,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
+    _store.addOrUpdate(updated);
 
     for (final part in completion.parts) {
       await addPart(complaintId, part, actorId: actorId, role: role);
@@ -2434,6 +2483,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
+    _store.addOrUpdate(updated);
 
     final followUpEvent = ComplaintAuditEvent(
       id: '${complaintId}_evt_followup_${now.millisecondsSinceEpoch}',
@@ -2514,6 +2564,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
+    _store.addOrUpdate(updated);
 
     final (rawType, eventTypeEnum) = switch (change.to) {
       ComplaintStatus.waitingForParts => (
@@ -2588,6 +2639,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
 
   void addComplaint(Complaint complaint) {
     _complaints.add(complaint);
+    _store.addOrUpdate(complaint);
     _emit();
     _emitComplaint(complaint.id);
   }
@@ -2597,6 +2649,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   }
 
   void dispose() {
+    _storeSubscription?.cancel();
     _controller.close();
     for (final c in _complaintControllers.values) {
       c.close();
