@@ -14,6 +14,10 @@ import '../../widgets/app_loading_button.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/app_text_field.dart';
 import '../property/property_selection_flow.dart';
+import '../../services/errors/app_failure.dart';
+import '../../services/errors/firebase_error_mapper.dart';
+import '../../widgets/app_snack.dart';
+import '../../widgets/error_banner.dart';
 
 /// Minimal complaint creation surface for the GRIH-013 write workflow.
 class ComplaintCreateScreen extends StatefulWidget {
@@ -45,7 +49,7 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
   PropertyUnitTenantSelection? _location;
   ComplaintRepository? _repository;
   bool _busy = false;
-  String? _error;
+  AppFailure? _failure;
   String _submissionId = '';
 
   ComplaintRepository get _complaintRepository => _repository ??=
@@ -69,7 +73,7 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
     if (!mounted || selection == null) return;
     setState(() {
       _location = selection;
-      _error = null;
+      _failure = null;
     });
   }
 
@@ -85,17 +89,19 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
     if (_busy) return;
     final valid = _formKey.currentState?.validate() ?? false;
     if (!valid || _location == null) {
-      setState(
-        () => _error = _location == null
-            ? 'Choose a property, unit, and tenant.'
-            : null,
-      );
+      if (_location == null) {
+        setState(() {
+          _failure = const ValidationFailure(
+            userMessage: 'Choose a property, unit, and tenant.',
+          );
+        });
+      }
       return;
     }
 
     setState(() {
       _busy = true;
-      _error = null;
+      _failure = null;
     });
 
     try {
@@ -121,20 +127,12 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
         _category = ComplaintCategory.other;
         _priority = ComplaintPriority.medium;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Complaint submitted successfully.')),
-      );
-    } on ComplaintFailure catch (failure) {
+      AppSnack.success(context, 'Complaint submitted successfully.');
+    } catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = failure.message;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = 'Unable to submit the complaint. Please try again.';
+        _failure = FirebaseErrorMapper.map(error, stackTrace);
       });
     }
   }
@@ -222,9 +220,13 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
                 ],
                 onChanged: (value) => setState(() => _priority = value!),
               ),
-              if (_error != null) ...[
+              if (_failure != null) ...[
                 const SizedBox(height: AppSpacing.md),
-                Text(_error!, style: TextStyle(color: context.palette.danger)),
+                ErrorBanner(
+                  failure: _failure!,
+                  onDismiss: () => setState(() => _failure = null),
+                  onRetry: _submit,
+                ),
               ],
               const SizedBox(height: AppSpacing.lg),
               AppLoadingButton(

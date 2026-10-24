@@ -5,6 +5,7 @@ import '../../../core/models/complaint_audit_event.dart';
 import '../../../repositories/complaint_repository.dart';
 import '../../../theme/app_palette.dart';
 import '../../../utils/visit_validators.dart';
+import '../../../widgets/app_snack.dart';
 import 'visit_completion_form.dart';
 import 'visit_models.dart';
 
@@ -97,9 +98,7 @@ class _TechnicianNextStepButtonState extends State<TechnicianNextStepButton> {
                         );
                       } catch (e) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Action failed: $e')),
-                          );
+                          AppSnack.error(context, e);
                         }
                       } finally {
                         if (mounted) {

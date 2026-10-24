@@ -1,28 +1,55 @@
 import 'package:flutter/material.dart';
 
+import '../services/errors/app_failure.dart';
 import '../theme/app_palette.dart';
 import 'app_spacing.dart';
 
 /// Reusable user-friendly error state with retry protection and responsive wrapping.
 ///
-/// Supports full-screen and [compact] inline presentations.
+/// Supports full-screen and [compact] inline presentations, and integrates with [AppFailure].
 class ErrorState extends StatelessWidget {
   const ErrorState({
     super.key,
     this.title = "Couldn't load this",
-    required this.message,
+    this.message,
+    this.failure,
     this.onRetry,
     this.isRetrying = false,
-    this.icon = Icons.cloud_off_outlined,
+    this.icon,
     this.retryLabel = 'Retry',
     this.compact = false,
-  });
+  }) : assert(
+         message != null || failure != null,
+         'Either message or failure must be provided.',
+       );
+
+  /// Builds an [ErrorState] directly from an [AppFailure].
+  factory ErrorState.fromFailure({
+    Key? key,
+    required AppFailure failure,
+    VoidCallback? onRetry,
+    bool isRetrying = false,
+    String? title,
+    String retryLabel = 'Retry',
+    bool compact = false,
+  }) {
+    return ErrorState(
+      key: key,
+      failure: failure,
+      title: title ?? _defaultTitleForFailure(failure),
+      onRetry: failure.retryable ? onRetry : null,
+      isRetrying: isRetrying,
+      retryLabel: retryLabel,
+      compact: compact,
+    );
+  }
 
   /// Factory for network or connectivity failures.
   const ErrorState.connectivity({
     super.key,
     this.title = 'Unable to connect',
     this.message = 'The service is temporarily unavailable. Check your connection and try again.',
+    this.failure,
     required this.onRetry,
     this.isRetrying = false,
     this.retryLabel = 'Retry',
@@ -34,6 +61,7 @@ class ErrorState extends StatelessWidget {
     super.key,
     this.title = 'Access restricted',
     this.message = "You don't have permission to view this information.",
+    this.failure,
     this.onRetry,
     this.isRetrying = false,
     this.retryLabel = 'Retry',
@@ -44,20 +72,58 @@ class ErrorState extends StatelessWidget {
   const ErrorState.compact({
     super.key,
     this.title = "Couldn't load this",
-    required this.message,
+    this.message,
+    this.failure,
     this.onRetry,
     this.isRetrying = false,
     this.icon = Icons.error_outline,
     this.retryLabel = 'Retry',
-  }) : compact = true;
+  }) : compact = true,
+       assert(
+         message != null || failure != null,
+         'Either message or failure must be provided.',
+       );
 
   final String title;
-  final String message;
+  final String? message;
+  final AppFailure? failure;
   final VoidCallback? onRetry;
   final bool isRetrying;
-  final IconData icon;
+  final IconData? icon;
   final String retryLabel;
   final bool compact;
+
+  static String _defaultTitleForFailure(AppFailure failure) =>
+      switch (failure) {
+        NetworkFailure() => 'Unable to connect',
+        TimeoutFailure() => 'Request timed out',
+        UnavailableFailure() => 'Service unavailable',
+        PermissionDeniedFailure() => 'Access restricted',
+        UnauthenticatedFailure() => 'Sign-in required',
+        NotFoundFailure() => 'Not found',
+        ConflictFailure() => 'Conflict detected',
+        RateLimitedFailure() => 'Slow down',
+        InvalidCredentialsFailure() => 'Authentication failed',
+        EmailInUseFailure() => 'Account exists',
+        WeakPasswordFailure() => 'Weak password',
+        ValidationFailure() => 'Check entered information',
+        UnknownFailure() => "Something went wrong",
+      };
+
+  static IconData _iconForFailure(AppFailure failure) => switch (failure) {
+    NetworkFailure() => Icons.wifi_off_outlined,
+    TimeoutFailure() => Icons.timer_outlined,
+    UnavailableFailure() => Icons.cloud_off_outlined,
+    PermissionDeniedFailure() || UnauthenticatedFailure() => Icons.lock_outline,
+    NotFoundFailure() => Icons.search_off_outlined,
+    ConflictFailure() => Icons.sync_problem_outlined,
+    RateLimitedFailure() => Icons.hourglass_empty_outlined,
+    InvalidCredentialsFailure() ||
+    EmailInUseFailure() ||
+    WeakPasswordFailure() ||
+    ValidationFailure() ||
+    UnknownFailure() => Icons.error_outline,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +132,13 @@ class ErrorState extends StatelessWidget {
     final maxWidth = compact ? 360.0 : 420.0;
     final padding = compact ? AppSpacing.md : AppSpacing.lg;
     final iconSize = compact ? 32.0 : 40.0;
+
+    final resolvedIcon =
+        icon ??
+        (failure != null ? _iconForFailure(failure!) : Icons.error_outline);
+    final resolvedMessage =
+        message ?? failure?.userMessage ?? 'An error occurred.';
+    final canRetry = (failure == null || failure!.retryable) && onRetry != null;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -86,7 +159,7 @@ class ErrorState extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        icon,
+                        resolvedIcon,
                         size: iconSize,
                         color: palette.danger,
                         semanticLabel: 'Error',
@@ -106,7 +179,7 @@ class ErrorState extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
-                        message,
+                        resolvedMessage,
                         textAlign: TextAlign.center,
                         style:
                             (compact
@@ -114,7 +187,7 @@ class ErrorState extends StatelessWidget {
                                     : theme.textTheme.bodyMedium)
                                 ?.copyWith(color: palette.muted),
                       ),
-                      if (onRetry != null) ...[
+                      if (canRetry) ...[
                         SizedBox(
                           height: compact ? AppSpacing.sm : AppSpacing.md,
                         ),
@@ -123,7 +196,7 @@ class ErrorState extends StatelessWidget {
                           style: FilledButton.styleFrom(
                             minimumSize: Size(
                               compact ? 100 : 120,
-                              compact ? 40 : 48,
+                              48, // Standard 48px touch target
                             ),
                           ),
                           icon: isRetrying

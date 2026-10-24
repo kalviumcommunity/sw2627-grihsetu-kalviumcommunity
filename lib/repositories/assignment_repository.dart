@@ -3,6 +3,8 @@ import 'dart:async';
 import '../core/enums/complaint_category.dart';
 import '../core/enums/complaint_status.dart';
 import '../core/models/complaint.dart';
+import '../services/errors/app_failure.dart';
+import '../services/errors/run_guarded.dart';
 import '../utils/assignment_validators.dart';
 import '../widgets/audit_timeline.dart';
 
@@ -182,81 +184,92 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
   ];
 
   @override
-  Future<List<TechnicianOption>> loadTechnicians(Complaint complaint) async {
-    if (simulatedDelay > Duration.zero) {
-      await Future<void>.delayed(simulatedDelay);
-    }
-    if (simulateFailure) {
-      throw Exception('Simulated network error while fetching technicians.');
-    }
+  Future<List<TechnicianOption>> loadTechnicians(Complaint complaint) =>
+      runGuarded(() async {
+        if (simulatedDelay > Duration.zero) {
+          await Future<void>.delayed(simulatedDelay);
+        }
+        if (simulateFailure) {
+          throw const UnavailableFailure(
+            userMessage: 'Simulated network error while fetching technicians.',
+            retryable: true,
+          );
+        }
 
-    // Determine unit visit history:
-    // If unit is unit_101 or unit_204, simulate repeat visits for demonstration.
-    final list = _technicians.map((t) {
-      var visits = 0;
-      if (complaint.unitId == 'unit_101' && t.id == 'tech_002') {
-        visits = 2;
-      } else if (complaint.unitId == 'unit_204' && t.id == 'usr_002') {
-        visits = 1;
-      }
-      return t.copyWith(previousVisitsToUnit: visits);
-    }).toList();
+        // Determine unit visit history:
+        // If unit is unit_101 or unit_204, simulate repeat visits for demonstration.
+        final list = _technicians.map((t) {
+          var visits = 0;
+          if (complaint.unitId == 'unit_101' && t.id == 'tech_002') {
+            visits = 2;
+          } else if (complaint.unitId == 'unit_204' && t.id == 'usr_002') {
+            visits = 1;
+          }
+          return t.copyWith(previousVisitsToUnit: visits);
+        }).toList();
 
-    // Identify candidate for "Best match":
-    // Matches category, is available or on-job (not off duty), and has least todayJobCount.
-    final matchingCandidates = list
-        .where(
-          (t) =>
-              t.matchesCategory(complaint.category) &&
-              t.availability != TechnicianAvailability.offDuty,
-        )
-        .toList();
+        // Identify candidate for "Best match":
+        // Matches category, is available or on-job (not off duty), and has least todayJobCount.
+        final matchingCandidates = list
+            .where(
+              (t) =>
+                  t.matchesCategory(complaint.category) &&
+                  t.availability != TechnicianAvailability.offDuty,
+            )
+            .toList();
 
-    String? bestMatchId;
-    if (matchingCandidates.isNotEmpty) {
-      matchingCandidates.sort((a, b) {
-        final loadComp = a.todayJobCount.compareTo(b.todayJobCount);
-        if (loadComp != 0) return loadComp;
-        // Prefer available over on-job
-        return a.availability.index.compareTo(b.availability.index);
+        String? bestMatchId;
+        if (matchingCandidates.isNotEmpty) {
+          matchingCandidates.sort((a, b) {
+            final loadComp = a.todayJobCount.compareTo(b.todayJobCount);
+            if (loadComp != 0) return loadComp;
+            // Prefer available over on-job
+            return a.availability.index.compareTo(b.availability.index);
+          });
+          bestMatchId = matchingCandidates.first.id;
+        }
+
+        final enriched = list.map((t) {
+          return t.copyWith(isBestMatch: t.id == bestMatchId);
+        }).toList();
+
+        // Sort by best fit:
+        // 1. Best match first
+        // 2. Specialty match
+        // 3. Availability (available < onJob < offDuty)
+        // 4. Least busy (todayJobCount)
+        enriched.sort((a, b) {
+          if (a.isBestMatch && !b.isBestMatch) return -1;
+          if (!a.isBestMatch && b.isBestMatch) return 1;
+
+          final aMatch = a.matchesCategory(complaint.category);
+          final bMatch = b.matchesCategory(complaint.category);
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+
+          final availComp = a.availability.index.compareTo(
+            b.availability.index,
+          );
+          if (availComp != 0) return availComp;
+
+          return a.todayJobCount.compareTo(b.todayJobCount);
+        });
+
+        return enriched;
       });
-      bestMatchId = matchingCandidates.first.id;
-    }
-
-    final enriched = list.map((t) {
-      return t.copyWith(isBestMatch: t.id == bestMatchId);
-    }).toList();
-
-    // Sort by best fit:
-    // 1. Best match first
-    // 2. Specialty match
-    // 3. Availability (available < onJob < offDuty)
-    // 4. Least busy (todayJobCount)
-    enriched.sort((a, b) {
-      if (a.isBestMatch && !b.isBestMatch) return -1;
-      if (!a.isBestMatch && b.isBestMatch) return 1;
-
-      final aMatch = a.matchesCategory(complaint.category);
-      final bMatch = b.matchesCategory(complaint.category);
-      if (aMatch && !bMatch) return -1;
-      if (!aMatch && bMatch) return 1;
-
-      final availComp = a.availability.index.compareTo(b.availability.index);
-      if (availComp != 0) return availComp;
-
-      return a.todayJobCount.compareTo(b.todayJobCount);
-    });
-
-    return enriched;
-  }
 
   @override
-  Future<AssignmentResult> assign(AssignmentRequest request) async {
+  Future<AssignmentResult> assign(
+    AssignmentRequest request,
+  ) => runGuarded(() async {
     if (simulatedDelay > Duration.zero) {
       await Future<void>.delayed(simulatedDelay);
     }
     if (simulateFailure) {
-      throw Exception('Simulated failure during assignment write.');
+      throw const UnavailableFailure(
+        userMessage: 'Simulated failure during assignment write.',
+        retryable: true,
+      );
     }
 
     // TODO: Firestore integration will use [TechnicianAssignmentService] to
@@ -328,5 +341,5 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
       auditEvent: auditEvent,
       assignedTechnician: tech,
     );
-  }
+  });
 }

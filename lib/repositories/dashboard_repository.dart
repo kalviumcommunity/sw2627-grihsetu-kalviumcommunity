@@ -10,6 +10,8 @@ import '../core/models/complaint.dart';
 import '../core/models/complaint_audit_event.dart';
 import '../core/models/property.dart';
 import '../core/models/rent_record.dart';
+import '../services/errors/app_failure.dart';
+import '../services/errors/run_guarded.dart';
 import 'assignment_repository.dart';
 
 @immutable
@@ -136,14 +138,16 @@ class InMemoryDashboardRepository implements DashboardRepository {
   }
 
   @override
-  Future<DashboardSnapshot> load({DateTime? now}) async {
+  Future<DashboardSnapshot> load({DateTime? now}) => runGuarded(() async {
     if (delay > Duration.zero) {
       await Future<void>.delayed(delay);
     }
 
     if (shouldFail) {
-      throw Exception(
-        'Failed to load dashboard data. Check your network connection.',
+      throw const UnavailableFailure(
+        userMessage:
+            'Failed to load dashboard data. Check your network connection.',
+        retryable: true,
       );
     }
 
@@ -161,5 +165,5 @@ class InMemoryDashboardRepository implements DashboardRepository {
       events: events,
       lastUpdated: effectiveNow,
     );
-  }
+  });
 }

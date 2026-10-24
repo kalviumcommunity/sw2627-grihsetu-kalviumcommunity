@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../services/auth_failure.dart';
 import '../../services/auth_service.dart';
-import 'auth_layout.dart';
+import '../../services/errors/app_failure.dart';
+import '../../services/errors/firebase_error_mapper.dart';
 import '../../utils/validators.dart';
+import '../../widgets/error_banner.dart';
+import 'auth_layout.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key, this.authService});
@@ -25,7 +27,10 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _busy = false;
   bool _termsAccepted = false;
   bool _showTermsError = false;
-  String? _error;
+  String? _emailError;
+  String? _passwordError;
+  AppFailure? _bannerFailure;
+  String? _successMessage;
 
   AuthService get _authService => widget.authService ?? AuthService.firebase();
 
@@ -47,7 +52,10 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!_form.currentState!.validate()) return;
     setState(() {
       _busy = true;
-      _error = null;
+      _emailError = null;
+      _passwordError = null;
+      _bannerFailure = null;
+      _successMessage = null;
     });
     try {
       await _authService.signUp(
@@ -60,16 +68,26 @@ class _SignupScreenState extends State<SignupScreen> {
       // Firebase session until a trusted process assigns one.
       try {
         await _authService.signOut();
-      } on AuthFailure {
+      } catch (_) {
         // The account/profile result remains safe because no role was set.
       }
       if (!mounted) return;
       setState(
-        () => _error = 'Account created. A trusted administrator must assign your role before you can sign in.',
+        () => _successMessage = 'Account created. A trusted administrator must assign your role before you can sign in.',
       );
-    } on AuthFailure catch (error) {
+    } catch (error, stackTrace) {
+      final failure = FirebaseErrorMapper.map(error, stackTrace);
       if (!mounted) return;
-      setState(() => _error = error.message);
+      setState(() {
+        if (failure is EmailInUseFailure) {
+          _emailError = failure.userMessage;
+        } else if (failure is WeakPasswordFailure) {
+          _passwordError = failure.userMessage;
+        } else {
+          _bannerFailure = failure;
+        }
+      });
+      _form.currentState?.validate();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -85,6 +103,31 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_bannerFailure != null) ...[
+              ErrorBanner(
+                failure: _bannerFailure,
+                onDismiss: () => setState(() => _bannerFailure = null),
+                onRetry: _bannerFailure!.retryable ? _submit : null,
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (_successMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.green.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  _successMessage!,
+                  style: const TextStyle(color: Colors.green),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             TextFormField(
               controller: _name,
               textCapitalization: TextCapitalization.words,
@@ -98,7 +141,13 @@ class _SignupScreenState extends State<SignupScreen> {
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.email],
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: InputDecoration(
+                labelText: 'Email',
+                errorText: _emailError,
+              ),
+              onChanged: (_) {
+                if (_emailError != null) setState(() => _emailError = null);
+              },
               validator: Validators.email,
             ),
             const SizedBox(height: 16),
@@ -120,6 +169,7 @@ class _SignupScreenState extends State<SignupScreen> {
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(
                 labelText: 'Password',
+                errorText: _passwordError,
                 helperText: 'At least 8 characters, with a letter and a number',
                 suffixIcon: IconButton(
                   tooltip: _hide ? 'Show password' : 'Hide password',
@@ -131,6 +181,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   onPressed: () => setState(() => _hide = !_hide),
                 ),
               ),
+              onChanged: (_) {
+                if (_passwordError != null) {
+                  setState(() => _passwordError = null);
+                }
+              },
               validator: Validators.password,
             ),
             const SizedBox(height: 16),
@@ -164,13 +219,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _busy ? null : _submit,

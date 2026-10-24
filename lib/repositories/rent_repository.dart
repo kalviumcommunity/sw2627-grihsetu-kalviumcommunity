@@ -5,6 +5,8 @@ import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/property.dart';
 import '../core/models/tenant.dart';
 import '../screens/rent/rent_models.dart';
+import '../services/errors/app_failure.dart';
+import '../services/errors/run_guarded.dart';
 import '../utils/rent_rules.dart';
 
 /// Repository interface for Rent management matching GRIH-032.
@@ -148,7 +150,10 @@ class InMemoryRentRepository implements RentRepository {
       await Future<void>.delayed(simulatedDelay);
     }
     if (debugSimulateFailure) {
-      throw StateError('Simulated repository failure');
+      throw const UnavailableFailure(
+        userMessage: 'Service temporarily unavailable. Please retry.',
+        retryable: true,
+      );
     }
   }
 
@@ -159,7 +164,7 @@ class InMemoryRentRepository implements RentRepository {
     String? tenantId,
     String? month,
     RentStatus? status,
-  }) async {
+  }) => runGuarded(() async {
     await _checkDelayAndFailure();
     var results = _items.values.toList();
 
@@ -182,20 +187,23 @@ class InMemoryRentRepository implements RentRepository {
     }
 
     return results;
-  }
+  });
 
   @override
-  Future<RentItem?> get(String id) async {
+  Future<RentItem?> get(String id) => runGuarded(() async {
     await _checkDelayAndFailure();
     return _items[id];
-  }
+  });
 
   @override
-  Future<RentItem> addFollowUp(RentFollowUp followUp) async {
+  Future<RentItem> addFollowUp(RentFollowUp followUp) => runGuarded(() async {
     await _checkDelayAndFailure();
     final existing = _items[followUp.rentRecordId];
     if (existing == null) {
-      throw StateError('Rent record not found: ${followUp.rentRecordId}');
+      throw NotFoundFailure(
+        userMessage: 'Rent record not found.',
+        original: 'Rent record not found: ${followUp.rentRecordId}',
+      );
     }
 
     // Determine status transition
@@ -224,14 +232,17 @@ class InMemoryRentRepository implements RentRepository {
 
     _items[followUp.rentRecordId] = updatedItem;
     return updatedItem;
-  }
+  });
 
   @override
-  Future<RentItem> markPaid(PaymentRecord payment) async {
+  Future<RentItem> markPaid(PaymentRecord payment) => runGuarded(() async {
     await _checkDelayAndFailure();
     final existing = _items[payment.rentRecordId];
     if (existing == null) {
-      throw StateError('Rent record not found: ${payment.rentRecordId}');
+      throw NotFoundFailure(
+        userMessage: 'Rent record not found.',
+        original: 'Rent record not found: ${payment.rentRecordId}',
+      );
     }
 
     final updatedPayments = [payment, ...existing.payments];
@@ -249,5 +260,5 @@ class InMemoryRentRepository implements RentRepository {
 
     _items[payment.rentRecordId] = updatedItem;
     return updatedItem;
-  }
+  });
 }

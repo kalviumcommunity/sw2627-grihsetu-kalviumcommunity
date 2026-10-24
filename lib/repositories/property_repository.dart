@@ -3,6 +3,7 @@ import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/complaint.dart';
 import '../core/models/property.dart';
 import '../core/models/tenant.dart';
+import '../services/errors/run_guarded.dart';
 
 abstract interface class PropertyRepository {
   Future<List<Property>> getProperties();
@@ -47,15 +48,15 @@ class InMemoryPropertyRepository implements PropertyRepository {
   ];
 
   @override
-  Future<List<Property>> getProperties() async {
+  Future<List<Property>> getProperties() => runGuarded(() async {
     await Future<void>.delayed(loadingDelay);
     return SampleFixtures.sampleProperties
         .where((item) => item.isActive)
         .toList(growable: false);
-  }
+  });
 
   @override
-  Future<List<Unit>> getUnits(String propertyId) async {
+  Future<List<Unit>> getUnits(String propertyId) => runGuarded(() async {
     await Future<void>.delayed(loadingDelay);
     return [
       ...SampleFixtures.sampleUnits.where(
@@ -63,32 +64,34 @@ class InMemoryPropertyRepository implements PropertyRepository {
       ),
       ..._extraUnits.where((item) => item.propertyId == propertyId),
     ]..sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
-  }
+  });
 
   @override
-  Future<List<Tenant>> getTenants(String unitId) async {
+  Future<List<Tenant>> getTenants(String unitId) => runGuarded(() async {
     await Future<void>.delayed(loadingDelay);
     return SampleFixtures.sampleTenants
         .where((item) => item.unitId == unitId && item.isActive)
         .toList(growable: false);
-  }
+  });
 
   @override
   Future<List<Complaint>> getComplaints({
     String? propertyId,
     String? unitId,
     String? tenantId,
-  }) async {
+  }) => runGuarded(() async {
     await Future<void>.delayed(loadingDelay);
     return SampleFixtures.sampleComplaints
         .where((item) {
-          if (propertyId != null && item.propertyId != propertyId) return false;
+          if (propertyId != null && item.propertyId != propertyId) {
+            return false;
+          }
           if (unitId != null && item.unitId != unitId) return false;
           if (tenantId != null && item.tenantId != tenantId) return false;
           return true;
         })
         .toList(growable: false);
-  }
+  });
 }
 
 bool isOpenComplaint(Complaint complaint) => !{

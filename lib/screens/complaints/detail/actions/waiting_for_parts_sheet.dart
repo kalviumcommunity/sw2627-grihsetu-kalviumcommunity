@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/enums/complaint_status.dart';
+import '../../../../services/errors/app_failure.dart';
+import '../../../../services/errors/firebase_error_mapper.dart';
 import '../../../../theme/app_palette.dart';
 import '../../../../widgets/app_spacing.dart';
+import '../../../../widgets/error_banner.dart';
 import 'action_sheet_launcher.dart';
 
 class PartEntry {
@@ -85,7 +88,7 @@ class _WaitingForPartsSheetState extends State<WaitingForPartsSheet> {
   final TextEditingController _noteController = TextEditingController();
 
   bool _isSubmitting = false;
-  String? _errorMessage;
+  AppFailure? _failure;
   String? _formValidationError;
 
   @override
@@ -200,7 +203,7 @@ class _WaitingForPartsSheetState extends State<WaitingForPartsSheet> {
 
     setState(() {
       _isSubmitting = true;
-      _errorMessage = null;
+      _failure = null;
       _formValidationError = null;
     });
 
@@ -227,10 +230,10 @@ class _WaitingForPartsSheetState extends State<WaitingForPartsSheet> {
       if (mounted) {
         Navigator.of(context).pop(payload);
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _failure = FirebaseErrorMapper.map(e, st);
           _isSubmitting = false;
         });
       }
@@ -242,7 +245,7 @@ class _WaitingForPartsSheetState extends State<WaitingForPartsSheet> {
 
     setState(() {
       _isSubmitting = true;
-      _errorMessage = null;
+      _failure = null;
     });
 
     const payload = WaitingForPartsResult.resumeWork();
@@ -254,10 +257,10 @@ class _WaitingForPartsSheetState extends State<WaitingForPartsSheet> {
       if (mounted) {
         Navigator.of(context).pop(payload);
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _failure = FirebaseErrorMapper.map(e, st);
           _isSubmitting = false;
         });
       }
@@ -307,36 +310,13 @@ class _WaitingForPartsSheetState extends State<WaitingForPartsSheet> {
               const SizedBox(height: AppSpacing.sm),
 
               // Error banner with retry keeping entries
-              if (_errorMessage != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: palette.danger.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: palette.danger),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: palette.danger),
-                      const SizedBox(width: AppSpacing.xs),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: palette.danger,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _isSubmitting
-                            ? null
-                            : (isWaiting
-                                  ? _submitResumeWork
-                                  : _submitPutOnHold),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
+              if (_failure != null) ...[
+                ErrorBanner(
+                  failure: _failure,
+                  onDismiss: () => setState(() => _failure = null),
+                  onRetry: _isSubmitting
+                      ? null
+                      : (isWaiting ? _submitResumeWork : _submitPutOnHold),
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],

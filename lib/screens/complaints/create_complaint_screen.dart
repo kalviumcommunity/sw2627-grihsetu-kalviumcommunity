@@ -13,6 +13,9 @@ import '../../utils/complaint_validators.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/status_badge.dart';
+import '../../services/errors/app_failure.dart';
+import '../../services/errors/firebase_error_mapper.dart';
+import '../../widgets/error_banner.dart';
 import 'complaint_draft.dart';
 
 class CreateComplaintScreen extends StatefulWidget {
@@ -43,7 +46,7 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
   Map<String, String> _errors = {};
   Complaint? _duplicate;
   bool _loading = false;
-  String? _submitError;
+  AppFailure? _failure;
   Complaint? _created;
 
   bool get _isTenant => widget.role == UserRole.tenant;
@@ -230,7 +233,7 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
     }
     setState(() {
       _loading = true;
-      _submitError = null;
+      _failure = null;
     });
     try {
       final complaint = await _repository.createComplaint(
@@ -245,9 +248,10 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
         ),
       );
       if (mounted) setState(() => _created = complaint);
-    } catch (_) {
-      if (mounted)
-        setState(() => _submitError = 'We could not submit your complaint.');
+    } catch (error, stackTrace) {
+      if (mounted) {
+        setState(() => _failure = FirebaseErrorMapper.map(error, stackTrace));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -496,12 +500,12 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
               : '${_draft.preferredVisitDate!.day}/${_draft.preferredVisitDate!.month}',
           onEdit: () => setState(() => _step = 3),
         ),
-        if (_submitError != null) ...[
-          _ErrorText(_submitError!),
-          TextButton.icon(
-            onPressed: _submit,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
+        if (_failure != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          ErrorBanner(
+            failure: _failure!,
+            onDismiss: () => setState(() => _failure = null),
+            onRetry: _submit,
           ),
         ],
       ],
