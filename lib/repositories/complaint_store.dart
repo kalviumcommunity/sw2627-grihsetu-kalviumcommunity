@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/enums/complaint_audit_event_type.dart';
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/complaint.dart';
 import '../core/models/complaint_audit_event.dart';
@@ -41,6 +42,13 @@ class ComplaintStore {
     }
     if (initialEvents != null) {
       for (final entry in initialEvents.entries) {
+        _events[entry.key] = List.from(entry.value);
+      }
+    } else {
+      final defaultEvents = buildDefaultSampleEvents(
+        _complaints.values.toList(),
+      );
+      for (final entry in defaultEvents.entries) {
         _events[entry.key] = List.from(entry.value);
       }
     }
@@ -311,6 +319,168 @@ class ComplaintStore {
   void _notify() {
     if (_isDisposed) return;
     _allStream.add(_complaints.values.toList(growable: false));
+  }
+
+  /// Generates fully consistent sample audit events for [complaints] that
+  /// satisfy all invariants defined in [ConsistencyRules].
+  static Map<String, List<ComplaintAuditEvent>> buildDefaultSampleEvents(
+    List<Complaint> complaints,
+  ) {
+    final map = <String, List<ComplaintAuditEvent>>{};
+    for (final c in complaints) {
+      final events = <ComplaintAuditEvent>[
+        ComplaintAuditEvent(
+          id: 'evt_${c.id}_01_created',
+          complaintId: c.id,
+          eventType: ComplaintAuditEventType.complaintCreated,
+          actorId: c.createdBy,
+          timestamp: c.createdAt ?? DateTime(2026, 10, 1, 10, 0),
+          details: {
+            'category': c.category.name,
+            'priority': c.priority.name,
+            'title': c.title,
+          },
+        ),
+      ];
+
+      if (c.firstAssignedAt != null && c.currentTechnicianId != null) {
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_02_assigned',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.technicianAssigned,
+            actorId: 'usr_001',
+            timestamp: c.firstAssignedAt,
+            details: {
+              'newTechnicianId': c.currentTechnicianId!,
+              'technicianId': c.currentTechnicianId!,
+            },
+          ),
+        );
+      }
+
+      if (c.id == 'cmp_1001') {
+        // cmp_1001: visitCount=1, status=assigned
+        // Technician arrived, then reassigned back to assigned
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_03_arrived',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.technicianArrived,
+            actorId: c.currentTechnicianId ?? 'usr_002',
+            timestamp: c.firstAssignedAt!.add(const Duration(hours: 2)),
+            details: {'note': 'Initial site inspection.'},
+          ),
+        );
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_04_reassigned',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.technicianReassigned,
+            actorId: 'usr_001',
+            timestamp: c.firstAssignedAt!.add(const Duration(hours: 3)),
+            details: {
+              'newTechnicianId': c.currentTechnicianId!,
+              'technicianId': c.currentTechnicianId!,
+              'reason': 'Specialist assigned for pipe fitting.',
+            },
+          ),
+        );
+      } else if (c.id == 'cmp_1002') {
+        // cmp_1002: visitCount=2, reopenCount=1, status=inProgress
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_03_arrived_1',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.technicianArrived,
+            actorId: c.currentTechnicianId ?? 'usr_002',
+            timestamp: c.firstAssignedAt!.add(const Duration(hours: 1)),
+            details: {'visitNumber': 1},
+          ),
+        );
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_04_resolved',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.complaintResolved,
+            actorId: c.currentTechnicianId ?? 'usr_002',
+            timestamp: c.firstAssignedAt!.add(const Duration(hours: 3)),
+            details: {'resolution': 'Breaker reset and tested.'},
+          ),
+        );
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_05_reopened',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.complaintReopened,
+            actorId: c.tenantId,
+            timestamp: c.createdAt!.add(const Duration(days: 1)),
+            details: {'reason': 'Tripped again with geyser running.'},
+          ),
+        );
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_06_arrived_2',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.technicianArrived,
+            actorId: c.currentTechnicianId ?? 'usr_002',
+            timestamp:
+                c.updatedAt ??
+                c.createdAt!.add(const Duration(days: 1, hours: 2)),
+            details: {'visitNumber': 2},
+          ),
+        );
+      } else if (c.id == 'cmp_1003') {
+        // cmp_1003: visitCount=1, status=waitingForParts
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_03_arrived',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.technicianArrived,
+            actorId: c.currentTechnicianId ?? 'usr_002',
+            timestamp: c.firstAssignedAt!.add(const Duration(hours: 1)),
+            details: {'visitNumber': 1},
+          ),
+        );
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_04_waiting',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.complaintWaitingForParts,
+            actorId: c.currentTechnicianId ?? 'usr_002',
+            timestamp: c.firstAssignedAt!.add(const Duration(hours: 2)),
+            details: {'part': 'Heating element coil'},
+          ),
+        );
+      } else if (c.id == 'cmp_1004') {
+        // cmp_1004: visitCount=1, status=resolved
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_03_arrived',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.technicianArrived,
+            actorId: c.currentTechnicianId ?? 'usr_002',
+            timestamp: c.firstAssignedAt!.add(const Duration(hours: 2)),
+            details: {'visitNumber': 1},
+          ),
+        );
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_04_resolved',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.complaintResolved,
+            actorId: c.currentTechnicianId ?? 'usr_002',
+            timestamp:
+                c.resolvedAt ??
+                c.firstAssignedAt!.add(const Duration(hours: 4)),
+            details: {'resolution': 'Wiring terminal repaired and tested.'},
+          ),
+        );
+      }
+
+      map[c.id] = events;
+    }
+    return map;
   }
 
   /// Disposes the store and releases its stream controllers.
