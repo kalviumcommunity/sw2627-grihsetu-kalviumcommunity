@@ -5,6 +5,7 @@ import '../core/enums/complaint_status.dart';
 import '../core/enums/rent_status.dart';
 import '../core/models/complaint.dart';
 import '../core/models/rent_record.dart';
+import 'app_clock.dart';
 import 'complaint_query.dart';
 import 'rent_rules.dart';
 import 'visit_history.dart';
@@ -72,7 +73,7 @@ class AttentionAnalysis {
 
 /// Computes expected resolution deadline based on complaint priority.
 DateTime expectedResolutionDeadline(Complaint c) {
-  final created = c.createdAt ?? DateTime.now();
+  final created = c.createdAt ?? AppClock.nowDateTime;
   final hours = switch (c.priority) {
     ComplaintPriority.urgent => 24,
     ComplaintPriority.high => 48,

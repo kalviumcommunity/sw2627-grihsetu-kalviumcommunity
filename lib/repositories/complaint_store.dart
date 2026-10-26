@@ -4,7 +4,12 @@ import 'package:flutter/foundation.dart';
 
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/complaint.dart';
+import '../core/models/complaint_audit_event.dart';
+import '../services/errors/app_failure.dart';
+import '../services/errors/firebase_error_mapper.dart';
+import '../utils/app_clock.dart';
 import '../utils/complaint_query.dart';
+import '../utils/consistency_rules.dart';
 import 'streams/replay_stream.dart';
 
 /// Central canonical reactive in-memory store for complaints.
@@ -17,12 +22,26 @@ import 'streams/replay_stream.dart';
 /// - Replays the latest snapshot to late subscribers immediately.
 /// - Exposes reactive streams for all complaints, single complaint, and filtered queries.
 /// - Supports optimistic updates with automatic rollback when server writes fail.
-/// - Prepared for future Firestore snapshot listeners via documented extension points.
+/// - Transactional write helper validating consistency rules before emitting.
+/// - Optimistic version checking detecting stale writes.
+/// - Idempotency key tracking preventing duplicate submissions.
+/// - Collision-free ID generation.
+/// - Injectable [AppClock].
 class ComplaintStore {
-  ComplaintStore({List<Complaint>? initialComplaints}) {
+  ComplaintStore({
+    List<Complaint>? initialComplaints,
+    Map<String, List<ComplaintAuditEvent>>? initialEvents,
+    AppClock? clock,
+  }) : clock = clock ?? AppClock.current {
     final seed = initialComplaints ?? SampleFixtures.sampleComplaints;
     for (final complaint in seed) {
       _complaints[complaint.id] = complaint;
+      _versions[complaint.id] = 1;
+    }
+    if (initialEvents != null) {
+      for (final entry in initialEvents.entries) {
+        _events[entry.key] = List.from(entry.value);
+      }
     }
     _allStream = ReplayStream<List<Complaint>>(
       initialValue: _complaints.values.toList(growable: false),
@@ -45,7 +64,18 @@ class ComplaintStore {
     _instance = replacement;
   }
 
+  /// Injectable clock for all timestamps and ID generation.
+  final AppClock clock;
+
   final Map<String, Complaint> _complaints = <String, Complaint>{};
+  final Map<String, List<ComplaintAuditEvent>> _events =
+      <String, List<ComplaintAuditEvent>>{};
+  final Map<String, int> _versions = <String, int>{};
+  final Set<String> _processedIdempotencyKeys = <String>{};
+  final Map<String, Complaint> _idempotentResults = <String, Complaint>{};
+  final Map<String, ReplayStream<List<ComplaintAuditEvent>>> _eventStreams = {};
+
+  int _idCounter = 0;
   late final ReplayStream<List<Complaint>> _allStream;
   bool _isDisposed = false;
 
@@ -55,25 +85,38 @@ class ComplaintStore {
   /// Returns an immutable snapshot list of all complaints currently in store.
   List<Complaint> get snapshot => _complaints.values.toList(growable: false);
 
+  /// Returns an immutable snapshot of all events grouped by complaint ID.
+  Map<String, List<ComplaintAuditEvent>> get allEvents => Map.unmodifiable(
+    _events.map((k, v) => MapEntry(k, List.unmodifiable(v))),
+  );
+
+  /// Generates a collision-free ID using timestamp and monotonic sequence.
+  String generateId({String prefix = 'cmp'}) {
+    final timestamp = clock.now().millisecondsSinceEpoch;
+    final seq = (++_idCounter).toRadixString(36);
+    return '${prefix}_${timestamp}_$seq';
+  }
+
+  /// Returns the current version for [complaintId], defaulting to 1.
+  int getVersion(String complaintId) => _versions[complaintId] ?? 1;
+
   /// Returns the current complaint matching [id], or null if not found.
   Complaint? getById(String id) => _complaints[id];
 
+  /// Returns the audit events recorded for [complaintId].
+  List<ComplaintAuditEvent> getEvents(String complaintId) =>
+      List.unmodifiable(_events[complaintId] ?? const <ComplaintAuditEvent>[]);
+
+  /// Sets or updates audit events for [complaintId].
+  void setEvents(String complaintId, List<ComplaintAuditEvent> events) {
+    _events[complaintId] = List.from(events);
+    _eventStreams[complaintId]?.add(List.unmodifiable(_events[complaintId]!));
+  }
+
   /// Watches all complaints as a real-time reactive stream.
-  ///
-  /// Replays the current snapshot immediately to new subscribers.
-  ///
-  /// // TODO: Firestore snapshots()
-  /// // Future integration: merge FirebaseFirestore.instance.collection('complaints').snapshots()
   Stream<List<Complaint>> watchAll() => _allStream.stream;
 
   /// Watches a single complaint by its [id].
-  ///
-  /// Replays the current complaint state immediately to late subscribers.
-  /// Emits updates whenever this specific complaint changes, suppressing
-  /// emissions if unrelated complaints in the store are modified.
-  ///
-  /// // TODO: Firestore snapshots()
-  /// // Future integration: FirebaseFirestore.instance.collection('complaints').doc(id).snapshots()
   Stream<Complaint?> watch(String id) {
     return _allStream.stream.map((list) {
       try {
@@ -86,21 +129,29 @@ class ComplaintStore {
 
   /// Watches complaints matching [filter], replaying immediately and updating
   /// when matching complaints change.
-  ///
-  /// Filters are evaluated reactively against the canonical store snapshot.
-  ///
-  /// // TODO: Firestore snapshots()
-  /// // Future integration: map query constraints to Firestore query.where(...)
   Stream<List<Complaint>> watchFiltered(ComplaintFilter filter) {
     return _allStream.stream
         .map((list) => applyFilter(list, filter))
         .distinct(listEquals);
   }
 
+  /// Watches audit events for a single complaint.
+  Stream<List<ComplaintAuditEvent>> watchEvents(String complaintId) {
+    var stream = _eventStreams[complaintId];
+    if (stream == null) {
+      stream = ReplayStream<List<ComplaintAuditEvent>>(
+        initialValue: getEvents(complaintId),
+      );
+      _eventStreams[complaintId] = stream;
+    }
+    return stream.stream;
+  }
+
   /// Adds or updates a single complaint in the store and broadcasts to subscribers.
   void addOrUpdate(Complaint complaint) {
     if (_isDisposed) return;
     _complaints[complaint.id] = complaint;
+    _versions[complaint.id] = (_versions[complaint.id] ?? 0) + 1;
     _notify();
   }
 
@@ -109,6 +160,7 @@ class ComplaintStore {
     if (_isDisposed) return;
     for (final c in complaints) {
       _complaints[c.id] = c;
+      _versions[c.id] = (_versions[c.id] ?? 0) + 1;
     }
     _notify();
   }
@@ -117,6 +169,8 @@ class ComplaintStore {
   void remove(String id) {
     if (_isDisposed) return;
     if (_complaints.remove(id) != null) {
+      _events.remove(id);
+      _versions.remove(id);
       _notify();
     }
   }
@@ -127,18 +181,102 @@ class ComplaintStore {
     _complaints.clear();
     for (final c in newComplaints) {
       _complaints[c.id] = c;
+      _versions[c.id] = 1;
     }
     _notify();
   }
 
-  /// Performs an optimistic mutation on complaint [id].
+  /// Atomically applies a complaint modification and audit events.
   ///
-  /// 1. Immediately updates the in-memory store using [update] and broadcasts
-  ///    the optimistic state to all active stream subscribers.
-  /// 2. Awaits the asynchronous [serverWrite] operation.
-  /// 3. If [serverWrite] succeeds, returns the updated complaint.
-  /// 4. If [serverWrite] throws an error, rolls back the complaint to its
-  ///    previous state, broadcasts the rollback to all subscribers, and re-throws.
+  /// Invariants are validated via [ConsistencyRules.validateComplaint] BEFORE
+  /// state is committed and emitted to stream subscribers.
+  ///
+  /// If [expectedVersion] is supplied and does not match the current version,
+  /// throws an [AppFailure] conflict via [FirebaseErrorMapper].
+  ///
+  /// If [idempotencyKey] is supplied and was already processed, returns the
+  /// previously stored complaint without duplicate side-effects.
+  ///
+  /// If validation fails, rolls back all changes in memory and throws a [ValidationFailure].
+  Complaint transactionWrite({
+    required String complaintId,
+    required Complaint Function(Complaint? current) mutation,
+    List<ComplaintAuditEvent> newEvents = const [],
+    int? expectedVersion,
+    String? idempotencyKey,
+  }) {
+    if (_isDisposed) {
+      throw StateError('Cannot write to disposed ComplaintStore');
+    }
+
+    // Idempotency check: duplicate submit returns previously produced record
+    if (idempotencyKey != null &&
+        _processedIdempotencyKeys.contains(idempotencyKey)) {
+      final existing =
+          _idempotentResults[idempotencyKey] ?? _complaints[complaintId];
+      if (existing != null) return existing;
+    }
+
+    // Optimistic concurrency version check
+    final currentVersion = _versions[complaintId] ?? 1;
+    if (expectedVersion != null && expectedVersion != currentVersion) {
+      throw FirebaseErrorMapper.map(
+        const ConflictFailure(
+          userMessage: 'This complaint was modified by another operation. Please refresh.',
+          code: 'conflict',
+        ),
+      );
+    }
+
+    // Snapshot current state for rollback
+    final prevComplaint = _complaints[complaintId];
+    final prevEvents = _events[complaintId] != null
+        ? List<ComplaintAuditEvent>.from(_events[complaintId]!)
+        : <ComplaintAuditEvent>[];
+    final prevVersion = currentVersion;
+
+    // Apply mutation optimistically in memory
+    final updatedComplaint = mutation(prevComplaint);
+    final updatedEvents = [...prevEvents, ...newEvents];
+
+    // Validate invariants BEFORE emitting
+    final violations = ConsistencyRules.validateComplaint(
+      updatedComplaint,
+      updatedEvents,
+    );
+
+    if (violations.isNotEmpty) {
+      // Roll back
+      if (prevComplaint != null) {
+        _complaints[complaintId] = prevComplaint;
+      } else {
+        _complaints.remove(complaintId);
+      }
+      _events[complaintId] = prevEvents;
+      _versions[complaintId] = prevVersion;
+
+      throw ValidationFailure(
+        userMessage:
+            'Data consistency check failed: ${violations.first.detail}',
+        original: violations,
+      );
+    }
+
+    // Commit state
+    _complaints[complaintId] = updatedComplaint;
+    _events[complaintId] = updatedEvents;
+    _versions[complaintId] = prevVersion + 1;
+    if (idempotencyKey != null) {
+      _processedIdempotencyKeys.add(idempotencyKey);
+      _idempotentResults[idempotencyKey] = updatedComplaint;
+    }
+
+    _eventStreams[complaintId]?.add(List.unmodifiable(updatedEvents));
+    _notify();
+    return updatedComplaint;
+  }
+
+  /// Performs an optimistic mutation on complaint [id].
   Future<Complaint> optimisticUpdate(
     String id,
     Complaint Function(Complaint current) update,
@@ -175,5 +313,9 @@ class ComplaintStore {
   void dispose() {
     _isDisposed = true;
     _allStream.close();
+    for (final stream in _eventStreams.values) {
+      stream.close();
+    }
+    _eventStreams.clear();
   }
 }

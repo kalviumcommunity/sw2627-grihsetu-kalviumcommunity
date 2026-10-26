@@ -1,5 +1,6 @@
 import '../core/enums/rent_status.dart';
 import '../core/models/rent_record.dart';
+import 'app_clock.dart';
 import '../screens/rent/rent_models.dart';
 import 'validators.dart';
 
@@ -69,7 +70,7 @@ int daysOverdue(DateTime dueDate, DateTime now) {
 /// Counts how many broken promises exist in the [history].
 /// A promise is broken if its promised payment date has passed without settlement.
 int brokenPromises(List<RentFollowUp> history, [DateTime? now]) {
-  final ref = now ?? DateTime.now();
+  final ref = now ?? AppClock.nowDateTime;
   final refDay = DateTime(ref.year, ref.month, ref.day);
   var count = 0;
   for (final followUp in history) {
@@ -140,7 +141,7 @@ FollowUpValidationResult validateFollowUp({
   String? tenantResponseError;
   String? nextFollowUpDateError;
 
-  final refNow = now ?? DateTime.now();
+  final refNow = now ?? AppClock.nowDateTime;
 
   if (method == null) {
     methodError = 'Follow-up method is required';

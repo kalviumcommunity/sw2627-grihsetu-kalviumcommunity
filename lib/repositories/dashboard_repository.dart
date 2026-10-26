@@ -12,6 +12,7 @@ import '../core/models/property.dart';
 import '../core/models/rent_record.dart';
 import '../services/errors/app_failure.dart';
 import '../services/errors/run_guarded.dart';
+import '../utils/app_clock.dart';
 import 'assignment_repository.dart';
 import 'complaint_store.dart';
 
@@ -187,7 +188,7 @@ class InMemoryDashboardRepository implements DashboardRepository {
       );
     }
 
-    final effectiveNow = now ?? DateTime.now();
+    final effectiveNow = now ?? AppClock.nowDateTime;
     final complaints = List<Complaint>.from(
       _complaintStore.snapshot.isNotEmpty
           ? _complaintStore.snapshot
@@ -226,7 +227,7 @@ class InMemoryDashboardRepository implements DashboardRepository {
 
     void emitSnapshot() {
       if (controller.isClosed) return;
-      final effectiveNow = now ?? DateTime.now();
+      final effectiveNow = now ?? AppClock.nowDateTime;
       final events = generateSampleEvents(currentComplaints);
       controller.add(
         DashboardSnapshot(

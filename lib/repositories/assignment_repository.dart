@@ -5,6 +5,7 @@ import '../core/enums/complaint_status.dart';
 import '../core/models/complaint.dart';
 import '../services/errors/app_failure.dart';
 import '../services/errors/run_guarded.dart';
+import '../utils/app_clock.dart';
 import '../utils/assignment_validators.dart';
 import '../widgets/audit_timeline.dart';
 import 'complaint_store.dart';
@@ -293,7 +294,7 @@ class InMemoryAssignmentRepository implements AssignmentRepository {
 
     final complaint = request.complaint;
     final tech = request.selectedTechnician;
-    final now = DateTime.now();
+    final now = AppClock.nowDateTime;
 
     // If status is open, advance to assigned; otherwise retain active status.
     final nextStatus = complaint.status == ComplaintStatus.open

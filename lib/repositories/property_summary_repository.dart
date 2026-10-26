@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/rent_record.dart';
+import '../utils/app_clock.dart';
 import '../utils/property_metrics.dart';
 import 'complaint_store.dart';
 import 'property_repository.dart';
@@ -74,7 +75,7 @@ class DerivedPropertySummaryRepository implements PropertySummaryRepository {
     Future<void> computeAndEmit() async {
       if (controller.isClosed) return;
       try {
-        final effectiveNow = now ?? DateTime.now();
+        final effectiveNow = now ?? AppClock.nowDateTime;
         final properties = await _propertyRepository.getProperties();
         final property = properties
             .where((p) => p.id == propertyId)
@@ -162,7 +163,7 @@ class DerivedPropertySummaryRepository implements PropertySummaryRepository {
     Future<void> computeAndEmit() async {
       if (controller.isClosed) return;
       try {
-        final effectiveNow = now ?? DateTime.now();
+        final effectiveNow = now ?? AppClock.nowDateTime;
         final properties = await _propertyRepository.getProperties();
         final complaints = _complaintStore.snapshot;
 
@@ -239,7 +240,7 @@ class DerivedPropertySummaryRepository implements PropertySummaryRepository {
     PropertyPeriod period = PropertyPeriod.days30,
     DateTime? now,
   }) async {
-    final effectiveNow = now ?? DateTime.now();
+    final effectiveNow = now ?? AppClock.nowDateTime;
     final properties = await _propertyRepository.getProperties();
     final property = properties.where((p) => p.id == propertyId).firstOrNull;
     if (property == null) return null;
@@ -266,7 +267,7 @@ class DerivedPropertySummaryRepository implements PropertySummaryRepository {
     PropertyPeriod period = PropertyPeriod.days30,
     DateTime? now,
   }) async {
-    final effectiveNow = now ?? DateTime.now();
+    final effectiveNow = now ?? AppClock.nowDateTime;
     final properties = await _propertyRepository.getProperties();
     final complaints = _complaintStore.snapshot.isNotEmpty
         ? _complaintStore.snapshot
