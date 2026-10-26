@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../../core/enums/complaint_category.dart';
 import '../../core/fixtures/sample_fixtures.dart';
 import '../../core/models/complaint.dart';
+import '../../core/models/property.dart';
+import '../../core/models/rent_record.dart';
 import '../../core/models/user.dart';
 import '../../repositories/complaint_repository.dart';
 import '../../repositories/complaint_store.dart';
@@ -33,6 +35,9 @@ class OwnerSummaryScreen extends StatefulWidget {
     this.propertyRepository,
     this.complaintRepository,
     this.rentRepository,
+    this.properties,
+    this.units,
+    this.rentRecords,
     this.printMode = false,
     this.initialPeriodDays,
     this.now,
@@ -44,6 +49,9 @@ class OwnerSummaryScreen extends StatefulWidget {
   final PropertyRepository? propertyRepository;
   final ComplaintRepository? complaintRepository;
   final RentRepository? rentRepository;
+  final List<Property>? properties;
+  final List<Unit>? units;
+  final List<RentRecord>? rentRecords;
   final bool printMode;
   final int? initialPeriodDays;
   final DateTime? now;
@@ -107,6 +115,9 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
           propertyRepository: widget.propertyRepository,
           complaintRepository: widget.complaintRepository,
           rentRepository: widget.rentRepository,
+          properties: widget.properties,
+          units: widget.units,
+          rentRecords: widget.rentRecords,
           printMode: true,
           initialPeriodDays: _periodDays,
           now: widget.now,
@@ -123,23 +134,127 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
       stream: _store.watchAll(),
       initialData: _store.snapshot,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: palette.canvas,
+            appBar: AppBar(title: const Text('Portfolio Summary')),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline, size: 48, color: palette.danger),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'Failed to load operational data',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: palette.ink,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      '${snapshot.error}',
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: palette.muted),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    ElevatedButton.icon(
+                      onPressed: () => setState(() {}),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
         final complaints = snapshot.data ?? _store.snapshot;
 
         // Fetch properties & rent
-        final properties = SampleFixtures.sampleProperties;
-        final units = SampleFixtures.sampleUnits;
-        final rentRecords = SampleFixtures.sampleRentRecords;
+        final properties = widget.properties ?? SampleFixtures.sampleProperties;
+        final units = widget.units ?? SampleFixtures.sampleUnits;
+        final rentRecords =
+            widget.rentRecords ?? SampleFixtures.sampleRentRecords;
 
         final summary = calculateOwnerSummary(
           properties: properties,
           units: units,
           complaints: complaints.isNotEmpty
               ? complaints
-              : SampleFixtures.sampleComplaints,
+              : (widget.properties != null
+                    ? complaints
+                    : SampleFixtures.sampleComplaints),
           rentRecords: rentRecords,
           periodDays: _periodDays,
           now: _effectiveNow,
         );
+
+        if (summary.totalProperties == 0) {
+          return Scaffold(
+            backgroundColor: palette.canvas,
+            appBar: AppBar(title: const Text('Portfolio Summary')),
+            body: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: AppCard(
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            color: palette.accentSoft,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.domain_add,
+                            size: 48,
+                            color: palette.accent,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
+                          'Welcome to GrihSetu!',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: palette.ink,
+                              ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'No properties in your portfolio yet. Add your first building to start tracking operational health, complaints, technician jobs, and rent collections.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: palette.muted),
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                        FilledButton.icon(
+                          onPressed: () {
+                            AppSnack.show(
+                              context,
+                              'Property onboarding wizard',
+                            );
+                          },
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add First Property'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
 
         if (widget.printMode) {
           return _buildPrintModeView(context, summary);
@@ -448,12 +563,20 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
                     ?.copyWith(color: palette.muted),
               ),
               const SizedBox(height: AppSpacing.sm),
-              RepaintBoundary(
-                child: DonutOrStackedBar(
-                  segments: categorySegments,
-                  height: 190,
+              if (categorySegments.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(
+                    child: Text('No complaint category data in this period'),
+                  ),
+                )
+              else
+                RepaintBoundary(
+                  child: DonutOrStackedBar(
+                    segments: categorySegments,
+                    height: 190,
+                  ),
                 ),
-              ),
             ],
           ),
         );
