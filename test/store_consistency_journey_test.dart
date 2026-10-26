@@ -62,7 +62,7 @@ void main() {
     });
 
     tearDown(() {
-      store.dispose();
+      ComplaintStore.resetInstance();
       AppClock.reset();
     });
 

@@ -103,9 +103,12 @@ class ComplaintStore {
   List<Complaint> get snapshot => _complaints.values.toList(growable: false);
 
   /// Returns an immutable snapshot of all events grouped by complaint ID.
-  Map<String, List<ComplaintAuditEvent>> get allEvents => Map.unmodifiable(
-    _events.map((k, v) => MapEntry(k, List.unmodifiable(v))),
-  );
+  Map<String, List<ComplaintAuditEvent>> get allEvents =>
+      Map<String, List<ComplaintAuditEvent>>.unmodifiable(
+        _events.map(
+          (k, v) => MapEntry(k, List<ComplaintAuditEvent>.unmodifiable(v)),
+        ),
+      );
 
   /// Generates a collision-free ID using timestamp and monotonic sequence.
   String generateId({String prefix = 'cmp'}) {

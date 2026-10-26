@@ -315,15 +315,16 @@ class _SectionPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (item.label == 'Overview') {
-      final isOwner = role == UserRole.propertyOwner;
-      return OperationsDashboardScreen(
-        profile: profile,
-        authService: authService,
-        complaintRepository: complaintRepository,
-        propertyRepository: propertyRepository,
-        rentRepository: rentRepository,
-        readOnly: isOwner,
-      );
+      if (role == UserRole.propertyOperations ||
+          role == UserRole.complaintOperations) {
+        return OperationsDashboardScreen(
+          profile: profile,
+          authService: authService,
+          complaintRepository: complaintRepository,
+          propertyRepository: propertyRepository,
+          rentRepository: rentRepository,
+        );
+      }
     }
     if (item.label == 'Properties') {
       return const PropertyBrowserScreen(showAppBar: false);

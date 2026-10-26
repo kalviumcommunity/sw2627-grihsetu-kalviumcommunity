@@ -102,15 +102,12 @@ abstract final class ComplaintValidators {
     bool requireTenant = true,
     DateTime? today,
   }) => ComplaintValidation({
-    if (location(draft, requireTenant: requireTenant) case final error?)
-      'location': error,
-    if (category(draft) case final error?) 'category': error,
-    if (title(draft.title) case final error?) 'title': error,
-    if (description(draft.description, priority: draft.priority)
-        case final error?)
-      'description': error,
-    if (attachments(draft.attachments) case final error?) 'attachments': error,
-    if (visit(draft, today: today) case final error?) 'visit': error,
-    if (phone(draft.contactPhone) case final error?) 'phone': error,
+    'location': ?location(draft, requireTenant: requireTenant),
+    'category': ?category(draft),
+    'title': ?title(draft.title),
+    'description': ?description(draft.description, priority: draft.priority),
+    'attachments': ?attachments(draft.attachments),
+    'visit': ?visit(draft, today: today),
+    'phone': ?phone(draft.contactPhone),
   });
 }

@@ -1239,7 +1239,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     Map<String, List<ComplaintAuditEvent>>? initialAuditEvents,
     this.streamDelay = Duration.zero,
     ComplaintStore? store,
-  }) : _store = store ?? ComplaintStore.instance,
+  }) : _store = store,
        _complaints = List.of(
          initialComplaints ??
              (store != null ? store.snapshot : SampleFixtures.sampleComplaints),
@@ -1247,33 +1247,18 @@ class InMemoryComplaintRepository implements ComplaintRepository {
        _auditEvents = initialAuditEvents != null
            ? Map.from(initialAuditEvents)
            : <String, List<ComplaintAuditEvent>>{} {
-    _store.addOrUpdateAll(_complaints);
     _seedDefaultEvents();
-    for (final entry in _auditEvents.entries) {
-      _store.setEvents(entry.key, entry.value);
+    if (_store != null) {
+      _store.addOrUpdateAll(_complaints);
+      for (final entry in _auditEvents.entries) {
+        _store.setEvents(entry.key, entry.value);
+      }
     }
     _emit();
-    _storeSubscription = _store.watchAll().listen((list) {
-      var changed = false;
-      for (final updated in list) {
-        final index = _complaints.indexWhere((c) => c.id == updated.id);
-        if (index == -1) {
-          _complaints.add(updated);
-          changed = true;
-        } else if (_complaints[index] != updated) {
-          _complaints[index] = updated;
-          changed = true;
-          _emitComplaint(updated.id);
-        }
-      }
-      if (changed) {
-        _emit();
-      }
-    });
   }
 
-  final ComplaintStore _store;
-  StreamSubscription<List<Complaint>>? _storeSubscription;
+  final ComplaintStore? _store;
+  ComplaintStore get _activeStore => _store ?? ComplaintStore.instance;
   final List<Complaint> _complaints;
   final Map<String, List<ComplaintAuditEvent>> _auditEvents;
   final Map<String, List<MaintenanceVisit>> _maintenanceVisits = {};
@@ -1358,7 +1343,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     } else {
       _complaints[index] = complaint;
     }
-    _store.addOrUpdate(complaint);
+    _activeStore.addOrUpdate(complaint);
     _emit();
     _emitComplaint(complaint.id);
   }
@@ -1432,7 +1417,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
           createdAt: now,
         );
         _complaints.add(complaint);
-        _store.addOrUpdate(complaint);
+        _activeStore.addOrUpdate(complaint);
 
         final initialEvent = ComplaintAuditEvent(
           id: '${id}_evt_created',
@@ -1711,7 +1696,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
-    _store.addOrUpdate(updated);
+    _activeStore.addOrUpdate(updated);
 
     final eventType = switch (newStatus) {
       ComplaintStatus.open => 'COMPLAINT_OPENED',
@@ -1794,7 +1779,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
-    _store.addOrUpdate(updated);
+    _activeStore.addOrUpdate(updated);
 
     final event = ComplaintAuditEvent(
       id: '${complaintId}_evt_${now.millisecondsSinceEpoch}',
@@ -1860,7 +1845,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
-    _store.addOrUpdate(updated);
+    _activeStore.addOrUpdate(updated);
 
     final event = ComplaintAuditEvent(
       id: '${complaintId}_evt_${now.millisecondsSinceEpoch}',
@@ -2033,7 +2018,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
-    _store.addOrUpdate(updated);
+    _activeStore.addOrUpdate(updated);
 
     final event = ComplaintAuditEvent(
       id: '${complaintId}_evt_${now.millisecondsSinceEpoch}',
@@ -2219,7 +2204,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
-    _store.addOrUpdate(updated);
+    _activeStore.addOrUpdate(updated);
 
     for (final part in completion.parts) {
       await addPart(complaintId, part, actorId: actorId, role: role);
@@ -2401,7 +2386,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
-    _store.addOrUpdate(updated);
+    _activeStore.addOrUpdate(updated);
 
     final followUpEvent = ComplaintAuditEvent(
       id: '${complaintId}_evt_followup_${now.millisecondsSinceEpoch}',
@@ -2482,7 +2467,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       updatedAt: now,
     );
     _complaints[index] = updated;
-    _store.addOrUpdate(updated);
+    _activeStore.addOrUpdate(updated);
 
     final (rawType, eventTypeEnum) = switch (change.to) {
       ComplaintStatus.waitingForParts => (
@@ -2557,7 +2542,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
 
   void addComplaint(Complaint complaint) {
     _complaints.add(complaint);
-    _store.addOrUpdate(complaint);
+    _activeStore.addOrUpdate(complaint);
     _emit();
     _emitComplaint(complaint.id);
   }
@@ -2567,7 +2552,6 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   }
 
   void dispose() {
-    _storeSubscription?.cancel();
     _controller.close();
     for (final c in _complaintControllers.values) {
       c.close();
