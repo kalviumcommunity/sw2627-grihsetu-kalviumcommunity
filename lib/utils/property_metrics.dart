@@ -123,6 +123,52 @@ class PropertySummary {
     }
     return score.clamp(0.0, 1.0);
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! PropertySummary) return false;
+    return propertyId == other.propertyId &&
+        periodDays == other.periodDays &&
+        totalUnits == other.totalUnits &&
+        occupiedUnits == other.occupiedUnits &&
+        openComplaints == other.openComplaints &&
+        resolvedInPeriod == other.resolvedInPeriod &&
+        createdInPeriod == other.createdInPeriod &&
+        avgFirstResponse == other.avgFirstResponse &&
+        avgResolutionTime == other.avgResolutionTime &&
+        slaPercent == other.slaPercent &&
+        repeatVisits == other.repeatVisits &&
+        recurringIssues == other.recurringIssues &&
+        reopenedCount == other.reopenedCount &&
+        waitingForPartsCount == other.waitingForPartsCount &&
+        unassignedCount == other.unassignedCount &&
+        overdueRentCount == other.overdueRentCount &&
+        overdueRentAmount == other.overdueRentAmount &&
+        collectionRate == other.collectionRate;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    propertyId,
+    periodDays,
+    totalUnits,
+    occupiedUnits,
+    openComplaints,
+    resolvedInPeriod,
+    createdInPeriod,
+    avgFirstResponse,
+    avgResolutionTime,
+    slaPercent,
+    repeatVisits,
+    recurringIssues,
+    reopenedCount,
+    waitingForPartsCount,
+    unassignedCount,
+    overdueRentCount,
+    overdueRentAmount,
+    collectionRate,
+  );
 }
 
 /// Pure calculation function deriving [PropertySummary] from canonical domain models.
