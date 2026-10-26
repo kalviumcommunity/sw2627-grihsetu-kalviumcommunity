@@ -19,6 +19,7 @@ import '../../widgets/charts/bar_compare_chart.dart';
 import '../../widgets/charts/donut_or_stacked_bar.dart';
 import '../../widgets/charts/trend_line_chart.dart';
 import '../../widgets/repeat_indicator.dart';
+import '../../widgets/responsive_grid.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/status_badge.dart';
 import '../property/property_summary_screen.dart';
@@ -167,45 +168,38 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.md,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1200),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // 1. Period Selector & Header
-                      _buildHeaderSection(context, summary),
-                      const SizedBox(height: AppSpacing.md),
+              child: ResponsiveDashboardContainer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 1. Period Selector & Header
+                    _buildHeaderSection(context, summary),
+                    const SizedBox(height: AppSpacing.md),
 
-                      // 2. Highlights Card
-                      _buildHighlightsCard(context, summary),
-                      const SizedBox(height: AppSpacing.lg),
+                    // 2. Highlights Card
+                    _buildHighlightsCard(context, summary),
+                    const SizedBox(height: AppSpacing.lg),
 
-                      // 3. KPI Metrics Grid
-                      _buildKpiSection(context, summary),
-                      const SizedBox(height: AppSpacing.xl),
+                    // 3. KPI Metrics Grid
+                    _buildKpiSection(context, summary),
+                    const SizedBox(height: AppSpacing.xl),
 
-                      // 4. Trend & Category Charts
-                      _buildChartsSection(context, summary),
-                      const SizedBox(height: AppSpacing.xl),
+                    // 4. Trend & Category Charts
+                    _buildChartsSection(context, summary),
+                    const SizedBox(height: AppSpacing.xl),
 
-                      // 5. Property Comparison (Table vs Cards)
-                      _buildPropertyComparisonSection(context, summary),
-                      const SizedBox(height: AppSpacing.xl),
+                    // 5. Property Comparison (Table vs Cards)
+                    _buildPropertyComparisonSection(context, summary),
+                    const SizedBox(height: AppSpacing.xl),
 
-                      // 6. Rent Collection Overview
-                      _buildRentCollectionSection(context, summary),
-                      const SizedBox(height: AppSpacing.xl),
+                    // 6. Rent Collection Overview
+                    _buildRentCollectionSection(context, summary),
+                    const SizedBox(height: AppSpacing.xl),
 
-                      // 7. Technician Performance & Recurring Issues
-                      _buildOperationalDetailsSection(context, summary),
-                      const SizedBox(height: AppSpacing.xl),
-                    ],
-                  ),
+                    // 7. Technician Performance & Recurring Issues
+                    _buildOperationalDetailsSection(context, summary),
+                    const SizedBox(height: AppSpacing.xl),
+                  ],
                 ),
               ),
             ),
@@ -410,11 +404,13 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
                     ?.copyWith(color: palette.muted),
               ),
               const SizedBox(height: AppSpacing.sm),
-              TrendLineChart(
-                createdPoints: summary.createdTrend,
-                resolvedPoints: summary.resolvedTrend,
-                labels: trendLabels,
-                height: 190,
+              RepaintBoundary(
+                child: TrendLineChart(
+                  createdPoints: summary.createdTrend,
+                  resolvedPoints: summary.resolvedTrend,
+                  labels: trendLabels,
+                  height: 190,
+                ),
               ),
             ],
           ),
@@ -444,7 +440,12 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
                     ?.copyWith(color: palette.muted),
               ),
               const SizedBox(height: AppSpacing.sm),
-              DonutOrStackedBar(segments: categorySegments, height: 190),
+              RepaintBoundary(
+                child: DonutOrStackedBar(
+                  segments: categorySegments,
+                  height: 190,
+                ),
+              ),
             ],
           ),
         );
@@ -497,23 +498,25 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
           ),
           if (summary.propertySummaries.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
-            BarCompareChart(
-              items: summary.propertySummaries
-                  .map(
-                    (p) => BarCompareItem(
-                      label: p.propertyName.split(' ').first,
-                      value1: p.openComplaints.toDouble(),
-                      value2: p.resolvedInPeriod.toDouble(),
-                      value1Label: 'Open',
-                      value2Label: 'Resolved',
-                    ),
-                  )
-                  .toList(),
-              height: 160,
-              series1Name: 'Open Issues',
-              series2Name: 'Resolved Issues',
-              series1Color: palette.warning,
-              series2Color: palette.success,
+            RepaintBoundary(
+              child: BarCompareChart(
+                items: summary.propertySummaries
+                    .map(
+                      (p) => BarCompareItem(
+                        label: p.propertyName.split(' ').first,
+                        value1: p.openComplaints.toDouble(),
+                        value2: p.resolvedInPeriod.toDouble(),
+                        value1Label: 'Open',
+                        value2Label: 'Resolved',
+                      ),
+                    )
+                    .toList(),
+                height: 160,
+                series1Name: 'Open Issues',
+                series2Name: 'Resolved Issues',
+                series1Color: palette.warning,
+                series2Color: palette.success,
+              ),
             ),
           ],
           const SizedBox(height: AppSpacing.sm),

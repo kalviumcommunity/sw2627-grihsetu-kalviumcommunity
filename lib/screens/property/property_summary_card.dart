@@ -195,13 +195,15 @@ class PropertySummaryCard extends StatelessWidget {
                     ),
                     if (showSparkline && summary.trendBuckets.isNotEmpty) ...[
                       const SizedBox(width: AppSpacing.sm),
-                      SizedBox(
-                        width: 56,
-                        height: 20,
-                        child: CustomPaint(
-                          painter: SparklinePainter(
-                            points: summary.trendBuckets,
-                            lineColor: palette.accent,
+                      RepaintBoundary(
+                        child: SizedBox(
+                          width: 56,
+                          height: 20,
+                          child: CustomPaint(
+                            painter: SparklinePainter(
+                              points: summary.trendBuckets,
+                              lineColor: palette.accent,
+                            ),
                           ),
                         ),
                       ),

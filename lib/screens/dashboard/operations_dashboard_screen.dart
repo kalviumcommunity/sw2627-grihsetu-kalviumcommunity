@@ -25,6 +25,7 @@ import '../../utils/property_metrics.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/error_banner.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/responsive_grid.dart';
 import '../../widgets/skeleton_box.dart';
 import '../complaints/complaint_detail_screen.dart';
 import '../complaints/search/complaint_search_screen.dart';
@@ -225,117 +226,119 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
           backgroundColor: palette.surface,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_failure != null) ...[
-                  ErrorBanner(
-                    failure: _failure,
-                    onDismiss: () => setState(() => _failure = null),
-                    onRetry: _failure!.retryable ? _load : null,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                ],
-                // 1. Greeting header
-                _GreetingHeader(
-                  now: _now,
-                  analysis: attentionAnalysis,
-                  readOnly: widget.readOnly,
-                ),
-                const SizedBox(height: AppSpacing.md),
-
-                // Responsive layout: 1 col on mobile; 2 cols on >=900px
-                if (!isDesktop) ...[
-                  // Hero: Attention list
-                  _AttentionSection(
+            child: ResponsiveDashboardContainer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_failure != null) ...[
+                    ErrorBanner(
+                      failure: _failure,
+                      onDismiss: () => setState(() => _failure = null),
+                      onRetry: _failure!.retryable ? _load : null,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                  // 1. Greeting header
+                  _GreetingHeader(
+                    now: _now,
                     analysis: attentionAnalysis,
-                    showAll: _showAllAttention,
-                    onToggleShowAll: () =>
-                        setState(() => _showAllAttention = !_showAllAttention),
-                    onItemTap: _onAttentionItemTapped,
-                    lastCheckedTime: snapshot.lastUpdated,
+                    readOnly: widget.readOnly,
                   ),
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.md),
 
-                  // Today strip below attention list
-                  _TodayStrip(metrics: todayMetrics),
-                  const SizedBox(height: AppSpacing.lg),
+                  // Responsive layout: 1 col on mobile; 2 cols on >=900px
+                  if (!isDesktop) ...[
+                    // Hero: Attention list
+                    _AttentionSection(
+                      analysis: attentionAnalysis,
+                      showAll: _showAllAttention,
+                      onToggleShowAll: () => setState(
+                        () => _showAllAttention = !_showAllAttention,
+                      ),
+                      onItemTap: _onAttentionItemTapped,
+                      lastCheckedTime: snapshot.lastUpdated,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
 
-                  // Technician workload
-                  _TechnicianWorkloadSection(
-                    technicians: snapshot.technicians,
-                    onTapTechnician: _onTechnicianTapped,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
+                    // Today strip below attention list
+                    _TodayStrip(metrics: todayMetrics),
+                    const SizedBox(height: AppSpacing.lg),
 
-                  // Properties at a glance
-                  _PropertiesAtAGlanceSection(
-                    properties: snapshot.properties,
-                    complaints: snapshot.complaints,
-                    rentRecords: snapshot.rentRecords,
-                    onTapProperty: _onPropertyTapped,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
+                    // Technician workload
+                    _TechnicianWorkloadSection(
+                      technicians: snapshot.technicians,
+                      onTapTechnician: _onTechnicianTapped,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
 
-                  // Recent activity
-                  _RecentActivitySection(
-                    events: snapshot.events,
-                    onTapEvent: _onEventTapped,
-                  ),
-                ] else ...[
-                  // Desktop 2-column layout
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Left 60% Hero: Attention list
-                      Expanded(
-                        flex: 3,
-                        child: _AttentionSection(
-                          analysis: attentionAnalysis,
-                          showAll: _showAllAttention,
-                          onToggleShowAll: () => setState(
-                            () => _showAllAttention = !_showAllAttention,
+                    // Properties at a glance
+                    _PropertiesAtAGlanceSection(
+                      properties: snapshot.properties,
+                      complaints: snapshot.complaints,
+                      rentRecords: snapshot.rentRecords,
+                      onTapProperty: _onPropertyTapped,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Recent activity
+                    _RecentActivitySection(
+                      events: snapshot.events,
+                      onTapEvent: _onEventTapped,
+                    ),
+                  ] else ...[
+                    // Desktop 2-column layout
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left 60% Hero: Attention list
+                        Expanded(
+                          flex: 3,
+                          child: _AttentionSection(
+                            analysis: attentionAnalysis,
+                            showAll: _showAllAttention,
+                            onToggleShowAll: () => setState(
+                              () => _showAllAttention = !_showAllAttention,
+                            ),
+                            onItemTap: _onAttentionItemTapped,
+                            lastCheckedTime: snapshot.lastUpdated,
                           ),
-                          onItemTap: _onAttentionItemTapped,
-                          lastCheckedTime: snapshot.lastUpdated,
                         ),
-                      ),
-                      const SizedBox(width: AppSpacing.lg),
+                        const SizedBox(width: AppSpacing.lg),
 
-                      // Right 40%: Today strip, Workload, Properties
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _TodayStrip(metrics: todayMetrics),
-                            const SizedBox(height: AppSpacing.lg),
-                            _TechnicianWorkloadSection(
-                              technicians: snapshot.technicians,
-                              onTapTechnician: _onTechnicianTapped,
-                            ),
-                            const SizedBox(height: AppSpacing.lg),
-                            _PropertiesAtAGlanceSection(
-                              properties: snapshot.properties,
-                              complaints: snapshot.complaints,
-                              rentRecords: snapshot.rentRecords,
-                              onTapProperty: _onPropertyTapped,
-                            ),
-                          ],
+                        // Right 40%: Today strip, Workload, Properties
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _TodayStrip(metrics: todayMetrics),
+                              const SizedBox(height: AppSpacing.lg),
+                              _TechnicianWorkloadSection(
+                                technicians: snapshot.technicians,
+                                onTapTechnician: _onTechnicianTapped,
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+                              _PropertiesAtAGlanceSection(
+                                properties: snapshot.properties,
+                                complaints: snapshot.complaints,
+                                rentRecords: snapshot.rentRecords,
+                                onTapProperty: _onPropertyTapped,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
 
-                  // Full width activity at the bottom
-                  _RecentActivitySection(
-                    events: snapshot.events,
-                    onTapEvent: _onEventTapped,
-                  ),
+                    // Full width activity at the bottom
+                    _RecentActivitySection(
+                      events: snapshot.events,
+                      onTapEvent: _onEventTapped,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
