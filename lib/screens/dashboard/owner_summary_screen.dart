@@ -22,6 +22,7 @@ import '../../widgets/repeat_indicator.dart';
 import '../../widgets/responsive_grid.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/status_badge.dart';
+import '../../widgets/stream_view.dart';
 import '../property/property_summary_screen.dart';
 
 /// Owner portfolio overview screen presenting aggregated operational and financial health.
@@ -224,10 +225,16 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
                   ?.copyWith(fontWeight: FontWeight.bold, color: palette.ink),
             ),
             const SizedBox(height: 2),
-            Text(
-              '${summary.totalProperties} properties • ${summary.totalUnits} units',
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: palette.muted),
+            Row(
+              children: [
+                Text(
+                  '${summary.totalProperties} properties • ${summary.totalUnits} units',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: palette.muted),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                const LiveStatusChip(label: 'Live'),
+              ],
             ),
           ],
         ),
@@ -317,27 +324,27 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
           physics: const NeverScrollableScrollPhysics(),
           childAspectRatio: crossAxisCount == 1 ? 3.0 : 1.7,
           children: [
-            _OwnerKpiCard(
+            OwnerKpiCard(
               label: 'Occupancy Rate',
               value: '${summary.occupancyRate.toStringAsFixed(1)}%',
               subtitle:
                   '${summary.occupiedUnits} of ${summary.totalUnits} units',
               icon: Icons.apartment,
             ),
-            _OwnerKpiCard(
+            OwnerKpiCard(
               label: 'Open Complaints',
               value: '${summary.openComplaints}',
               subtitle: '${summary.waitingForPartsCount} waiting parts',
               icon: Icons.assignment_late_outlined,
             ),
-            _OwnerKpiCard(
+            OwnerKpiCard(
               label: 'Resolved in Period',
               value: '${summary.resolvedInPeriod}',
               delta: summary.resolvedDelta,
               subtitle: 'of ${summary.createdInPeriod} created',
               icon: Icons.check_circle_outline,
             ),
-            _OwnerKpiCard(
+            OwnerKpiCard(
               label: 'SLA Met %',
               value: summary.slaPercent != null
                   ? '${summary.slaPercent!.toStringAsFixed(1)}%'
@@ -346,7 +353,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
               subtitle: 'Expected resolution deadline',
               icon: Icons.speed,
             ),
-            _OwnerKpiCard(
+            OwnerKpiCard(
               label: 'Avg First Response',
               value: summary.avgFirstResponse != null
                   ? _formatDuration(summary.avgFirstResponse!)
@@ -355,7 +362,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
               subtitle: 'Tenant wait to assign',
               icon: Icons.timelapse,
             ),
-            _OwnerKpiCard(
+            OwnerKpiCard(
               label: 'Avg Resolution Time',
               value: summary.avgResolutionTime != null
                   ? _formatDuration(summary.avgResolutionTime!)
@@ -364,14 +371,14 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
               subtitle: 'Creation to close',
               icon: Icons.hourglass_bottom,
             ),
-            _OwnerKpiCard(
+            OwnerKpiCard(
               label: 'Rent Collection',
               value: '${summary.collectionRate.toStringAsFixed(1)}%',
               delta: summary.collectionDelta,
               subtitle: '₹${summary.totalRentCollected.round()} collected',
               icon: Icons.payments_outlined,
             ),
-            _OwnerKpiCard(
+            OwnerKpiCard(
               label: 'Overdue Rent',
               value: '₹${summary.overdueRentAmount.round()}',
               subtitle: '${summary.overdueRentCount} overdue accounts',
@@ -611,47 +618,38 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
                     for (final prop in summary.propertySummaries)
                       Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: InkWell(
+                        child: AppCard(
                           onTap: () => _openPropertySummary(prop),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.all(AppSpacing.sm),
-                            decoration: BoxDecoration(
-                              color: palette.surface,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: palette.shimmer),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        prop.propertyName,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleSmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: palette.ink,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${prop.occupiedUnits}/${prop.totalUnits} units • ${prop.openComplaints} open • ${prop.overdueRentCount} overdue rent',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(color: palette.muted),
-                                      ),
-                                    ],
-                                  ),
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      prop.propertyName,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: palette.ink,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${prop.occupiedUnits}/${prop.totalUnits} units • ${prop.openComplaints} open • ${prop.overdueRentCount} overdue rent',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: palette.muted),
+                                    ),
+                                  ],
                                 ),
-                                Icon(Icons.chevron_right, color: palette.muted),
-                              ],
-                            ),
+                              ),
+                              Icon(Icons.chevron_right, color: palette.muted),
+                            ],
                           ),
                         ),
                       ),
@@ -1139,13 +1137,15 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
   }
 }
 
-class _OwnerKpiCard extends StatelessWidget {
-  const _OwnerKpiCard({
+class OwnerKpiCard extends StatelessWidget {
+  const OwnerKpiCard({
     required this.label,
     required this.value,
     required this.subtitle,
     required this.icon,
     this.delta,
+    this.onTap,
+    super.key,
   });
 
   final String label;
@@ -1153,12 +1153,14 @@ class _OwnerKpiCard extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final MetricDelta? delta;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
 
     return AppCard(
+      onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
