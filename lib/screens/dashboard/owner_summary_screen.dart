@@ -251,7 +251,8 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
           },
           showSelectedIcon: false,
           style: ButtonStyle(
-            visualDensity: VisualDensity.compact,
+            minimumSize: WidgetStateProperty.all(const Size(48, 48)),
+            tapTargetSize: MaterialTapTargetSize.padded,
             textStyle: WidgetStateProperty.all(
               Theme.of(context).textTheme.labelSmall
                   ?.copyWith(fontWeight: FontWeight.w600),
@@ -602,6 +603,9 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
                             ),
                             DataCell(
                               TextButton(
+                                style: TextButton.styleFrom(
+                                  minimumSize: const Size(48, 48),
+                                ),
                                 onPressed: () => _openPropertySummary(prop),
                                 child: const Text('View Summary'),
                               ),
@@ -1158,56 +1162,63 @@ class OwnerKpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final deltaText = delta != null && delta!.hasPrevious
+        ? '. Period change: ${delta!.formattedChange}'
+        : '';
 
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: palette.muted,
-                    fontWeight: FontWeight.w600,
+    return Semantics(
+      label: '$label: $value. $subtitle$deltaText',
+      container: true,
+      child: AppCard(
+        onTap: onTap,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: palette.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Icon(icon, size: 18, color: palette.muted),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold, color: palette.ink),
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              if (delta != null && delta!.hasPrevious) ...[
-                _DeltaIndicator(delta: delta!),
-                const SizedBox(width: 4),
+                Icon(icon, size: 18, color: palette.muted),
               ],
-              Expanded(
-                child: Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.labelSmall
-                      ?.copyWith(color: palette.muted),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold, color: palette.ink),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                if (delta != null && delta!.hasPrevious) ...[
+                  _DeltaIndicator(delta: delta!),
+                  const SizedBox(width: 4),
+                ],
+                Expanded(
+                  child: Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: palette.muted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
