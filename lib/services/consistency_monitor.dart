@@ -10,15 +10,15 @@ import '../utils/consistency_rules.dart';
 ///
 /// Guaranteed never to crash in production release mode.
 class ConsistencyMonitor {
-  ConsistencyMonitor({ComplaintStore? store})
-    : _store = store ?? ComplaintStore.instance;
+  ConsistencyMonitor({ComplaintStore? store}) : _explicitStore = store;
 
   static ConsistencyMonitor? _instance;
 
   /// Global singleton instance.
   static ConsistencyMonitor get instance => _instance ??= ConsistencyMonitor();
 
-  final ComplaintStore _store;
+  final ComplaintStore? _explicitStore;
+  ComplaintStore get _store => _explicitStore ?? ComplaintStore.instance;
   StreamSubscription<dynamic>? _subscription;
 
   /// Begins listening to store emissions under [kDebugMode].

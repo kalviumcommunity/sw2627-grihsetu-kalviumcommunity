@@ -55,15 +55,20 @@ class ComplaintStore {
     _allStream = ReplayStream<List<Complaint>>(
       initialValue: _complaints.values.toList(growable: false),
     );
-    if (kDebugMode) {
-      ConsistencyMonitor.instance.start();
-    }
   }
 
   static ComplaintStore? _instance;
 
   /// The active global singleton store instance.
-  static ComplaintStore get instance => _instance ??= ComplaintStore();
+  static ComplaintStore get instance {
+    if (_instance == null) {
+      _instance = ComplaintStore();
+      if (kDebugMode) {
+        ConsistencyMonitor.instance.start();
+      }
+    }
+    return _instance!;
+  }
 
   /// Sets or overrides the active singleton instance (useful for testing).
   static set instance(ComplaintStore store) {
