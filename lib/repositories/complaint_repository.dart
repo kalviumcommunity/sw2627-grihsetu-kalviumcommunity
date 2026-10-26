@@ -1225,6 +1225,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
        _auditEvents = initialAuditEvents != null
            ? Map.from(initialAuditEvents)
            : <String, List<ComplaintAuditEvent>>{} {
+    for (final visit in SampleFixtures.sampleMaintenanceVisits) {
+      _maintenanceVisits.putIfAbsent(visit.complaintId, () => []).add(visit);
+    }
     _seedDefaultEvents();
     _emit();
   }
@@ -1345,6 +1348,23 @@ class InMemoryComplaintRepository implements ComplaintRepository {
                 'actorName': 'Tenant',
                 'actorRole': 'Tenant',
                 'note': 'Verified fixed, closing complaint.',
+              },
+            ),
+          );
+        }
+        if (c.reopenedAt != null) {
+          events.add(
+            ComplaintAuditEvent(
+              id: '${c.id}_evt_reopened',
+              complaintId: c.id,
+              eventType: ComplaintAuditEventType.complaintReopened,
+              actorId: c.reopenedBy ?? 'usr_001',
+              timestamp: c.reopenedAt,
+              metadata: {
+                'actorName': 'Riya Sharma',
+                'actorRole': 'Complaint Operations',
+                'reason': c.reopenReason ?? 'Issue recurred',
+                'note': 'Complaint reopened upon tenant notification.',
               },
             ),
           );

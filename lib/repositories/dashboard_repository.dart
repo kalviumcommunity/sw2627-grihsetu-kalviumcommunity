@@ -127,6 +127,19 @@ class InMemoryDashboardRepository implements DashboardRepository {
           ),
         );
       }
+      if (c.reopenedAt != null) {
+        events.add(
+          ComplaintAuditEvent(
+            id: 'evt_${c.id}_reopened',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.complaintReopened,
+            actorId: c.reopenedBy ?? 'usr_001',
+            actorRole: UserRole.complaintOperations,
+            timestamp: c.reopenedAt,
+            details: {'reason': c.reopenReason ?? 'Issue recurred'},
+          ),
+        );
+      }
     }
     // Sort descending by timestamp
     events.sort(
