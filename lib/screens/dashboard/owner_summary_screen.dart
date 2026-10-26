@@ -886,6 +886,13 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 1,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.copy_outlined),
+            tooltip: 'Copy as text',
+            onPressed: () => _copySummaryToClipboard(summary),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
