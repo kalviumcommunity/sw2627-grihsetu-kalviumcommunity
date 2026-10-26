@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/fixtures/sample_fixtures.dart';
 import '../../theme/app_palette.dart';
 import '../property/property_selection_flow.dart';
+import 'data_checks_screen.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/audit_timeline.dart';
 import '../../widgets/complaint_card.dart';
@@ -93,6 +94,38 @@ class WidgetGalleryScreen extends StatelessWidget {
                     Icon(Icons.domain_add_outlined),
                     SizedBox(width: 12),
                     Expanded(child: Text('Select property / unit / tenant')),
+                    Icon(Icons.arrow_forward),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              AppCard(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DataChecksScreen(),
+                    ),
+                  );
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.fact_check_outlined),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Data consistency checks',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            'Audit trail and lifecycle invariant verification',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
                     Icon(Icons.arrow_forward),
                   ],
                 ),

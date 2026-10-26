@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/complaint.dart';
 import '../core/models/complaint_audit_event.dart';
+import '../services/consistency_monitor.dart';
 import '../services/errors/app_failure.dart';
 import '../services/errors/firebase_error_mapper.dart';
 import '../utils/app_clock.dart';
@@ -46,6 +47,9 @@ class ComplaintStore {
     _allStream = ReplayStream<List<Complaint>>(
       initialValue: _complaints.values.toList(growable: false),
     );
+    if (kDebugMode) {
+      ConsistencyMonitor.instance.start();
+    }
   }
 
   static ComplaintStore? _instance;
