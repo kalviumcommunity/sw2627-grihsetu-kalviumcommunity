@@ -4,6 +4,7 @@ import '../../widgets/app_spacing.dart';
 import '../../core/models/property.dart';
 import '../../repositories/property_repository.dart';
 import '../../theme/app_palette.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_box.dart';
 import 'property_browse_panels.dart';
@@ -56,7 +57,12 @@ class _UnitPickerScreenState extends State<UnitPickerScreen> {
             );
             if (entry == null) {
               return const Center(
-                child: Text('This property is no longer available.'),
+                child: EmptyState.noResults(
+                  icon: Icons.apartment_outlined,
+                  title: 'Property not found',
+                  message:
+                      'This property is no longer available in the directory.',
+                ),
               );
             }
             return UnitListPanel(

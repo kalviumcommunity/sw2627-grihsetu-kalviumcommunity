@@ -6,6 +6,7 @@ import '../../../core/models/complaint.dart';
 import '../../../core/models/complaint_audit_event.dart';
 import '../../../core/models/maintenance_visit.dart';
 import '../../../repositories/complaint_repository.dart';
+import '../../../services/errors/firebase_error_mapper.dart';
 import '../../../services/media_picker.dart';
 import '../../../theme/app_palette.dart';
 import '../../../utils/action_feedback.dart';
@@ -300,12 +301,13 @@ class _VisitScreenState extends State<VisitScreen> {
     }
 
     if (_error != null) {
+      final failure = FirebaseErrorMapper.map(_error!);
       return Scaffold(
         backgroundColor: palette.canvas,
         appBar: AppBar(title: const Text('Technician Visit')),
-        body: ErrorState(
+        body: ErrorState.fromFailure(
           title: 'Unable to load visit',
-          message: _error.toString(),
+          failure: failure,
           onRetry: _loadData,
         ),
       );

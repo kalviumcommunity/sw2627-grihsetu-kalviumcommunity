@@ -10,6 +10,7 @@ import '../../../core/models/complaint_audit_event.dart';
 import '../../../core/models/maintenance_visit.dart';
 import '../../../repositories/complaint_repository.dart';
 import '../../../services/complaint_lifecycle_service.dart';
+import '../../../services/errors/firebase_error_mapper.dart';
 import '../../../utils/visit_validators.dart';
 import 'complaint_detail_models.dart';
 
@@ -185,7 +186,7 @@ class ComplaintDetailController extends ChangeNotifier {
             _updateState(
               ComplaintDetailState(
                 status: ComplaintDetailStatus.error,
-                errorMessage: error.toString(),
+                errorMessage: FirebaseErrorMapper.map(error).userMessage,
               ),
             );
           },
@@ -223,7 +224,7 @@ class ComplaintDetailController extends ChangeNotifier {
               _updateState(
                 ComplaintDetailState(
                   status: ComplaintDetailStatus.error,
-                  errorMessage: error.toString(),
+                  errorMessage: FirebaseErrorMapper.map(error).userMessage,
                 ),
               );
             }
@@ -254,7 +255,7 @@ class ComplaintDetailController extends ChangeNotifier {
             complaint: _latestComplaint,
             events: _latestEvents,
             visits: _latestVisits,
-            errorMessage: error.toString(),
+            errorMessage: FirebaseErrorMapper.map(error).userMessage,
             referenceNow: _referenceNow,
           ),
         );

@@ -136,7 +136,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ? null
                   : () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const SignupScreen(),
+                        builder: (_) =>
+                            SignupScreen(authService: widget.authService),
                       ),
                     ),
               child: const Text('New here? Create an account'),

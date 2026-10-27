@@ -258,9 +258,14 @@ class _AddFollowUpSheetState extends State<AddFollowUpSheet> {
       }
     } catch (e, st) {
       if (mounted) {
+        final mapped = FirebaseErrorMapper.map(e, st);
         setState(() {
           _isSubmitting = false;
-          _failure = FirebaseErrorMapper.map(e, st);
+          _failure = UnknownFailure(
+            userMessage: 'Failed to record follow-up: ${mapped.userMessage}',
+            retryable: mapped.retryable,
+            original: mapped,
+          );
         });
       }
     }

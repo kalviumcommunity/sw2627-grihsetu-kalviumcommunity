@@ -4,6 +4,7 @@ import '../../widgets/app_spacing.dart';
 import '../../core/models/property.dart';
 import '../../repositories/property_repository.dart';
 import '../../theme/app_palette.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_box.dart';
 import 'property_browse_panels.dart';
@@ -68,7 +69,11 @@ class _TenantPickerScreenState extends State<TenantPickerScreen> {
                   );
             if (unit == null) {
               return const Center(
-                child: Text('This unit is no longer available.'),
+                child: EmptyState.noResults(
+                  icon: Icons.door_front_door_outlined,
+                  title: 'Unit not found',
+                  message: 'This unit is no longer available in the directory.',
+                ),
               );
             }
             return TenantListPanel(
