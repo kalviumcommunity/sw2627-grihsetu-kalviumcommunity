@@ -326,14 +326,14 @@ class _SectionPlaceholder extends StatelessWidget {
           rentRepository: rentRepository,
         );
       }
-      if (role == UserRole.propertyOwner) {
-        return OwnerSummaryScreen(
-          profile: profile,
-          propertyRepository: propertyRepository,
-          complaintRepository: complaintRepository,
-          rentRepository: rentRepository,
-        );
-      }
+    }
+    if (item.label == 'Reports' && role == UserRole.propertyOwner) {
+      return OwnerSummaryScreen(
+        profile: profile,
+        propertyRepository: propertyRepository,
+        complaintRepository: complaintRepository,
+        rentRepository: rentRepository,
+      );
     }
     if (item.label == 'Properties') {
       return const PropertyBrowserScreen(showAppBar: false);
