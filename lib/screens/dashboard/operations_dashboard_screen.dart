@@ -99,7 +99,7 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
         final failure = FirebaseErrorMapper.map(e, st);
         setState(() {
           _failure = failure;
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _errorMessage = failure.userMessage;
           _isLoading = false;
         });
       }

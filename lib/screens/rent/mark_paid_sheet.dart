@@ -220,7 +220,9 @@ class _MarkPaidSheetState extends State<MarkPaidSheet> {
                 IconButton(
                   tooltip: 'Close',
                   icon: Icon(Icons.close, color: palette.muted),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: _isSubmitting
+                      ? null
+                      : () => Navigator.of(context).pop(),
                 ),
               ],
             ),

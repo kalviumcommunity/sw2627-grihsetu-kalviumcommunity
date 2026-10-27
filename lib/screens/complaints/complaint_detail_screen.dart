@@ -927,34 +927,14 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
   }
 
   Widget _buildNotFoundState(BuildContext context) {
-    final palette = context.palette;
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.search_off_outlined, size: 56, color: palette.muted),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Complaint not found',
-              style: Theme.of(context).textTheme.headlineSmall
-                  ?.copyWith(fontFamily: 'Fraunces', color: palette.ink),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'The requested complaint record (#${widget.complaintId}) could not be located.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: palette.muted),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.arrow_back),
-              label: const Text('Go back'),
-            ),
-          ],
-        ),
+      child: EmptyState.noResults(
+        icon: Icons.search_off_outlined,
+        title: 'Complaint not found',
+        message:
+            'The requested complaint record (#${widget.complaintId}) could not be located.',
+        actionLabel: 'Go back',
+        onAction: () => Navigator.of(context).maybePop(),
       ),
     );
   }
