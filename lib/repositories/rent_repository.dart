@@ -132,6 +132,21 @@ class InMemoryRentRepository implements RentRepository {
             note: 'UPI ref #UPI8912',
           ),
         );
+      } else if (record.id == 'rnt_3004') {
+        followUps.add(
+          RentFollowUp(
+            id: 'flw_004',
+            rentRecordId: record.id,
+            method: FollowUpMethod.call,
+            outcome: FollowUpOutcome.promisedToPay,
+            actor: 'Vikram Malhotra',
+            timestamp: DateTime(2026, 10, 5, 14, 0),
+            promisedDate: DateTime(2026, 10, 8),
+            promisedAmount: 35000.0,
+            note: 'Spoke with tenant Kabir Mehta. Traveling out of station; promised NEFT transfer on Oct 8 morning upon return.',
+            nextFollowUpDate: DateTime(2026, 10, 8),
+          ),
+        );
       }
 
       _items[record.id] = RentItem(

@@ -1247,6 +1247,9 @@ class InMemoryComplaintRepository implements ComplaintRepository {
        _auditEvents = initialAuditEvents != null
            ? Map.from(initialAuditEvents)
            : <String, List<ComplaintAuditEvent>>{} {
+    for (final visit in SampleFixtures.sampleMaintenanceVisits) {
+      _maintenanceVisits.putIfAbsent(visit.complaintId, () => []).add(visit);
+    }
     _seedDefaultEvents();
     if (_store != null) {
       _store.addOrUpdateAll(_complaints);
@@ -1290,11 +1293,113 @@ class InMemoryComplaintRepository implements ComplaintRepository {
   void _seedDefaultEvents() {
     for (final c in _complaints) {
       _seedDefaultVisits(c);
-    }
-    final defaultEvents = ComplaintStore.buildDefaultSampleEvents(_complaints);
-    for (final entry in defaultEvents.entries) {
-      if (!_auditEvents.containsKey(entry.key)) {
-        _auditEvents[entry.key] = entry.value;
+      if (!_auditEvents.containsKey(c.id)) {
+        final events = <ComplaintAuditEvent>[
+          ComplaintAuditEvent(
+            id: '${c.id}_evt_created',
+            complaintId: c.id,
+            eventType: ComplaintAuditEventType.complaintCreated,
+            actorId: c.createdBy,
+            timestamp: c.createdAt ?? DateTime(2026, 10, 1, 10, 0),
+            metadata: {
+              'category': c.category.displayLabel,
+              'priority': c.priority.displayLabel,
+              'actorName': 'Tenant',
+              'actorRole': 'Tenant',
+              'note': 'Complaint raised by resident.',
+            },
+          ),
+        ];
+        if (c.firstAssignedAt != null && c.currentTechnicianId != null) {
+          events.add(
+            ComplaintAuditEvent(
+              id: '${c.id}_evt_assigned',
+              complaintId: c.id,
+              eventType: ComplaintAuditEventType.technicianAssigned,
+              actorId: 'usr_001',
+              timestamp: c.firstAssignedAt,
+              metadata: {
+                'technicianId': c.currentTechnicianId,
+                'actorName': 'Riya Sharma',
+                'actorRole': 'Operations Staff',
+                'newTechnicianName': 'Aman Verma',
+              },
+            ),
+          );
+        }
+        if (c.status == ComplaintStatus.inProgress ||
+            c.status == ComplaintStatus.waitingForParts ||
+            c.visitCount > 0) {
+          final visitDate = (c.firstAssignedAt ?? c.createdAt ?? DateTime.now())
+              .add(const Duration(hours: 4));
+          events.add(
+            ComplaintAuditEvent(
+              id: '${c.id}_evt_arrived',
+              complaintId: c.id,
+              eventType: ComplaintAuditEventType.unknown,
+              rawEventType: 'TECHNICIAN_ARRIVED',
+              actorId: c.currentTechnicianId ?? 'usr_002',
+              timestamp: visitDate,
+              metadata: {
+                'actorName': 'Aman Verma',
+                'actorRole': 'Technician',
+                'note': 'Technician arrived at unit for diagnostics.',
+              },
+            ),
+          );
+        }
+        if (c.resolvedAt != null) {
+          events.add(
+            ComplaintAuditEvent(
+              id: '${c.id}_evt_resolved',
+              complaintId: c.id,
+              eventType: ComplaintAuditEventType.complaintResolved,
+              rawEventType: 'REPAIR_COMPLETED',
+              actorId: c.currentTechnicianId ?? 'usr_002',
+              timestamp: c.resolvedAt,
+              metadata: {
+                'actorName': 'Aman Verma',
+                'actorRole': 'Technician',
+                'note': 'Issue resolved and tested working.',
+              },
+            ),
+          );
+        }
+        if (c.closedAt != null) {
+          events.add(
+            ComplaintAuditEvent(
+              id: '${c.id}_evt_closed',
+              complaintId: c.id,
+              eventType: ComplaintAuditEventType.complaintClosed,
+              rawEventType: 'TENANT_CONFIRMED',
+              actorId: c.tenantId,
+              timestamp: c.closedAt,
+              metadata: {
+                'actorName': 'Tenant',
+                'actorRole': 'Tenant',
+                'note': 'Verified fixed, closing complaint.',
+              },
+            ),
+          );
+        }
+        if (c.reopenedAt != null) {
+          events.add(
+            ComplaintAuditEvent(
+              id: '${c.id}_evt_reopened',
+              complaintId: c.id,
+              eventType: ComplaintAuditEventType.complaintReopened,
+              actorId: c.reopenedBy ?? 'usr_001',
+              timestamp: c.reopenedAt,
+              metadata: {
+                'actorName': 'Riya Sharma',
+                'actorRole': 'Complaint Operations',
+                'reason': c.reopenReason ?? 'Issue recurred',
+                'note': 'Complaint reopened upon tenant notification.',
+              },
+            ),
+          );
+        }
+        _auditEvents[c.id] = events;
       }
     }
   }
