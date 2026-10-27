@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../app/user_role.dart' as app_role;
 import '../../core/enums/complaint_audit_event_type.dart';
-import '../../core/enums/complaint_status.dart';
 import '../../core/enums/rent_status.dart';
+import '../../core/fixtures/sample_fixtures.dart';
 import '../../core/models/complaint.dart';
 import '../../core/models/complaint_audit_event.dart';
 import '../../core/models/property.dart';
+import '../../core/models/rent_record.dart';
 import '../../core/models/user.dart';
 import '../../repositories/assignment_repository.dart';
 import '../../repositories/complaint_repository.dart';
@@ -20,14 +21,15 @@ import '../../theme/app_palette.dart';
 import '../../utils/attention_rules.dart';
 import '../../utils/complaint_query.dart';
 import '../../utils/dashboard_metrics.dart';
-import '../../utils/visit_history.dart';
+import '../../utils/property_metrics.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/error_banner.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_box.dart';
 import '../complaints/complaint_detail_screen.dart';
 import '../complaints/search/complaint_search_screen.dart';
-import '../property/unit_picker_screen.dart';
+import '../property/property_summary_card.dart';
+import '../property/property_summary_screen.dart';
 import '../rent/rent_list_screen.dart';
 import 'attention_card.dart';
 
@@ -146,13 +148,14 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
   }
 
   void _onPropertyTapped(Property property) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => UnitPickerScreen(
-          property: property,
-          repository: widget.propertyRepository ?? InMemoryPropertyRepository(),
-        ),
-      ),
+    PropertySummaryScreen.open(
+      context,
+      propertyId: property.id,
+      property: property,
+      propertyRepository: widget.propertyRepository,
+      complaintRepository: widget.complaintRepository,
+      readOnly: widget.readOnly,
+      now: _now,
     );
   }
 
@@ -270,6 +273,7 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
                   _PropertiesAtAGlanceSection(
                     properties: snapshot.properties,
                     complaints: snapshot.complaints,
+                    rentRecords: snapshot.rentRecords,
                     onTapProperty: _onPropertyTapped,
                   ),
                   const SizedBox(height: AppSpacing.lg),
@@ -315,6 +319,7 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
                             _PropertiesAtAGlanceSection(
                               properties: snapshot.properties,
                               complaints: snapshot.complaints,
+                              rentRecords: snapshot.rentRecords,
                               onTapProperty: _onPropertyTapped,
                             ),
                           ],
@@ -883,11 +888,13 @@ class _PropertiesAtAGlanceSection extends StatelessWidget {
   const _PropertiesAtAGlanceSection({
     required this.properties,
     required this.complaints,
+    required this.rentRecords,
     required this.onTapProperty,
   });
 
   final List<Property> properties;
   final List<Complaint> complaints;
+  final List<RentRecord> rentRecords;
   final ValueChanged<Property> onTapProperty;
 
   @override
@@ -912,79 +919,22 @@ class _PropertiesAtAGlanceSection extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           for (final property in properties) ...[
             () {
-              final propComplaints = complaints
-                  .where((c) => c.propertyId == property.id)
+              final propUnits = SampleFixtures.sampleUnits
+                  .where((u) => u.propertyId == property.id)
                   .toList();
-              final openCount = propComplaints
-                  .where(
-                    (c) =>
-                        c.status != ComplaintStatus.closed &&
-                        c.status != ComplaintStatus.cancelled,
-                  )
-                  .length;
-              final repeatCount = propComplaints
-                  .where((c) => repeatInfo(c, complaints).recurringIssue)
-                  .length;
-              final healthRatio = propComplaints.isEmpty
-                  ? 1.0
-                  : (1.0 - (openCount / 10.0)).clamp(0.2, 1.0);
-
-              return Semantics(
-                label:
-                    '${property.name}, $openCount open complaints, $repeatCount recurring',
-                button: true,
-                child: InkWell(
+              final summary = calculatePropertySummary(
+                property: property,
+                units: propUnits,
+                complaints: complaints,
+                rentRecords: rentRecords,
+                periodDays: 30,
+                now: DateTime.now(),
+              );
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: PropertySummaryCard(
+                  summary: summary,
                   onTap: () => onTapProperty(property),
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                property.name,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: palette.ink,
-                                    ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Text(
-                              '$openCount open • $repeatCount repeat',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(color: palette.muted),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.chevron_right,
-                              size: 16,
-                              color: palette.muted,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(2),
-                          child: LinearProgressIndicator(
-                            value: healthRatio,
-                            minHeight: 3,
-                            backgroundColor: palette.raised,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              healthRatio > 0.7
-                                  ? palette.accent
-                                  : palette.warning,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
               );
             }(),

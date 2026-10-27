@@ -5,6 +5,7 @@ import '../core/enums/complaint_priority.dart';
 import '../core/enums/complaint_status.dart';
 import '../core/fixtures/sample_fixtures.dart';
 import '../core/models/complaint.dart';
+import 'app_clock.dart';
 
 /// Available sort options for complaint list.
 enum ComplaintSort {
@@ -329,7 +330,7 @@ bool isComplaintOverdue(Complaint complaint, {DateTime? now}) {
       complaint.status == ComplaintStatus.cancelled) {
     return false;
   }
-  final current = now ?? DateTime.now();
+  final current = now ?? AppClock.nowDateTime;
   final created = complaint.createdAt ?? current;
   final deadline = created.add(slaDurationForPriority(complaint.priority));
   return current.isAfter(deadline);
@@ -368,7 +369,7 @@ List<Complaint> applyFilter(
   ComplaintFilter filter, {
   DateTime? now,
 }) {
-  final effectiveNow = now ?? DateTime.now();
+  final effectiveNow = now ?? AppClock.nowDateTime;
   final query = filter.text?.trim().toLowerCase();
   final words = query != null && query.isNotEmpty
       ? query.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList()

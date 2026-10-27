@@ -11,6 +11,7 @@ import '../screens/complaints/search/complaint_search_screen.dart';
 import '../screens/complaints/technician_queue_screen.dart';
 import '../utils/complaint_query.dart';
 import '../screens/dashboard/operations_dashboard_screen.dart';
+import '../screens/dev/data_checks_screen.dart';
 import '../screens/dev/reference_data_seed_screen.dart';
 import '../screens/dev/widget_gallery.dart';
 import '../screens/property/property_browser_screen.dart';
@@ -115,6 +116,12 @@ class _AppShellState extends State<AppShell> {
                     ),
                   );
                 }
+              } else if (value == 'data_checks') {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const DataChecksScreen(),
+                  ),
+                );
               }
             },
             itemBuilder: (context) {
@@ -139,6 +146,14 @@ class _AppShellState extends State<AppShell> {
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(Icons.widgets_outlined),
                       title: Text('Widget gallery'),
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'data_checks',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.fact_check_outlined),
+                      title: Text('Data checks'),
                     ),
                   ),
                 ],
@@ -300,15 +315,16 @@ class _SectionPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (item.label == 'Overview') {
-      final isOwner = role == UserRole.propertyOwner;
-      return OperationsDashboardScreen(
-        profile: profile,
-        authService: authService,
-        complaintRepository: complaintRepository,
-        propertyRepository: propertyRepository,
-        rentRepository: rentRepository,
-        readOnly: isOwner,
-      );
+      if (role == UserRole.propertyOperations ||
+          role == UserRole.complaintOperations) {
+        return OperationsDashboardScreen(
+          profile: profile,
+          authService: authService,
+          complaintRepository: complaintRepository,
+          propertyRepository: propertyRepository,
+          rentRepository: rentRepository,
+        );
+      }
     }
     if (item.label == 'Properties') {
       return const PropertyBrowserScreen(showAppBar: false);

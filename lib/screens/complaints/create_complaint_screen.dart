@@ -144,26 +144,19 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
     final validation = switch (_step) {
       0 => ComplaintValidators.validate(_draft, requireTenant: !_isTenant),
       1 => ComplaintValidation({
-        if (ComplaintValidators.category(_draft) case final error?)
-          'category': error,
-        if (ComplaintValidators.title(_draft.title) case final error?)
-          'title': error,
-        if (ComplaintValidators.description(
-              _draft.description,
-              priority: _draft.priority,
-            )
-            case final error?)
-          'description': error,
+        'category': ?ComplaintValidators.category(_draft),
+        'title': ?ComplaintValidators.title(_draft.title),
+        'description': ?ComplaintValidators.description(
+          _draft.description,
+          priority: _draft.priority,
+        ),
       }),
       2 => ComplaintValidation({
-        if (ComplaintValidators.attachments(_draft.attachments)
-            case final error?)
-          'attachments': error,
+        'attachments': ?ComplaintValidators.attachments(_draft.attachments),
       }),
       3 => ComplaintValidation({
-        if (ComplaintValidators.visit(_draft) case final error?) 'visit': error,
-        if (ComplaintValidators.phone(_draft.contactPhone) case final error?)
-          'phone': error,
+        'visit': ?ComplaintValidators.visit(_draft),
+        'phone': ?ComplaintValidators.phone(_draft.contactPhone),
       }),
       _ => const ComplaintValidation({}),
     };
@@ -259,12 +252,16 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_created != null)
+    if (_created != null) {
       return _SuccessScreen(complaint: _created!, onAnother: _reset);
+    }
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (_, __) async {
-        if (await _confirmLeave() && mounted) Navigator.pop(context);
+      onPopInvokedWithResult: (_, _) async {
+        final shouldLeave = await _confirmLeave();
+        if (shouldLeave && mounted) {
+          Navigator.of(this.context).pop();
+        }
       },
       child: Scaffold(
         backgroundColor: context.palette.canvas,
@@ -389,9 +386,12 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
         const SizedBox(height: AppSpacing.sm),
         Text('Priority', style: Theme.of(context).textTheme.titleMedium),
         for (final priority in ComplaintPriority.values)
+          // ignore: deprecated_member_use
           RadioListTile<ComplaintPriority>(
             value: priority,
+            // ignore: deprecated_member_use
             groupValue: _draft.priority,
+            // ignore: deprecated_member_use
             onChanged: (value) =>
                 setState(() => _draft = _draft.copyWith(priority: value)),
             title: Text(priority.displayLabel),
@@ -451,7 +451,7 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
         ),
         const SizedBox(height: AppSpacing.sm),
         DropdownButtonFormField<String>(
-          value: _draft.preferredVisitSlot,
+          initialValue: _draft.preferredVisitSlot,
           decoration: _decoration('Preferred time slot', _errors['visit']),
           items: const ['Morning', 'Afternoon', 'Evening', 'Any time']
               .map((slot) => DropdownMenuItem(value: slot, child: Text(slot)))

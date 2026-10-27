@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../widgets/app_spacing.dart';
+import '../../core/fixtures/sample_fixtures.dart';
+import '../../repositories/complaint_store.dart';
 import '../../theme/app_palette.dart';
+import '../../utils/property_metrics.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/app_spacing.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/status_badge.dart';
+import 'property_summary_card.dart';
 import 'property_view_models.dart';
 
 class PropertyListPanel extends StatefulWidget {
@@ -128,74 +132,29 @@ class _PropertyCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => AppCard(
-    selected: selected,
-    onTap: onTap,
-    padding: const EdgeInsets.all(AppSpacing.md),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(
-                data.property.name,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontFamily: 'Fraunces',
-                  color: context.palette.ink,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            if (data.openComplaints > 0)
-              StatusBadge(
-                label: '${data.openComplaints} open',
-                tone: StatusBadgeTone.warning,
-              ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          data.locality,
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: context.palette.muted),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${data.occupiedUnits} of ${data.totalUnits} units occupied',
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: context.palette.ink),
-              ),
-            ),
-            Text(
-              '${data.totalUnits == 0 ? 0 : (data.occupiedUnits / data.totalUnits * 100).round()}%',
-              style: Theme.of(context).textTheme.labelMedium
-                  ?.copyWith(color: context.palette.muted),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Semantics(
-          label: '${data.occupiedUnits} of ${data.totalUnits} units occupied',
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              minHeight: 6,
-              value: data.totalUnits == 0
-                  ? 0
-                  : data.occupiedUnits / data.totalUnits,
-              backgroundColor: context.palette.shimmer,
-              color: context.palette.accent,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    final complaints = ComplaintStore.instance.snapshot
+        .where((c) => c.propertyId == data.property.id)
+        .toList();
+    final rentRecords = SampleFixtures.sampleRentRecords
+        .where((r) => r.propertyId == data.property.id)
+        .toList();
+    final units = data.units.map((u) => u.unit).toList();
+    final summary = calculatePropertySummary(
+      property: data.property,
+      units: units,
+      complaints: complaints.isNotEmpty
+          ? complaints
+          : SampleFixtures.sampleComplaints
+                .where((c) => c.propertyId == data.property.id)
+                .toList(),
+      rentRecords: rentRecords,
+      periodDays: 30,
+      now: DateTime.now(),
+    );
+
+    return PropertySummaryCard(summary: summary, onTap: onTap);
+  }
 }
 
 enum UnitFilter { all, occupied, vacant, complaints }

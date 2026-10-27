@@ -1,5 +1,6 @@
 import '../app/user_role.dart';
 import '../core/enums/complaint_status.dart';
+import 'app_clock.dart';
 
 /// Pure status transition rules and reasoning for GrihSetu complaints.
 abstract final class StatusTransitions {
@@ -12,7 +13,7 @@ abstract final class StatusTransitions {
     int maxDays = tenantReopenWindowDays,
   }) {
     if (closedAt == null) return false;
-    final now = referenceNow ?? DateTime.now();
+    final now = referenceNow ?? AppClock.nowDateTime;
     return now.difference(closedAt).inDays > maxDays;
   }
 }

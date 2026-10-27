@@ -6,8 +6,8 @@ import '../../theme/app_palette.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_box.dart';
 import 'property_browse_panels.dart';
+import 'property_summary_screen.dart';
 import 'property_view_models.dart';
-import 'unit_picker_screen.dart';
 
 class PropertyBrowserScreen extends StatefulWidget {
   const PropertyBrowserScreen({
@@ -52,13 +52,11 @@ class _PropertyBrowserScreenState extends State<PropertyBrowserScreen> {
             if (!snapshot.hasData) return const SkeletonList(itemCount: 4);
             return PropertyListPanel(
               properties: snapshot.data!,
-              onSelected: (item) => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => UnitPickerScreen(
-                    property: item.property,
-                    repository: _repository,
-                  ),
-                ),
+              onSelected: (item) => PropertySummaryScreen.open(
+                context,
+                propertyId: item.property.id,
+                property: item.property,
+                propertyRepository: _repository,
               ),
             );
           },
