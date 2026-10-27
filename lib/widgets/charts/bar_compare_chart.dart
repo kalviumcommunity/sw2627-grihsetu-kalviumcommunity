@@ -133,11 +133,12 @@ class _BarCompareChartState extends State<BarCompareChart>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // 1. Legend
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: 4,
+                  alignment: WrapAlignment.end,
                   children: [
                     _BarLegendBadge(color: color1, label: widget.series1Name),
-                    const SizedBox(width: AppSpacing.md),
                     _BarLegendBadge(color: color2, label: widget.series2Name),
                   ],
                 ),

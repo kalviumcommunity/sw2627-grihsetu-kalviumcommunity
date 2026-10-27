@@ -327,11 +327,11 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
 
   Widget _buildHeaderSection(BuildContext context, OwnerSummary summary) {
     final palette = context.palette;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 620;
+
+        final titleColumn = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -340,21 +340,23 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
                   ?.copyWith(fontWeight: FontWeight.bold, color: palette.ink),
             ),
             const SizedBox(height: 2),
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpacing.sm,
+              runSpacing: 4,
               children: [
                 Text(
                   '${summary.totalProperties} properties • ${summary.totalUnits} units',
                   style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: palette.muted),
                 ),
-                const SizedBox(width: AppSpacing.sm),
                 const LiveStatusChip(label: 'Live'),
               ],
             ),
           ],
-        ),
-        // Period Selector Segmented Button
-        SegmentedButton<int>(
+        );
+
+        final segmentedButton = SegmentedButton<int>(
           segments: const [
             ButtonSegment(value: 7, label: Text('7D')),
             ButtonSegment(value: 30, label: Text('30D')),
@@ -373,8 +375,29 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
-        ),
-      ],
+        );
+
+        if (isCompact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleColumn,
+              const SizedBox(height: AppSpacing.sm),
+              segmentedButton,
+            ],
+          );
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: titleColumn),
+            const SizedBox(width: AppSpacing.md),
+            segmentedButton,
+          ],
+        );
+      },
     );
   }
 
@@ -389,10 +412,14 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
             children: [
               Icon(Icons.auto_awesome, size: 18, color: palette.accent),
               const SizedBox(width: AppSpacing.xs),
-              Text(
-                'Key Highlights & Observations',
-                style: Theme.of(context).textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold, color: palette.ink),
+              Expanded(
+                child: Text(
+                  'Key Highlights & Observations',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: palette.ink,
+                  ),
+                ),
               ),
             ],
           ),

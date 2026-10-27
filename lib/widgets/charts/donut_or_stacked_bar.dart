@@ -251,11 +251,14 @@ class _LegendItem extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            Text(
-              '${segment.label} ($pct%)',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontWeight: isHighlighted ? FontWeight.bold : FontWeight.w500,
-                color: context.palette.ink,
+            Flexible(
+              child: Text(
+                '${segment.label} ($pct%)',
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: isHighlighted ? FontWeight.bold : FontWeight.w500,
+                  color: context.palette.ink,
+                ),
               ),
             ),
           ],

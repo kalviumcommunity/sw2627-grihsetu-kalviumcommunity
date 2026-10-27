@@ -126,11 +126,12 @@ class _TrendLineChartState extends State<TrendLineChart>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // 1. Legend Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: 4,
+                  alignment: WrapAlignment.end,
                   children: [
                     _LegendBadge(color: createdC, label: widget.createdLabel),
-                    const SizedBox(width: AppSpacing.md),
                     _LegendBadge(color: resolvedC, label: widget.resolvedLabel),
                   ],
                 ),
