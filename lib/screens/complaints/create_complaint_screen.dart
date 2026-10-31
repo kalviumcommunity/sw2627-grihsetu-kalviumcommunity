@@ -142,7 +142,12 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
 
   Future<void> _continue() async {
     final validation = switch (_step) {
-      0 => ComplaintValidators.validate(_draft, requireTenant: !_isTenant),
+      0 => ComplaintValidation({
+        'location': ?ComplaintValidators.location(
+          _draft,
+          requireTenant: !_isTenant,
+        ),
+      }),
       1 => ComplaintValidation({
         'category': ?ComplaintValidators.category(_draft),
         'title': ?ComplaintValidators.title(_draft.title),
