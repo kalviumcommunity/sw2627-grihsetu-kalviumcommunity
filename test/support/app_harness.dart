@@ -7,7 +7,7 @@ import 'package:grihsetu/core/models/user.dart';
 import 'package:grihsetu/repositories/complaint_store.dart';
 import 'package:grihsetu/utils/app_clock.dart';
 
-const _testNow = DateTime.utc(2026, 10, 6, 12);
+final _testNow = DateTime.utc(2026, 10, 6, 12);
 
 ComplaintStore get harnessStore => ComplaintStore.instance;
 
@@ -23,7 +23,7 @@ Future<void> pumpApp(
   tester.platformDispatcher.platformBrightnessTestValue = brightness;
   tester.platformDispatcher.textScaleFactorTestValue = textScale;
 
-  AppClock.current = const FixedClock(_testNow);
+  AppClock.current = FixedClock(_testNow);
   ComplaintStore.resetInstance(
     ComplaintStore(
       initialComplaints: SampleFixtures.sampleComplaints,
