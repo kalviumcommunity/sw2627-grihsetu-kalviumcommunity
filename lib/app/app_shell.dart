@@ -93,53 +93,53 @@ class _AppShellState extends State<AppShell> {
       appBar: AppBar(
         title: const Text(AppConstants.appName),
         actions: [
-          PopupMenuButton<String>(
-            tooltip: 'Developer tools',
-            icon: const Icon(Icons.swap_horiz),
-            onSelected: (value) {
-              if (value == 'gallery') {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const WidgetGalleryScreen(),
-                  ),
-                );
-              } else if (value == 'seed_reference') {
-                final currentProfile = widget.profile;
-                if (currentProfile != null &&
-                    currentProfile.isAuthorized &&
-                    currentProfile.role.isOperationsStaff) {
+          if (kDebugMode)
+            PopupMenuButton<String>(
+              tooltip: 'Developer tools',
+              icon: const Icon(Icons.swap_horiz),
+              onSelected: (value) {
+                if (value == 'gallery') {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => ReferenceDataSeedScreen(
-                        profile: currentProfile,
-                        seedService: widget.seedService,
+                      builder: (_) => const WidgetGalleryScreen(),
+                    ),
+                  );
+                } else if (value == 'seed_reference') {
+                  final currentProfile = widget.profile;
+                  if (currentProfile != null &&
+                      currentProfile.isAuthorized &&
+                      currentProfile.role.isOperationsStaff) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => ReferenceDataSeedScreen(
+                          profile: currentProfile,
+                          seedService: widget.seedService,
+                        ),
                       ),
+                    );
+                  }
+                } else if (value == 'data_checks') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DataChecksScreen(),
                     ),
                   );
                 }
-              } else if (value == 'data_checks') {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const DataChecksScreen(),
-                  ),
-                );
-              }
-            },
-            itemBuilder: (context) {
-              final isOpsStaff =
-                  widget.profile?.isAuthorized == true &&
-                  widget.profile!.role.isOperationsStaff;
-              return [
-                if (isOpsStaff)
-                  const PopupMenuItem(
-                    value: 'seed_reference',
-                    child: ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.dataset_outlined),
-                      title: Text('Seed reference data'),
+              },
+              itemBuilder: (context) {
+                final isOpsStaff =
+                    widget.profile?.isAuthorized == true &&
+                    widget.profile!.role.isOperationsStaff;
+                return [
+                  if (isOpsStaff)
+                    const PopupMenuItem(
+                      value: 'seed_reference',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.dataset_outlined),
+                        title: Text('Seed reference data'),
+                      ),
                     ),
-                  ),
-                if (kDebugMode) ...[
                   if (isOpsStaff) const PopupMenuDivider(),
                   const PopupMenuItem(
                     value: 'gallery',
@@ -157,10 +157,9 @@ class _AppShellState extends State<AppShell> {
                       title: Text('Data checks'),
                     ),
                   ),
-                ],
-              ];
-            },
-          ),
+                ];
+              },
+            ),
           IconButton(
             tooltip: 'Sign out',
             icon: _isSigningOut
