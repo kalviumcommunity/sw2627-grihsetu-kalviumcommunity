@@ -19,6 +19,7 @@ import '../screens/rent/rent_list_screen.dart';
 import '../services/auth_failure.dart';
 import '../services/auth_service.dart';
 import '../services/reference_data_seed_service.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/profile_header.dart';
 
 class AppShell extends StatefulWidget {
@@ -366,19 +367,13 @@ class _SectionPlaceholder extends StatelessWidget {
         showAppBar: false,
       );
     }
-    final theme = Theme.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(item.selectedIcon, size: 48, color: theme.colorScheme.primary),
-            const SizedBox(height: 16),
-            Text(item.label, style: theme.textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text('${role.displayLabel} workspace'),
-          ],
+        child: EmptyState(
+          icon: item.selectedIcon,
+          title: item.label,
+          message: '${role.displayLabel} tools will appear here.',
         ),
       ),
     );
