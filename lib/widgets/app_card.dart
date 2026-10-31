@@ -35,50 +35,54 @@ class _AppCardState extends State<AppCard> {
         : _hovered
         ? palette.raised
         : palette.surface;
-    return FocusableActionDetector(
-      onShowFocusHighlight: (focused) => setState(() => _focused = focused),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() {
-          _hovered = false;
-          _pressed = false;
-        }),
-        child: Material(
-          color: fill,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: widget.selected || _focused
-                  ? palette.accent
-                  : palette.border,
-              width: widget.selected || _focused ? 2 : 1,
+    return Semantics(
+      button: widget.onTap != null,
+      selected: widget.selected ? true : null,
+      child: FocusableActionDetector(
+        onShowFocusHighlight: (focused) => setState(() => _focused = focused),
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() {
+            _hovered = false;
+            _pressed = false;
+          }),
+          child: Material(
+            color: fill,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: widget.selected || _focused
+                    ? palette.accent
+                    : palette.border,
+                width: widget.selected || _focused ? 2 : 1,
+              ),
             ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: widget.onTap,
-            focusColor: palette.accentSoft,
-            onHighlightChanged: widget.onTap == null
-                ? null
-                : (pressed) => setState(() => _pressed = pressed),
-            borderRadius: BorderRadius.circular(12),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 48),
-              child: Padding(
-                padding: widget.padding,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(child: widget.child),
-                    if (widget.selected) ...[
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.check_circle,
-                        color: palette.accent,
-                        semanticLabel: 'Selected',
-                      ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: widget.onTap,
+              focusColor: palette.accentSoft,
+              onHighlightChanged: widget.onTap == null
+                  ? null
+                  : (pressed) => setState(() => _pressed = pressed),
+              borderRadius: BorderRadius.circular(12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Padding(
+                  padding: widget.padding,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: widget.child),
+                      if (widget.selected) ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.check_circle,
+                          color: palette.accent,
+                          semanticLabel: 'Selected',
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
