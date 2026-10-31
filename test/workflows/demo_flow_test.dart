@@ -116,10 +116,9 @@ void main() {
       expect(find.textContaining('Kabir'), findsWidgets);
       expect(store.getEvents(complaintId), isNotEmpty);
     },
-    skip:
-        'GRIH-053 known issue: repeated role-shell repumps expose a '
-        'dashboard card overflow and then lose the technician navigation '
-        'destination in the demo fixture.',
+    // GRIH-053 known issue: repeated role-shell repumps expose a dashboard
+    // card overflow and then lose the technician navigation destination.
+    skip: true,
   );
 }
 
