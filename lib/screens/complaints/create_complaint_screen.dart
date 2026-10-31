@@ -306,7 +306,9 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
   Widget _stepBody() => SingleChildScrollView(
     padding: const EdgeInsets.all(AppSpacing.md),
     child: AnimatedSwitcher(
-      duration: const Duration(milliseconds: 200),
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 200),
       child: switch (_step) {
         0 => _whereStep(),
         1 => _whatStep(),
