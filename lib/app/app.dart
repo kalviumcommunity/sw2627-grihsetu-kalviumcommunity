@@ -17,11 +17,13 @@ class GrihSetuApp extends StatelessWidget {
     this.webFonts = true,
     this.enableAuthentication = false,
     this.authService,
+    this.profile,
   });
 
   final bool webFonts; // false in tests, so no font downloads
   final bool enableAuthentication;
   final AuthService? authService;
+  final AppUser? profile;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -32,7 +34,7 @@ class GrihSetuApp extends StatelessWidget {
     themeMode: ThemeMode.system,
     home: enableAuthentication
         ? AuthGate(authService: authService ?? AuthService.firebase())
-        : const AppShell(profile: _previewProfile),
+        : AppShell(profile: profile ?? _previewProfile),
   );
 }
 
