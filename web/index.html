@@ -31,8 +31,34 @@
 
   <title>GrihSetu | Property maintenance, connected</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    body { margin: 0; background: #F6F2EA; }
+    #app-loading {
+      align-items: center;
+      color: #172522;
+      display: flex;
+      font: 600 16px system-ui, sans-serif;
+      gap: 12px;
+      inset: 0;
+      justify-content: center;
+      position: fixed;
+    }
+    #app-loading::before {
+      animation: loading-pulse 1s ease-in-out infinite alternate;
+      background: #0F4C45;
+      border-radius: 50%;
+      content: "";
+      height: 16px;
+      width: 16px;
+    }
+    @keyframes loading-pulse { to { opacity: .35; } }
+    @media (prefers-reduced-motion: reduce) {
+      #app-loading::before { animation: none; }
+    }
+  </style>
 </head>
 <body>
+  <div id="app-loading" role="status" aria-live="polite">Opening GrihSetu</div>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -41,6 +67,11 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      document.getElementById('app-loading')?.remove();
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
