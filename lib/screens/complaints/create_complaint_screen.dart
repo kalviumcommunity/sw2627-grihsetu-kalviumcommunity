@@ -66,6 +66,7 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
       final tenant = SampleFixtures.sampleTenants.first;
       final unit = SampleFixtures.sampleUnits.first;
       final property = SampleFixtures.sampleProperties.first;
+      final phoneDigits = tenant.phone?.replaceAll(RegExp(r'\D'), '') ?? '';
       _draft = _draft.copyWith(
         propertyId: property.id,
         propertyName: property.name,
@@ -73,7 +74,9 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
         unitNumber: unit.unitNumber,
         tenantId: tenant.id,
         tenantName: tenant.name,
-        contactPhone: tenant.phone?.replaceAll(RegExp(r'\D'), '') ?? '',
+        contactPhone: phoneDigits.length == 12 && phoneDigits.startsWith('91')
+            ? phoneDigits.substring(2)
+            : phoneDigits,
       );
       _phone.text = _draft.contactPhone;
     }
@@ -142,7 +145,12 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
 
   Future<void> _continue() async {
     final validation = switch (_step) {
-      0 => ComplaintValidators.validate(_draft, requireTenant: !_isTenant),
+      0 => ComplaintValidation({
+        'location': ?ComplaintValidators.location(
+          _draft,
+          requireTenant: !_isTenant,
+        ),
+      }),
       1 => ComplaintValidation({
         'category': ?ComplaintValidators.category(_draft),
         'title': ?ComplaintValidators.title(_draft.title),
