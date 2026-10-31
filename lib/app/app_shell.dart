@@ -372,7 +372,7 @@ class _SectionPlaceholder extends StatelessWidget {
         child: EmptyState(
           icon: item.selectedIcon,
           title: item.label,
-          message: '${role.displayLabel} tools will appear here.',
+          message: '${role.displayLabel} workspace',
         ),
       ),
     );
