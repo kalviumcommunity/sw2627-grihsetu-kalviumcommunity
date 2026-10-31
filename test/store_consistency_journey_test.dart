@@ -209,7 +209,15 @@ void main() {
           rentRecords: rentRecords,
           now: clock.now(),
         );
-        expect(attention, isNotNull);
+        for (final item in attention.items.where(
+          (item) => item.matchedComplaints.any((match) => match.id == cmpId),
+        )) {
+          expect(item.targetFilter, isNotNull);
+          expect(
+            applyFilter(allComplaints, item.targetFilter!).map((c) => c.id),
+            contains(cmpId),
+          );
+        }
 
         // 5. Property summary
         final summary = calculatePropertySummary(
@@ -223,6 +231,10 @@ void main() {
         expect(summary.totalUnits, 1);
         expect(summary.occupiedUnits, 1);
         expect(summary.collectionRate, 100.0);
+        expect(rentRecords.single.propertyId, complaint.propertyId);
+        expect(rentRecords.single.unitId, complaint.unitId);
+        expect(rentRecords.single.tenantId, complaint.tenantId);
+        expect(rentRecords.single.status, RentStatus.paid);
 
         if (expectedStatus.isActive) {
           expect(summary.openComplaints, 1);
