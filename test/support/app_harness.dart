@@ -69,7 +69,9 @@ Future<void> enterByLabel(
   String label,
   String value,
 ) async {
-  final field = find.widgetWithText(TextFormField, label);
+  final formField = find.widgetWithText(TextFormField, label);
+  final textField = find.widgetWithText(TextField, label);
+  final field = formField.evaluate().isNotEmpty ? formField : textField;
   expect(field, findsOneWidget);
   await tester.ensureVisible(field);
   await tester.enterText(field, value);
