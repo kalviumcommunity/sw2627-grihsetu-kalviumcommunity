@@ -21,6 +21,7 @@ import '../services/technician_assignment_service.dart';
 import '../screens/technician/visit/visit_models.dart';
 import '../services/errors/app_failure.dart';
 import '../services/errors/run_guarded.dart';
+import '../utils/app_clock.dart';
 import '../utils/visit_validators.dart';
 import 'complaint_store.dart';
 
@@ -1507,7 +1508,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
         final id = input.submissionId?.trim().isNotEmpty == true
             ? input.submissionId!.trim()
             : 'complaint_${DateTime.now().millisecondsSinceEpoch}';
-        final now = DateTime.now();
+        final now = AppClock.current.now();
         final complaint = Complaint(
           id: id,
           tenantId: input.tenantId.trim(),
@@ -1774,7 +1775,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
 
     final current = _complaints[index];
     ComplaintTransitionGuard.validateTransition(current.status, newStatus);
-    final now = DateTime.now();
+    final now = AppClock.current.now();
     final updated = Complaint(
       id: current.id,
       tenantId: current.tenantId,
@@ -1861,7 +1862,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     }
 
     final current = _complaints[index];
-    final now = DateTime.now();
+    final now = AppClock.current.now();
     final updated = Complaint(
       id: current.id,
       tenantId: current.tenantId,
@@ -1922,7 +1923,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     }
 
     final current = _complaints[index];
-    final now = DateTime.now();
+    final now = AppClock.current.now();
     final isReassign =
         current.currentTechnicianId != null &&
         current.currentTechnicianId!.isNotEmpty &&
@@ -2065,7 +2066,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     }
 
     final current = _complaints[index];
-    final now = DateTime.now();
+    final now = AppClock.current.now();
     var activeVisitId = current.activeVisitId;
     var visitCount = current.visitCount;
     if (step == VisitWorkflowStep.accepted &&
@@ -2165,7 +2166,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       await Future<void>.delayed(operationDelay);
     }
 
-    final now = DateTime.now();
+    final now = AppClock.current.now();
     final event = ComplaintAuditEvent(
       id: '${complaintId}_photo_${now.millisecondsSinceEpoch}',
       complaintId: complaintId,
@@ -2201,7 +2202,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
       await Future<void>.delayed(operationDelay);
     }
 
-    final now = DateTime.now();
+    final now = AppClock.current.now();
     final event = ComplaintAuditEvent(
       id: '${complaintId}_part_${now.millisecondsSinceEpoch}',
       complaintId: complaintId,
@@ -2244,7 +2245,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     }
 
     final current = _complaints[index];
-    final now = DateTime.now();
+    final now = AppClock.current.now();
 
     var activeVisitId = current.activeVisitId;
     var visitCount = current.visitCount;
@@ -2427,7 +2428,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     }
 
     final current = _complaints[index];
-    final now = DateTime.now();
+    final now = AppClock.current.now();
     var activeVisitId = current.activeVisitId;
     var visitCount = current.visitCount;
     if (activeVisitId == null || activeVisitId.trim().isEmpty) {
@@ -2544,7 +2545,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
     }
 
     final current = _complaints[index];
-    final now = DateTime.now();
+    final now = AppClock.current.now();
 
     final isReopen = change.to == ComplaintStatus.reopened;
     final updated = Complaint(
