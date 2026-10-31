@@ -12,7 +12,7 @@ class AppTheme {
   static ThemeData _build(AppPalette p, Brightness b, bool webFonts) {
     final text = buildTextTheme(p, webFonts: webFonts);
     final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
     );
     return ThemeData(
       useMaterial3: true,
@@ -71,15 +71,15 @@ class AppTheme {
         filled: true,
         fillColor: p.surface,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: p.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: p.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: p.primary, width: 2),
         ),
       ),
