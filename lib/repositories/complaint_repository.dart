@@ -1755,6 +1755,7 @@ class InMemoryComplaintRepository implements ComplaintRepository {
         await _checkDelayAndFailure();
         final list = _auditEvents.putIfAbsent(event.complaintId, () => []);
         list.add(event);
+        _activeStore.setEvents(event.complaintId, list);
         _emitAudit(event.complaintId);
       });
 
