@@ -285,6 +285,29 @@ void main() {
       expect(slaAttention.matchedComplaints, [breached]);
     });
 
+    test('health score caps penalties per attention type', () {
+      final score = calculateAttentionHealthScore([
+        AttentionItem(
+          type: AttentionType.reopened,
+          severity: AttentionSeverity.urgent,
+          title: 'Reopened',
+          subtitle: 'Many reopened complaints',
+          count: 50,
+          oldestAge: const Duration(days: 2),
+        ),
+        AttentionItem(
+          type: AttentionType.waitingForParts,
+          severity: AttentionSeverity.amber,
+          title: 'Parts',
+          subtitle: 'Many parts delays',
+          count: 50,
+          oldestAge: const Duration(days: 2),
+        ),
+      ]);
+
+      expect(score, 68);
+    });
+
     // -------------------------------------------------------------------------
     // TEST 4: The all-clear state when there is nothing to show
     // -------------------------------------------------------------------------

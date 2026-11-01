@@ -71,6 +71,21 @@ class AttentionAnalysis {
   bool get isAllClear => items.isEmpty;
 }
 
+/// Starts at 100 and subtracts a capped penalty for each attention type.
+/// Urgent types cost 12 plus 2 per additional record (maximum 20); amber
+/// types cost 6 plus 1 per additional record (maximum 12).
+int calculateAttentionHealthScore(Iterable<AttentionItem> items) {
+  final penalty = items.fold<int>(0, (total, item) {
+    final extraRecords = (item.count - 1).clamp(0, 1000000);
+    final itemPenalty = switch (item.severity) {
+      AttentionSeverity.urgent => (12 + (extraRecords * 2)).clamp(0, 20),
+      AttentionSeverity.amber => (6 + extraRecords).clamp(0, 12),
+    };
+    return total + itemPenalty;
+  });
+  return (100 - penalty).clamp(0, 100);
+}
+
 /// Computes expected resolution deadline based on complaint priority.
 DateTime expectedResolutionDeadline(Complaint c) {
   final created = c.createdAt ?? AppClock.nowDateTime;
@@ -444,19 +459,7 @@ AttentionAnalysis analyzeAttention({
     return b.oldestAge.compareTo(a.oldestAge);
   });
 
-  // Calculate health score: 100 - (urgent * 12 + amber * 4)
-  var urgentCount = 0;
-  var amberCount = 0;
-  for (final item in items) {
-    if (item.severity == AttentionSeverity.urgent) {
-      urgentCount += item.count;
-    } else {
-      amberCount += item.count;
-    }
-  }
-
-  final deduction = (urgentCount * 12) + (amberCount * 4);
-  final healthScore = (100 - deduction).clamp(0, 100);
+  final healthScore = calculateAttentionHealthScore(items);
 
   return AttentionAnalysis(items: items, healthScore: healthScore);
 }

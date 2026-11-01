@@ -455,29 +455,32 @@ class _GreetingHeader extends StatelessWidget {
                   ),
                 ),
               ],
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: analysis.healthScore >= 80
-                      ? palette.success.withValues(alpha: 0.15)
-                      : palette.warning.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: analysis.healthScore >= 80
-                        ? palette.success.withValues(alpha: 0.4)
-                        : palette.warning.withValues(alpha: 0.4),
+              Tooltip(
+                message: 'Starts at 100. Capped penalties are applied per attention type: up to 20 urgent or 12 at risk.',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
                   ),
-                ),
-                child: Text(
-                  'Health Score: ${analysis.healthScore}/100',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+                  decoration: BoxDecoration(
                     color: analysis.healthScore >= 80
-                        ? palette.success
-                        : palette.warning,
+                        ? palette.success.withValues(alpha: 0.15)
+                        : palette.warning.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: analysis.healthScore >= 80
+                          ? palette.success.withValues(alpha: 0.4)
+                          : palette.warning.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Text(
+                    'Health Score: ${analysis.healthScore}/100',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: analysis.healthScore >= 80
+                          ? palette.success
+                          : palette.warning,
+                    ),
                   ),
                 ),
               ),
