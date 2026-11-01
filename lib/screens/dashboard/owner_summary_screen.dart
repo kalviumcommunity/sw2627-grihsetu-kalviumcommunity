@@ -1041,7 +1041,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
         title: const Text('Print Summary'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        elevation: 1,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.copy_outlined),
@@ -1089,7 +1089,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
               border: TableBorder.all(color: Colors.black26),
               children: [
                 TableRow(
-                  decoration: const BoxDecoration(color: Color(0xFFEEEEEE)),
+                  decoration: const BoxDecoration(color: Colors.black12),
                   children: const [
                     Padding(
                       padding: EdgeInsets.all(6),
@@ -1195,7 +1195,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
               border: TableBorder.all(color: Colors.black26),
               children: [
                 TableRow(
-                  decoration: const BoxDecoration(color: Color(0xFFEEEEEE)),
+                  decoration: const BoxDecoration(color: Colors.black12),
                   children: const [
                     Padding(
                       padding: EdgeInsets.all(6),
