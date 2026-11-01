@@ -21,14 +21,8 @@ class PropertySummaryCard extends StatelessWidget {
   final VoidCallback? onTap;
   final bool showSparkline;
 
-  String _formatDuration(Duration? d) {
-    if (d == null) return '--';
-    final hours = d.inMinutes / 60.0;
-    if (hours < 1.0) {
-      return '${d.inMinutes}m';
-    }
-    return '${hours.toStringAsFixed(1)}h';
-  }
+  String _formatDuration(Duration? duration) =>
+      formatHumanDuration(duration, fallback: '--');
 
   @override
   Widget build(BuildContext context) {

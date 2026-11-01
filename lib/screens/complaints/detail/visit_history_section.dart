@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_colors.dart';
+import '../../../utils/display_formatters.dart';
 import '../../../utils/visit_history.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/app_spacing.dart';
@@ -54,13 +55,7 @@ class _VisitHistorySectionState extends State<VisitHistorySection> {
     return '$m ${date.day}, ${date.year}';
   }
 
-  String _formatDuration(Duration d) {
-    if (d.inHours > 0) {
-      final mins = d.inMinutes.remainder(60);
-      return mins > 0 ? '${d.inHours}h ${mins}m' : '${d.inHours}h';
-    }
-    return '${d.inMinutes} min';
-  }
+  String _formatDuration(Duration duration) => formatHumanDuration(duration);
 
   @override
   Widget build(BuildContext context) {

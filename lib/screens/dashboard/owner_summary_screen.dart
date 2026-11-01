@@ -1282,14 +1282,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
     };
   }
 
-  String _formatDuration(Duration d) {
-    if (d.inHours < 24) {
-      return '${d.inHours}h ${d.inMinutes.remainder(60)}m';
-    }
-    final days = d.inDays;
-    final hours = d.inHours.remainder(24);
-    return '${days}d ${hours}h';
-  }
+  String _formatDuration(Duration duration) => formatHumanDuration(duration);
 }
 
 class OwnerKpiCard extends StatelessWidget {

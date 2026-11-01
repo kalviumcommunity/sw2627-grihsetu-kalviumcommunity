@@ -82,14 +82,8 @@ class _PropertySummaryScreenState extends State<PropertySummaryScreen> {
     now: _effectiveNow,
   );
 
-  String _formatDuration(Duration? d) {
-    if (d == null) return 'N/A';
-    final hours = d.inMinutes / 60.0;
-    if (hours < 1.0) {
-      return '${d.inMinutes}m';
-    }
-    return '${hours.toStringAsFixed(1)}h';
-  }
+  String _formatDuration(Duration? duration) =>
+      formatHumanDuration(duration, fallback: 'N/A');
 
   void _openAllComplaints() {
     ComplaintSearchScreen.open(
