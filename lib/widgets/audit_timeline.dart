@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_palette.dart';
-import '../utils/date_time_formatters.dart';
+import '../utils/display_formatters.dart';
 
 enum AuditTone { neutral, accent, success, warning, danger }
 
@@ -31,7 +31,6 @@ class AuditTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -42,26 +41,15 @@ class AuditTimeline extends StatelessWidget {
             connector: index < events.length - 1,
             elapsed: index == 0
                 ? null
-                : _elapsed(
+                : formatHumanDuration(
                     events[index].timestamp
                         .difference(events[index - 1].timestamp)
                         .abs(),
                   ),
-            color: _toneColor(palette, events[index].tone),
           ),
       ],
     );
   }
-
-  Color _toneColor(AppPalette palette, AuditTone tone) => switch (tone) {
-    AuditTone.neutral => palette.muted,
-    AuditTone.accent => palette.accent,
-    AuditTone.success => palette.success,
-    AuditTone.warning => palette.warning,
-    AuditTone.danger => palette.danger,
-  };
-
-  String _elapsed(Duration duration) => formatBetweenEventsDuration(duration);
 }
 
 class _TimelineRow extends StatelessWidget {
@@ -70,14 +58,12 @@ class _TimelineRow extends StatelessWidget {
     required this.latest,
     required this.connector,
     required this.elapsed,
-    required this.color,
   });
 
   final AuditEvent event;
   final bool latest;
   final bool connector;
   final String? elapsed;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +77,7 @@ class _TimelineRow extends StatelessWidget {
             child: Column(
               children: [
                 if (latest)
-                  _PulsingDot(color: color)
+                  _PulsingDot(color: palette.accent)
                 else
                   Padding(
                     padding: const EdgeInsets.only(top: 5),
@@ -99,8 +85,9 @@ class _TimelineRow extends StatelessWidget {
                       width: 12,
                       height: 12,
                       decoration: BoxDecoration(
-                        color: color,
+                        color: palette.surface,
                         shape: BoxShape.circle,
+                        border: Border.all(color: palette.primary, width: 2),
                       ),
                     ),
                   ),
@@ -125,13 +112,9 @@ class _TimelineRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${event.actor} · ${event.role}',
-                    style: Theme.of(context).textTheme.bodyMedium
-                        ?.copyWith(color: palette.muted),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    formatDateTime(event.timestamp),
+                    '${event.actor} · ${event.role} · '
+                    '${formatDateTime(event.timestamp)}'
+                    '${elapsed == null ? '' : ' · +$elapsed'}',
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: palette.muted),
                   ),
@@ -141,14 +124,6 @@ class _TimelineRow extends StatelessWidget {
                       event.note!,
                       style: Theme.of(context).textTheme.bodyMedium
                           ?.copyWith(color: palette.ink),
-                    ),
-                  ],
-                  if (elapsed != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      elapsed!,
-                      style: Theme.of(context).textTheme.labelMedium
-                          ?.copyWith(color: palette.accent),
                     ),
                   ],
                 ],
@@ -181,13 +156,20 @@ class _PulsingDotState extends State<_PulsingDot>
       vsync: this,
       duration: const Duration(milliseconds: 1300),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     final isUnderTest = WidgetsBinding.instance.runtimeType.toString().contains(
       'Test',
     );
-    if (!isUnderTest) {
+    if (disableAnimations || isUnderTest) {
+      _controller.stop();
+      _controller.value = 1;
+    } else if (!_controller.isAnimating) {
       _controller.repeat(reverse: true);
-    } else {
-      _controller.value = 1.0;
     }
   }
 
@@ -206,13 +188,10 @@ class _PulsingDotState extends State<_PulsingDot>
       decoration: BoxDecoration(
         color: widget.color,
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: widget.color.withValues(alpha: 0.28),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ],
+        border: Border.all(
+          color: widget.color.withValues(alpha: .35),
+          width: 2,
+        ),
       ),
     ),
   );

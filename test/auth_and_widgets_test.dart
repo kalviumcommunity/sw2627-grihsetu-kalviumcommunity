@@ -44,7 +44,7 @@ void main() {
       ),
     );
     expect(find.text('Event 0'), findsOneWidget);
-    expect(find.text('Actor 0 · Technician'), findsOneWidget);
+    expect(find.textContaining('Actor 0 · Technician ·'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -63,7 +63,7 @@ void main() {
     for (var index = 0; index < 5; index++) {
       expect(find.text('Event $index'), findsOneWidget);
     }
-    expect(find.text('1h between events'), findsNWidgets(4));
+    expect(find.textContaining('· +1 hrs'), findsNWidgets(4));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
