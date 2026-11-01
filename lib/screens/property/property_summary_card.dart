@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_palette.dart';
+import '../../utils/display_formatters.dart';
 import '../../utils/property_metrics.dart';
-import '../../utils/rent_rules.dart';
 import '../../widgets/app_spacing.dart';
 
 /// Compact operational summary card for a property.
@@ -47,7 +47,7 @@ class PropertySummaryCard extends StatelessWidget {
     return Semantics(
       label:
           'Property summary for ${summary.propertyName}. '
-          '${summary.openComplaints} open complaints, '
+          '${plural(summary.openComplaints, 'open complaint')}, '
           'SLA $slaDisplay, '
           '${summary.overdueRentCount} overdue rent records. Tap to view detailed summary.',
       button: true,

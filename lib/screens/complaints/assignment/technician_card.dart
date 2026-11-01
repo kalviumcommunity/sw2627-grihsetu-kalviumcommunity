@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:grihsetu/core/enums/complaint_category.dart';
 import 'package:grihsetu/repositories/assignment_repository.dart';
 import 'package:grihsetu/theme/app_palette.dart';
+import 'package:grihsetu/utils/display_formatters.dart';
 import 'package:grihsetu/widgets/app_spacing.dart';
 import 'package:grihsetu/widgets/repeat_indicator.dart';
 import 'package:grihsetu/widgets/status_badge.dart';
@@ -284,7 +285,7 @@ class _WorkloadBar extends StatelessWidget {
     return Row(
       children: [
         Text(
-          'Today: $jobCount jobs',
+          'Today: ${plural(jobCount, 'job')}',
           style: theme.textTheme.bodySmall?.copyWith(
             color: palette.muted,
             fontSize: 11,

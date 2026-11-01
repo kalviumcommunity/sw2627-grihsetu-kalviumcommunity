@@ -21,6 +21,7 @@ import '../../theme/app_palette.dart';
 import '../../utils/attention_rules.dart';
 import '../../utils/complaint_query.dart';
 import '../../utils/dashboard_metrics.dart';
+import '../../utils/display_formatters.dart';
 import '../../utils/property_metrics.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/error_banner.dart';
@@ -711,7 +712,7 @@ class _TechnicianWorkloadSection extends StatelessWidget {
           for (final tech in technicians) ...[
             Semantics(
               label:
-                  '${tech.name}, ${tech.todayJobCount} jobs today, ${tech.availability.label}',
+                  '${tech.name}, ${plural(tech.todayJobCount, 'job')} today, ${tech.availability.label}',
               button: true,
               child: InkWell(
                 onTap: () => onTapTechnician(tech),
@@ -749,7 +750,7 @@ class _TechnicianWorkloadSection extends StatelessWidget {
                                       ),
                                 ),
                                 Text(
-                                  '${tech.todayJobCount} jobs',
+                                  plural(tech.todayJobCount, 'job'),
                                   style: Theme.of(context).textTheme.labelSmall
                                       ?.copyWith(color: palette.muted),
                                 ),

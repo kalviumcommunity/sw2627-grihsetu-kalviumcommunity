@@ -7,6 +7,7 @@ import '../core/models/complaint.dart';
 import '../core/models/rent_record.dart';
 import 'app_clock.dart';
 import 'complaint_query.dart';
+import 'display_formatters.dart';
 import 'rent_rules.dart';
 import 'visit_history.dart';
 
@@ -152,7 +153,8 @@ AttentionAnalysis analyzeAttention({
             ? AttentionSeverity.urgent
             : AttentionSeverity.amber,
         title: 'Unassigned complaints',
-        subtitle: '${unassignedList.length} awaiting technician assignment',
+        subtitle:
+            '${plural(unassignedList.length, 'complaint')} awaiting technician assignment',
         count: unassignedList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -183,7 +185,8 @@ AttentionAnalysis analyzeAttention({
         type: AttentionType.slaRiskOrBreached,
         severity: isUrgent ? AttentionSeverity.urgent : AttentionSeverity.amber,
         title: 'SLA breached or at risk',
-        subtitle: '${slaList.length} past response or resolution threshold',
+        subtitle:
+            '${plural(slaList.length, 'complaint')} past the resolution threshold',
         count: slaList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -231,7 +234,8 @@ AttentionAnalysis analyzeAttention({
             ? AttentionSeverity.urgent
             : AttentionSeverity.amber,
         title: 'Urgent/high issues unvisited',
-        subtitle: '${urgentUnvisitedList.length} awaiting initial visit',
+        subtitle:
+            '${plural(urgentUnvisitedList.length, 'complaint')} awaiting initial visit',
         count: urgentUnvisitedList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -264,7 +268,8 @@ AttentionAnalysis analyzeAttention({
         type: AttentionType.recurringIssues,
         severity: AttentionSeverity.amber,
         title: 'Recurring issues',
-        subtitle: '${recurringList.length} repeated unit complaints in 60d',
+        subtitle:
+            '${plural(recurringList.length, 'repeated complaint')} in 60 days',
         count: recurringList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -306,7 +311,8 @@ AttentionAnalysis analyzeAttention({
         type: AttentionType.waitingForParts,
         severity: AttentionSeverity.amber,
         title: 'Parts delayed or waiting',
-        subtitle: '${partsOverdueList.length} waiting for parts >48h',
+        subtitle:
+            '${plural(partsOverdueList.length, 'complaint')} waiting for parts over 48 hrs',
         count: partsOverdueList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -344,7 +350,7 @@ AttentionAnalysis analyzeAttention({
         severity: AttentionSeverity.amber,
         title: 'Unconfirmed resolutions',
         subtitle:
-            '${unconfirmedList.length} resolved >48h without tenant confirmation',
+            '${plural(unconfirmedList.length, 'complaint')} resolved over 48 hrs without tenant confirmation',
         count: unconfirmedList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -378,7 +384,8 @@ AttentionAnalysis analyzeAttention({
         type: AttentionType.reopened,
         severity: AttentionSeverity.urgent,
         title: 'Reopened complaints',
-        subtitle: '${reopenedList.length} complaints reopened by tenant',
+        subtitle:
+            '${plural(reopenedList.length, 'complaint')} reopened by tenant',
         count: reopenedList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -409,7 +416,7 @@ AttentionAnalysis analyzeAttention({
         severity: AttentionSeverity.urgent,
         title: 'Overdue rent',
         subtitle:
-            '${overdueRent.length} units overdue (${formatIndianCurrency(totalOverdue)})',
+            '${plural(overdueRent.length, 'unit')} overdue (${formatIndianCurrency(totalOverdue)})',
         count: overdueRent.length,
         oldestAge: oldestAge,
         targetRoute: '/rent?status=overdue',
@@ -443,7 +450,8 @@ AttentionAnalysis analyzeAttention({
         type: AttentionType.brokenPromises,
         severity: AttentionSeverity.amber,
         title: 'Broken payment promises',
-        subtitle: '${brokenPromiseRecords.length} promise to pay due or past',
+        subtitle:
+            '${plural(brokenPromiseRecords.length, 'promise')} due or past',
         count: brokenPromiseRecords.length,
         oldestAge: oldestAge,
         targetRoute: '/rent?status=promised',

@@ -6,8 +6,8 @@ import '../../repositories/property_repository.dart';
 import '../../repositories/property_summary_repository.dart';
 import '../../theme/app_palette.dart';
 import '../../utils/complaint_query.dart';
+import '../../utils/display_formatters.dart';
 import '../../utils/property_metrics.dart';
-import '../../utils/rent_rules.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/responsive_grid.dart';
@@ -481,7 +481,7 @@ class _PropertySummaryScreenState extends State<PropertySummaryScreen> {
                       ),
                     ),
                     Text(
-                      '${entry.value} jobs',
+                      plural(entry.value, 'job'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: palette.accent,
@@ -567,7 +567,7 @@ class _PropertySummaryScreenState extends State<PropertySummaryScreen> {
           if (summary.overdueRentCount > 0) ...[
             const SizedBox(height: AppSpacing.xs),
             Text(
-              '${summary.overdueRentCount} units overdue: ${formatIndianCurrency(summary.overdueRentAmount)} pending',
+              '${plural(summary.overdueRentCount, 'unit')} overdue: ${formatIndianCurrency(summary.overdueRentAmount)} pending',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: palette.danger,
                 fontWeight: FontWeight.w600,

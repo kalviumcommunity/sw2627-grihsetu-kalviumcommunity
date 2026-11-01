@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/fixtures/sample_fixtures.dart';
 import '../../repositories/complaint_store.dart';
 import '../../theme/app_palette.dart';
+import '../../utils/display_formatters.dart';
 import '../../utils/property_metrics.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_spacing.dart';
@@ -252,7 +253,7 @@ class _UnitListPanelState extends State<UnitListPanel> {
           children: [
             Expanded(
               child: Text(
-                '${filtered.length} ${filtered.length == 1 ? 'unit' : 'units'}',
+                plural(filtered.length, 'unit'),
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: context.palette.muted),
               ),
@@ -454,7 +455,7 @@ class _UnitTile extends StatelessWidget {
             ),
             if (data.repeatComplaints > 0)
               Tooltip(
-                message: '${data.repeatComplaints} repeat complaints',
+                message: plural(data.repeatComplaints, 'repeat complaint'),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -624,8 +625,10 @@ class _TenantListPanelState extends State<TenantListPanel> {
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           StatusBadge(
-                            label:
-                                '${data.recentComplaints} recent ${data.recentComplaints == 1 ? 'complaint' : 'complaints'}',
+                            label: plural(
+                              data.recentComplaints,
+                              'recent complaint',
+                            ),
                           ),
                         ],
                       ),

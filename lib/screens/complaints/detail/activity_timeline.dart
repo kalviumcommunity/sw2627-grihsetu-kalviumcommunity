@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/user_role.dart';
 import '../../../theme/app_palette.dart';
+import '../../../utils/display_formatters.dart';
 import '../../../widgets/app_spacing.dart';
 import '../../../widgets/empty_state.dart';
 import 'complaint_detail_models.dart';
@@ -276,7 +277,7 @@ class _ActivityTimelineState extends State<ActivityTimeline> {
               Icon(Icons.history, size: 18, color: palette.accent),
               const SizedBox(width: AppSpacing.xs),
               Text(
-                'Previous visits (${widget.previousVisits.length})',
+                'Previous ${plural(widget.previousVisits.length, 'visit')}',
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: palette.ink,
                   fontWeight: FontWeight.bold,
