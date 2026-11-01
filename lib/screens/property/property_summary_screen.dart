@@ -10,6 +10,7 @@ import '../../utils/property_metrics.dart';
 import '../../utils/rent_rules.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/responsive_grid.dart';
 import '../../widgets/skeleton_box.dart';
 import '../../widgets/stream_view.dart';
 import '../complaints/search/complaint_search_screen.dart';
@@ -147,81 +148,83 @@ class _PropertySummaryScreenState extends State<PropertySummaryScreen> {
             final isWide = MediaQuery.sizeOf(context).width >= 600;
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Period Selector Segmented Control
-                  _buildPeriodSelector(palette, theme),
-                  const SizedBox(height: AppSpacing.md),
-
-                  // Health & Overview Card
-                  PropertySummaryCard(summary: summary, showSparkline: true),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // KPIs Grid
-                  _buildKpisSection(summary, isWide, palette, theme),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Category Breakdown & Technician Workload
-                  if (isWide)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _buildCategoryBreakdown(
-                            summary,
-                            palette,
-                            theme,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: _buildTechnicianWorkload(
-                            summary,
-                            palette,
-                            theme,
-                          ),
-                        ),
-                      ],
-                    )
-                  else ...[
-                    _buildCategoryBreakdown(summary, palette, theme),
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ResponsiveDashboardContainer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Period Selector Segmented Control
+                    _buildPeriodSelector(palette, theme),
                     const SizedBox(height: AppSpacing.md),
-                    _buildTechnicianWorkload(summary, palette, theme),
-                  ],
-                  const SizedBox(height: AppSpacing.lg),
 
-                  // Rent Status Section
-                  _buildRentSection(summary, palette, theme),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Recurring Issues Alert
-                  if (summary.recurringIssues > 0) ...[
-                    _buildRecurringIssuesCard(summary, palette, theme),
+                    // Health & Overview Card
+                    PropertySummaryCard(summary: summary, showSparkline: true),
                     const SizedBox(height: AppSpacing.lg),
-                  ],
 
-                  // Action Button
-                  Semantics(
-                    label: 'View all complaints for ${summary.propertyName}',
-                    button: true,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 48),
-                        foregroundColor: palette.accent,
-                        side: BorderSide(color: palette.accent),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    // KPIs Grid
+                    _buildKpisSection(summary, isWide, palette, theme),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Category Breakdown & Technician Workload
+                    if (isWide)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _buildCategoryBreakdown(
+                              summary,
+                              palette,
+                              theme,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: _buildTechnicianWorkload(
+                              summary,
+                              palette,
+                              theme,
+                            ),
+                          ),
+                        ],
+                      )
+                    else ...[
+                      _buildCategoryBreakdown(summary, palette, theme),
+                      const SizedBox(height: AppSpacing.md),
+                      _buildTechnicianWorkload(summary, palette, theme),
+                    ],
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Rent Status Section
+                    _buildRentSection(summary, palette, theme),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Recurring Issues Alert
+                    if (summary.recurringIssues > 0) ...[
+                      _buildRecurringIssuesCard(summary, palette, theme),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+
+                    // Action Button
+                    Semantics(
+                      label: 'View all complaints for ${summary.propertyName}',
+                      button: true,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 48),
+                          foregroundColor: palette.accent,
+                          side: BorderSide(color: palette.accent),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
+                        icon: const Icon(Icons.search),
+                        label: const Text('View All Complaints for Property'),
+                        onPressed: _openAllComplaints,
                       ),
-                      icon: const Icon(Icons.search),
-                      label: const Text('View All Complaints for Property'),
-                      onPressed: _openAllComplaints,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                ],
+                    const SizedBox(height: AppSpacing.xl),
+                  ],
+                ),
               ),
             );
           },
