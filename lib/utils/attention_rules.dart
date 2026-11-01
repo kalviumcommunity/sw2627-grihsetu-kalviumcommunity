@@ -83,6 +83,16 @@ DateTime expectedResolutionDeadline(Complaint c) {
   return created.add(Duration(hours: hours));
 }
 
+/// Whether a complaint is currently within its resolution target.
+///
+/// Open work is measured at [now]; completed work is measured at its recorded
+/// resolution time. Cancelled complaints are outside the SLA population.
+bool isComplaintWithinSla(Complaint complaint, DateTime now) {
+  if (complaint.status == ComplaintStatus.cancelled) return true;
+  final measuredAt = complaint.resolvedAt ?? now;
+  return !measuredAt.isAfter(expectedResolutionDeadline(complaint));
+}
+
 /// Computes expected first-response SLA target hours based on complaint priority.
 int expectedResponseSlaHours(Complaint c) {
   return switch (c.priority) {
@@ -139,36 +149,17 @@ AttentionAnalysis analyzeAttention({
     );
   }
 
-  // 2. SLA breached or at risk (response not recorded in time or past expected resolution)
+  // 2. SLA breached, using the same resolution rule as the KPI.
   final slaList = complaints.where((c) {
-    if (c.status == ComplaintStatus.closed ||
-        c.status == ComplaintStatus.cancelled) {
-      return false;
-    }
-    final created = c.createdAt ?? now;
-    final deadline = expectedResolutionDeadline(c);
-
-    // Breached resolution target if resolvedAt is null and past deadline
-    if (c.resolvedAt == null && now.isAfter(deadline)) {
-      return true;
-    }
-
-    // Breached response SLA if open and no technician assigned past response target
-    if (c.status == ComplaintStatus.open && c.firstAssignedAt == null) {
-      final responseTarget = expectedResponseSlaHours(c);
-      if (now.difference(created).inHours >= responseTarget) {
-        return true;
-      }
-    }
-    return false;
+    if (c.status == ComplaintStatus.cancelled) return false;
+    return !isComplaintWithinSla(c, now);
   }).toList();
 
   if (slaList.isNotEmpty) {
     slaList.sort((a, b) => (a.createdAt ?? now).compareTo(b.createdAt ?? now));
     final oldestAge = now.difference(slaList.first.createdAt ?? now);
     final isUrgent = slaList.any((c) {
-      final deadline = expectedResolutionDeadline(c);
-      return (c.resolvedAt == null && now.isAfter(deadline)) ||
+      return !isComplaintWithinSla(c, now) ||
           c.priority == ComplaintPriority.urgent;
     });
 

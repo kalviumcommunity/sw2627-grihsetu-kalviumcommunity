@@ -108,25 +108,16 @@ TodayMetrics calculateTodayMetrics({
       : '${avgResponseHours.toStringAsFixed(1)}h';
 
   // 4. SLA %
-  final closedOrResolved = complaints
-      .where(
-        (c) =>
-            c.status == ComplaintStatus.resolved ||
-            c.status == ComplaintStatus.closed,
-      )
+  final slaPopulation = complaints
+      .where((c) => c.status != ComplaintStatus.cancelled)
       .toList();
 
   double slaRatio = 100.0;
-  if (closedOrResolved.isNotEmpty) {
-    final metSla = closedOrResolved.where((c) {
-      final res = c.resolvedAt;
-      if (res != null) {
-        final deadline = expectedResolutionDeadline(c);
-        return !res.isAfter(deadline);
-      }
-      return true;
-    }).length;
-    slaRatio = (metSla / closedOrResolved.length) * 100.0;
+  if (slaPopulation.isNotEmpty) {
+    final metSla = slaPopulation
+        .where((c) => isComplaintWithinSla(c, now))
+        .length;
+    slaRatio = (metSla / slaPopulation.length) * 100.0;
   }
 
   return TodayMetrics(

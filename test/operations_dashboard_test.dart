@@ -255,6 +255,36 @@ void main() {
       expect(metrics.avgFirstResponse.value.isNotEmpty, isTrue);
     });
 
+    test('SLA KPI and attention use the same complaint rule', () {
+      final withinTarget = createComplaint(
+        id: 'within',
+        status: ComplaintStatus.inProgress,
+        createdAt: testNow.subtract(const Duration(hours: 12)),
+      );
+      final breached = createComplaint(
+        id: 'breached',
+        status: ComplaintStatus.inProgress,
+        priority: ComplaintPriority.urgent,
+        createdAt: testNow.subtract(const Duration(hours: 30)),
+      );
+
+      final metrics = calculateTodayMetrics(
+        complaints: [withinTarget, breached],
+        now: testNow,
+      );
+      final attention = analyzeAttention(
+        complaints: [withinTarget, breached],
+        rentRecords: const [],
+        now: testNow,
+      );
+      final slaAttention = attention.items.singleWhere(
+        (item) => item.type == AttentionType.slaRiskOrBreached,
+      );
+
+      expect(metrics.slaPercent.value, '50%');
+      expect(slaAttention.matchedComplaints, [breached]);
+    });
+
     // -------------------------------------------------------------------------
     // TEST 4: The all-clear state when there is nothing to show
     // -------------------------------------------------------------------------
