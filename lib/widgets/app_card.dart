@@ -29,9 +29,9 @@ class _AppCardState extends State<AppCard> {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final fill = widget.selected
-        ? palette.accentSoft
+        ? palette.primarySoft
         : _pressed
-        ? palette.accentSoft
+        ? palette.primarySoft
         : _hovered
         ? palette.raised
         : palette.surface;
@@ -52,7 +52,7 @@ class _AppCardState extends State<AppCard> {
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
                 color: widget.selected || _focused
-                    ? palette.accent
+                    ? palette.primary
                     : palette.border,
                 width: widget.selected || _focused ? 2 : 1,
               ),
@@ -60,7 +60,7 @@ class _AppCardState extends State<AppCard> {
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: widget.onTap,
-              focusColor: palette.accentSoft,
+              focusColor: palette.primarySoft,
               onHighlightChanged: widget.onTap == null
                   ? null
                   : (pressed) => setState(() => _pressed = pressed),
@@ -77,7 +77,7 @@ class _AppCardState extends State<AppCard> {
                         const SizedBox(width: 8),
                         Icon(
                           Icons.check_circle,
-                          color: palette.accent,
+                          color: palette.primary,
                           semanticLabel: 'Selected',
                         ),
                       ],
