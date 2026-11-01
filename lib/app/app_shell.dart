@@ -20,6 +20,7 @@ import '../screens/rent/rent_list_screen.dart';
 import '../services/auth_failure.dart';
 import '../services/auth_service.dart';
 import '../services/reference_data_seed_service.dart';
+import '../theme/app_theme_mode.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/profile_header.dart';
 
@@ -94,6 +95,19 @@ class _AppShellState extends State<AppShell> {
       appBar: AppBar(
         title: const Text(AppConstants.appName),
         actions: [
+          PopupMenuButton<ThemeMode>(
+            tooltip: 'Theme',
+            icon: const Icon(Icons.brightness_6_outlined),
+            onSelected: AppThemeMode.instance.setMode,
+            itemBuilder: (context) => [
+              for (final mode in ThemeMode.values)
+                CheckedPopupMenuItem(
+                  value: mode,
+                  checked: AppThemeMode.instance.value == mode,
+                  child: Text(mode.displayLabel),
+                ),
+            ],
+          ),
           if (kDebugMode)
             PopupMenuButton<String>(
               tooltip: 'Developer tools',

@@ -9,6 +9,7 @@ import '../screens/auth/login_screen.dart';
 import '../services/auth_failure.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_theme_mode.dart';
 import 'app_shell.dart';
 
 class GrihSetuApp extends StatelessWidget {
@@ -26,15 +27,18 @@ class GrihSetuApp extends StatelessWidget {
   final AppUser? profile;
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: AppStrings.appName,
-    debugShowCheckedModeBanner: false,
-    theme: AppTheme.light(webFonts: webFonts),
-    darkTheme: AppTheme.dark(webFonts: webFonts),
-    themeMode: ThemeMode.system,
-    home: enableAuthentication
-        ? AuthGate(authService: authService ?? AuthService.firebase())
-        : AppShell(profile: profile ?? _previewProfile),
+  Widget build(BuildContext context) => ValueListenableBuilder<ThemeMode>(
+    valueListenable: AppThemeMode.instance,
+    builder: (context, mode, _) => MaterialApp(
+      title: AppStrings.appName,
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(webFonts: webFonts),
+      darkTheme: AppTheme.dark(webFonts: webFonts),
+      themeMode: mode,
+      home: enableAuthentication
+          ? AuthGate(authService: authService ?? AuthService.firebase())
+          : AppShell(profile: profile ?? _previewProfile),
+    ),
   );
 }
 
