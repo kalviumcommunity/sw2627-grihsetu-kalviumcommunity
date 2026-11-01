@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/models/user.dart';
 import '../theme/app_palette.dart';
+import 'status_badge.dart';
 
 /// Lightweight profile header for the authenticated application shell.
 ///
@@ -61,13 +62,12 @@ class ProfileHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  profile.role.displayLabel,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: palette.muted,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: StatusBadge(
+                    label: profile.role.displayLabel,
+                    tone: StatusBadgeTone.accent,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

@@ -23,6 +23,7 @@ import '../services/reference_data_seed_service.dart';
 import '../theme/app_theme_mode.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/profile_header.dart';
+import '../widgets/status_badge.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({
@@ -93,8 +94,26 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppConstants.appName),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(selected.label),
+            Text(
+              AppConstants.appName,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ],
+        ),
         actions: [
+          if (width >= 600)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: StatusBadge(
+                label: _role.displayLabel,
+                tone: StatusBadgeTone.accent,
+              ),
+            ),
+          if (width >= 600) const SizedBox(width: 8),
           PopupMenuButton<ThemeMode>(
             tooltip: 'Theme',
             icon: const Icon(Icons.brightness_6_outlined),
