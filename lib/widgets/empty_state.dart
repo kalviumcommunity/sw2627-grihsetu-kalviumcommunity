@@ -133,7 +133,7 @@ class EmptyState extends StatelessWidget {
                             (compact
                                     ? theme.textTheme.bodySmall
                                     : theme.textTheme.bodyMedium)
-                                ?.copyWith(color: palette.muted),
+                                ?.copyWith(color: palette.ink),
                       ),
                       if (hasAction) ...[
                         SizedBox(
