@@ -3,11 +3,17 @@ import 'package:flutter/material.dart';
 import '../theme/app_palette.dart';
 
 class KpiValue {
-  const KpiValue({required this.label, required this.value, this.delta});
+  const KpiValue({
+    required this.label,
+    required this.value,
+    this.delta,
+    this.deltaIsPositive = true,
+  });
 
   final String label;
   final String value;
   final String? delta;
+  final bool deltaIsPositive;
 }
 
 /// A single bordered KPI panel: four columns on wide screens, 2x2 on phones.
@@ -84,9 +90,29 @@ class _KpiCell extends StatelessWidget {
           ),
           if (value.delta != null) ...[
             const SizedBox(height: 4),
-            Text(
-              value.delta!,
-              style: theme.textTheme.bodySmall?.copyWith(color: palette.muted),
+            Row(
+              children: [
+                Icon(
+                  value.deltaIsPositive
+                      ? Icons.trending_up
+                      : Icons.trending_down,
+                  size: 14,
+                  color: value.deltaIsPositive
+                      ? palette.success
+                      : palette.danger,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    value.delta!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: value.deltaIsPositive
+                          ? palette.success
+                          : palette.danger,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ],

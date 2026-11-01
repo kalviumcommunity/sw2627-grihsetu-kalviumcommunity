@@ -252,7 +252,8 @@ void main() {
       expect(metrics.open.value, '2'); // c1 and c2 are open/inProgress
       expect(metrics.resolvedToday.value, '1'); // cResolvedToday
       expect(metrics.slaPercent.value, '100%'); // 1/1 resolved within expected
-      expect(metrics.avgFirstResponse.value.isNotEmpty, isTrue);
+      expect(metrics.avgFirstResponse.value, '3 hrs');
+      expect(metrics.resolvedToday.change, isNull);
     });
 
     test('SLA KPI and attention use the same complaint rule', () {

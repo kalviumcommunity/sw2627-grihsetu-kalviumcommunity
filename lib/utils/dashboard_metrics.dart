@@ -3,18 +3,19 @@ import 'package:flutter/foundation.dart';
 import '../core/enums/complaint_status.dart';
 import '../core/models/complaint.dart';
 import 'attention_rules.dart';
+import 'display_formatters.dart';
 
 @immutable
 class StatMetric {
   final String label;
   final String value;
-  final double change; // positive or negative percentage or diff
+  final double? change; // absent when no comparable previous period exists
   final bool isPositiveGood; // for display semantics if needed
 
   const StatMetric({
     required this.label,
     required this.value,
-    this.change = 0.0,
+    this.change,
     this.isPositiveGood = true,
   });
 }
@@ -63,7 +64,7 @@ TodayMetrics calculateTodayMetrics({
   }).length;
 
   final openDiff = (openYesterday == 0)
-      ? 0.0
+      ? null
       : ((openNow - openYesterday) / openYesterday) * 100;
 
   // 2. Resolved today
@@ -80,7 +81,7 @@ TodayMetrics calculateTodayMetrics({
   }).length;
 
   final resolvedDiff = (resolvedYesterdayCount == 0)
-      ? (resolvedTodayCount > 0 ? 100.0 : 0.0)
+      ? null
       : ((resolvedTodayCount - resolvedYesterdayCount) /
                 resolvedYesterdayCount) *
             100;
@@ -103,9 +104,9 @@ TodayMetrics calculateTodayMetrics({
     avgResponseHours = totalHours / respondedComplaints.length;
   }
 
-  final avgResponseStr = avgResponseHours < 1.0
-      ? '${(avgResponseHours * 60).round()}m'
-      : '${avgResponseHours.toStringAsFixed(1)}h';
+  final avgResponseStr = formatHumanDuration(
+    Duration(minutes: (avgResponseHours * 60).round()),
+  );
 
   // 4. SLA %
   final slaPopulation = complaints
@@ -136,13 +137,13 @@ TodayMetrics calculateTodayMetrics({
     avgFirstResponse: StatMetric(
       label: 'Avg first response',
       value: avgResponseStr,
-      change: -4.5,
+      change: null,
       isPositiveGood: false,
     ),
     slaPercent: StatMetric(
       label: 'SLA %',
       value: '${slaRatio.round()}%',
-      change: 2.1,
+      change: null,
       isPositiveGood: true,
     ),
   );

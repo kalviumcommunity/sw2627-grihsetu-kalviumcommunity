@@ -25,6 +25,7 @@ import '../../utils/property_metrics.dart';
 import '../../widgets/app_spacing.dart';
 import '../../widgets/error_banner.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/kpi_strip.dart';
 import '../../widgets/responsive_grid.dart';
 import '../../widgets/skeleton_box.dart';
 import '../complaints/complaint_detail_screen.dart';
@@ -648,113 +649,29 @@ class _TodayStrip extends StatelessWidget {
   final TodayMetrics metrics;
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tiles = [
-          _StatTile(metric: metrics.open),
-          _StatTile(metric: metrics.resolvedToday),
-          _StatTile(metric: metrics.avgFirstResponse),
-          _StatTile(metric: metrics.slaPercent),
-        ];
+  Widget build(BuildContext context) => KpiStrip(
+    values: [
+      _value(metrics.open),
+      _value(metrics.resolvedToday),
+      _value(metrics.avgFirstResponse),
+      _value(metrics.slaPercent),
+    ],
+  );
 
-        // 2x2 grid if constrained, 4 columns if wide enough
-        final isCompact = constraints.maxWidth < 480;
-
-        if (isCompact) {
-          return Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(child: tiles[0]),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(child: tiles[1]),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                children: [
-                  Expanded(child: tiles[2]),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(child: tiles[3]),
-                ],
-              ),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            for (int i = 0; i < tiles.length; i++) ...[
-              if (i > 0) const SizedBox(width: AppSpacing.xs),
-              Expanded(child: tiles[i]),
-            ],
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({required this.metric});
-
-  final StatMetric metric;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: palette.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            metric.label,
-            style: Theme.of(context).textTheme.labelSmall
-                ?.copyWith(color: palette.muted, fontWeight: FontWeight.w500),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                metric.value,
-                style: Theme.of(context).textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold, color: palette.ink),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    metric.change >= 0
-                        ? Icons.arrow_upward
-                        : Icons.arrow_downward,
-                    size: 12,
-                    color: palette.muted,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    '${metric.change.abs().toStringAsFixed(0)}%',
-                    style: Theme.of(context).textTheme.labelSmall
-                        ?.copyWith(color: palette.muted, fontSize: 10),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
+  KpiValue _value(StatMetric metric) {
+    final change = metric.change;
+    final good = change == null
+        ? true
+        : metric.isPositiveGood
+        ? change >= 0
+        : change <= 0;
+    return KpiValue(
+      label: metric.label,
+      value: metric.value,
+      delta: change == null
+          ? null
+          : '${change >= 0 ? '↑' : '↓'} ${change.abs().toStringAsFixed(0)}%',
+      deltaIsPositive: good,
     );
   }
 }
