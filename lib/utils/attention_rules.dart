@@ -7,6 +7,7 @@ import '../core/models/complaint.dart';
 import '../core/models/rent_record.dart';
 import 'app_clock.dart';
 import 'complaint_query.dart';
+import 'display_formatters.dart';
 import 'rent_rules.dart';
 import 'visit_history.dart';
 
@@ -71,6 +72,21 @@ class AttentionAnalysis {
   bool get isAllClear => items.isEmpty;
 }
 
+/// Starts at 100 and subtracts a capped penalty for each attention type.
+/// Urgent types cost 12 plus 2 per additional record (maximum 20); amber
+/// types cost 6 plus 1 per additional record (maximum 12).
+int calculateAttentionHealthScore(Iterable<AttentionItem> items) {
+  final penalty = items.fold<int>(0, (total, item) {
+    final extraRecords = (item.count - 1).clamp(0, 1000000);
+    final itemPenalty = switch (item.severity) {
+      AttentionSeverity.urgent => (12 + (extraRecords * 2)).clamp(0, 20),
+      AttentionSeverity.amber => (6 + extraRecords).clamp(0, 12),
+    };
+    return total + itemPenalty;
+  });
+  return (100 - penalty).clamp(0, 100);
+}
+
 /// Computes expected resolution deadline based on complaint priority.
 DateTime expectedResolutionDeadline(Complaint c) {
   final created = c.createdAt ?? AppClock.nowDateTime;
@@ -81,6 +97,16 @@ DateTime expectedResolutionDeadline(Complaint c) {
     ComplaintPriority.low => 120,
   };
   return created.add(Duration(hours: hours));
+}
+
+/// Whether a complaint is currently within its resolution target.
+///
+/// Open work is measured at [now]; completed work is measured at its recorded
+/// resolution time. Cancelled complaints are outside the SLA population.
+bool isComplaintWithinSla(Complaint complaint, DateTime now) {
+  if (complaint.status == ComplaintStatus.cancelled) return true;
+  final measuredAt = complaint.resolvedAt ?? now;
+  return !measuredAt.isAfter(expectedResolutionDeadline(complaint));
 }
 
 /// Computes expected first-response SLA target hours based on complaint priority.
@@ -127,7 +153,8 @@ AttentionAnalysis analyzeAttention({
             ? AttentionSeverity.urgent
             : AttentionSeverity.amber,
         title: 'Unassigned complaints',
-        subtitle: '${unassignedList.length} awaiting technician assignment',
+        subtitle:
+            '${plural(unassignedList.length, 'complaint')} awaiting technician assignment',
         count: unassignedList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -139,36 +166,17 @@ AttentionAnalysis analyzeAttention({
     );
   }
 
-  // 2. SLA breached or at risk (response not recorded in time or past expected resolution)
+  // 2. SLA breached, using the same resolution rule as the KPI.
   final slaList = complaints.where((c) {
-    if (c.status == ComplaintStatus.closed ||
-        c.status == ComplaintStatus.cancelled) {
-      return false;
-    }
-    final created = c.createdAt ?? now;
-    final deadline = expectedResolutionDeadline(c);
-
-    // Breached resolution target if resolvedAt is null and past deadline
-    if (c.resolvedAt == null && now.isAfter(deadline)) {
-      return true;
-    }
-
-    // Breached response SLA if open and no technician assigned past response target
-    if (c.status == ComplaintStatus.open && c.firstAssignedAt == null) {
-      final responseTarget = expectedResponseSlaHours(c);
-      if (now.difference(created).inHours >= responseTarget) {
-        return true;
-      }
-    }
-    return false;
+    if (c.status == ComplaintStatus.cancelled) return false;
+    return !isComplaintWithinSla(c, now);
   }).toList();
 
   if (slaList.isNotEmpty) {
     slaList.sort((a, b) => (a.createdAt ?? now).compareTo(b.createdAt ?? now));
     final oldestAge = now.difference(slaList.first.createdAt ?? now);
     final isUrgent = slaList.any((c) {
-      final deadline = expectedResolutionDeadline(c);
-      return (c.resolvedAt == null && now.isAfter(deadline)) ||
+      return !isComplaintWithinSla(c, now) ||
           c.priority == ComplaintPriority.urgent;
     });
 
@@ -177,7 +185,8 @@ AttentionAnalysis analyzeAttention({
         type: AttentionType.slaRiskOrBreached,
         severity: isUrgent ? AttentionSeverity.urgent : AttentionSeverity.amber,
         title: 'SLA breached or at risk',
-        subtitle: '${slaList.length} past response or resolution threshold',
+        subtitle:
+            '${plural(slaList.length, 'complaint')} past the resolution threshold',
         count: slaList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -225,7 +234,8 @@ AttentionAnalysis analyzeAttention({
             ? AttentionSeverity.urgent
             : AttentionSeverity.amber,
         title: 'Urgent/high issues unvisited',
-        subtitle: '${urgentUnvisitedList.length} awaiting initial visit',
+        subtitle:
+            '${plural(urgentUnvisitedList.length, 'complaint')} awaiting initial visit',
         count: urgentUnvisitedList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -258,7 +268,8 @@ AttentionAnalysis analyzeAttention({
         type: AttentionType.recurringIssues,
         severity: AttentionSeverity.amber,
         title: 'Recurring issues',
-        subtitle: '${recurringList.length} repeated unit complaints in 60d',
+        subtitle:
+            '${plural(recurringList.length, 'repeated complaint')} in 60 days',
         count: recurringList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -300,7 +311,8 @@ AttentionAnalysis analyzeAttention({
         type: AttentionType.waitingForParts,
         severity: AttentionSeverity.amber,
         title: 'Parts delayed or waiting',
-        subtitle: '${partsOverdueList.length} waiting for parts >48h',
+        subtitle:
+            '${plural(partsOverdueList.length, 'complaint')} waiting for parts over 48 hrs',
         count: partsOverdueList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -338,7 +350,7 @@ AttentionAnalysis analyzeAttention({
         severity: AttentionSeverity.amber,
         title: 'Unconfirmed resolutions',
         subtitle:
-            '${unconfirmedList.length} resolved >48h without tenant confirmation',
+            '${plural(unconfirmedList.length, 'complaint')} resolved over 48 hrs without tenant confirmation',
         count: unconfirmedList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -372,7 +384,8 @@ AttentionAnalysis analyzeAttention({
         type: AttentionType.reopened,
         severity: AttentionSeverity.urgent,
         title: 'Reopened complaints',
-        subtitle: '${reopenedList.length} complaints reopened by tenant',
+        subtitle:
+            '${plural(reopenedList.length, 'complaint')} reopened by tenant',
         count: reopenedList.length,
         oldestAge: oldestAge,
         targetFilter: const ComplaintFilter(
@@ -403,7 +416,7 @@ AttentionAnalysis analyzeAttention({
         severity: AttentionSeverity.urgent,
         title: 'Overdue rent',
         subtitle:
-            '${overdueRent.length} units overdue (${formatIndianCurrency(totalOverdue)})',
+            '${plural(overdueRent.length, 'unit')} overdue (${formatIndianCurrency(totalOverdue)})',
         count: overdueRent.length,
         oldestAge: oldestAge,
         targetRoute: '/rent?status=overdue',
@@ -437,7 +450,8 @@ AttentionAnalysis analyzeAttention({
         type: AttentionType.brokenPromises,
         severity: AttentionSeverity.amber,
         title: 'Broken payment promises',
-        subtitle: '${brokenPromiseRecords.length} promise to pay due or past',
+        subtitle:
+            '${plural(brokenPromiseRecords.length, 'promise')} due or past',
         count: brokenPromiseRecords.length,
         oldestAge: oldestAge,
         targetRoute: '/rent?status=promised',
@@ -453,19 +467,7 @@ AttentionAnalysis analyzeAttention({
     return b.oldestAge.compareTo(a.oldestAge);
   });
 
-  // Calculate health score: 100 - (urgent * 12 + amber * 4)
-  var urgentCount = 0;
-  var amberCount = 0;
-  for (final item in items) {
-    if (item.severity == AttentionSeverity.urgent) {
-      urgentCount += item.count;
-    } else {
-      amberCount += item.count;
-    }
-  }
-
-  final deduction = (urgentCount * 12) + (amberCount * 4);
-  final healthScore = (100 - deduction).clamp(0, 100);
+  final healthScore = calculateAttentionHealthScore(items);
 
   return AttentionAnalysis(items: items, healthScore: healthScore);
 }

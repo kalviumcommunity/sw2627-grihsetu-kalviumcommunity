@@ -306,7 +306,9 @@ class _CreateComplaintScreenState extends State<CreateComplaintScreen> {
   Widget _stepBody() => SingleChildScrollView(
     padding: const EdgeInsets.all(AppSpacing.md),
     child: AnimatedSwitcher(
-      duration: const Duration(milliseconds: 200),
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 200),
       child: switch (_step) {
         0 => _whereStep(),
         1 => _whatStep(),
@@ -554,12 +556,9 @@ class _Actions extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.all(AppSpacing.md),
-    child: Row(
-      children: [
-        if (state._step > 0)
-          OutlinedButton(onPressed: state._back, child: const Text('Back')),
-        const Spacer(),
-        FilledButton(
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final primaryAction = FilledButton(
           onPressed: state._loading
               ? null
               : state._step == 4
@@ -571,8 +570,32 @@ class _Actions extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : Text(state._step == 4 ? 'Submit complaint' : 'Continue'),
-        ),
-      ],
+        );
+
+        if (state._step > 0 && constraints.maxWidth < 400) {
+          return Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: state._back,
+                  child: const Text('Back'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(flex: 2, child: primaryAction),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            if (state._step > 0)
+              OutlinedButton(onPressed: state._back, child: const Text('Back')),
+            const Spacer(),
+            primaryAction,
+          ],
+        );
+      },
     ),
   );
 }

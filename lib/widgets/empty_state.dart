@@ -103,13 +103,13 @@ class EmptyState extends StatelessWidget {
                         width: circleSize,
                         height: circleSize,
                         decoration: BoxDecoration(
-                          color: palette.accentSoft,
+                          color: palette.primarySoft,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           icon,
                           size: iconSize,
-                          color: palette.accent,
+                          color: palette.primary,
                         ),
                       ),
                       SizedBox(height: compact ? AppSpacing.md : 20),
@@ -133,7 +133,7 @@ class EmptyState extends StatelessWidget {
                             (compact
                                     ? theme.textTheme.bodySmall
                                     : theme.textTheme.bodyMedium)
-                                ?.copyWith(color: palette.muted),
+                                ?.copyWith(color: palette.ink),
                       ),
                       if (hasAction) ...[
                         SizedBox(

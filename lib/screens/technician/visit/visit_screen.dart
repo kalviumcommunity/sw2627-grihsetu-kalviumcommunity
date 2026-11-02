@@ -11,6 +11,7 @@ import '../../../services/media_picker.dart';
 import '../../../theme/app_palette.dart';
 import '../../../utils/action_feedback.dart';
 import '../../../utils/date_time_formatters.dart' as dtf;
+import '../../../utils/display_formatters.dart';
 import '../../../utils/visit_validators.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/app_snack.dart';
@@ -610,7 +611,7 @@ class _VisitScreenState extends State<VisitScreen> {
         child: ExpansionTile(
           key: const Key('previous_visits_tile'),
           title: Text(
-            'Previous visits (${visits.length})',
+            'Previous ${plural(visits.length, 'visit')}',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 14,

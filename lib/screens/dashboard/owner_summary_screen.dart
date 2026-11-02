@@ -12,6 +12,7 @@ import '../../repositories/complaint_store.dart';
 import '../../repositories/property_repository.dart';
 import '../../repositories/rent_repository.dart';
 import '../../theme/app_palette.dart';
+import '../../utils/display_formatters.dart';
 import '../../utils/owner_summary.dart';
 import '../../utils/property_metrics.dart';
 import '../../widgets/app_card.dart';
@@ -346,7 +347,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
               runSpacing: 4,
               children: [
                 Text(
-                  '${summary.totalProperties} properties • ${summary.totalUnits} units',
+                  '${plural(summary.totalProperties, 'property', pluralForm: 'properties')} • ${plural(summary.totalUnits, 'unit')}',
                   style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: palette.muted),
                 ),
@@ -471,7 +472,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
               label: 'Occupancy Rate',
               value: '${summary.occupancyRate.toStringAsFixed(1)}%',
               subtitle:
-                  '${summary.occupiedUnits} of ${summary.totalUnits} units',
+                  '${summary.occupiedUnits} of ${plural(summary.totalUnits, 'unit')}',
               icon: Icons.apartment,
             ),
             OwnerKpiCard(
@@ -793,7 +794,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${prop.occupiedUnits}/${prop.totalUnits} units • ${prop.openComplaints} open • ${prop.overdueRentCount} overdue rent',
+                                      '${prop.occupiedUnits}/${plural(prop.totalUnits, 'unit')} • ${plural(prop.openComplaints, 'open complaint')} • ${prop.overdueRentCount} overdue rent',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
@@ -1000,7 +1001,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
                           ),
                         ),
                         Text(
-                          '${tech.jobsCompleted} jobs • ${tech.repeatVisitRate.toStringAsFixed(0)}% repeat',
+                          '${plural(tech.jobsCompleted, 'job')} • ${tech.repeatVisitRate.toStringAsFixed(0)}% repeat',
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: context.palette.muted),
                         ),
@@ -1040,7 +1041,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
         title: const Text('Print Summary'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        elevation: 1,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.copy_outlined),
@@ -1088,7 +1089,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
               border: TableBorder.all(color: Colors.black26),
               children: [
                 TableRow(
-                  decoration: const BoxDecoration(color: Color(0xFFEEEEEE)),
+                  decoration: const BoxDecoration(color: Colors.black12),
                   children: const [
                     Padding(
                       padding: EdgeInsets.all(6),
@@ -1194,7 +1195,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
               border: TableBorder.all(color: Colors.black26),
               children: [
                 TableRow(
-                  decoration: const BoxDecoration(color: Color(0xFFEEEEEE)),
+                  decoration: const BoxDecoration(color: Colors.black12),
                   children: const [
                     Padding(
                       padding: EdgeInsets.all(6),
@@ -1281,14 +1282,7 @@ class _OwnerSummaryScreenState extends State<OwnerSummaryScreen> {
     };
   }
 
-  String _formatDuration(Duration d) {
-    if (d.inHours < 24) {
-      return '${d.inHours}h ${d.inMinutes.remainder(60)}m';
-    }
-    final days = d.inDays;
-    final hours = d.inHours.remainder(24);
-    return '${days}d ${hours}h';
-  }
+  String _formatDuration(Duration duration) => formatHumanDuration(duration);
 }
 
 class OwnerKpiCard extends StatelessWidget {

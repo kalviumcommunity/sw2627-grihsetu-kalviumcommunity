@@ -252,7 +252,61 @@ void main() {
       expect(metrics.open.value, '2'); // c1 and c2 are open/inProgress
       expect(metrics.resolvedToday.value, '1'); // cResolvedToday
       expect(metrics.slaPercent.value, '100%'); // 1/1 resolved within expected
-      expect(metrics.avgFirstResponse.value.isNotEmpty, isTrue);
+      expect(metrics.avgFirstResponse.value, '3 hrs');
+      expect(metrics.resolvedToday.change, isNull);
+    });
+
+    test('SLA KPI and attention use the same complaint rule', () {
+      final withinTarget = createComplaint(
+        id: 'within',
+        status: ComplaintStatus.inProgress,
+        createdAt: testNow.subtract(const Duration(hours: 12)),
+      );
+      final breached = createComplaint(
+        id: 'breached',
+        status: ComplaintStatus.inProgress,
+        priority: ComplaintPriority.urgent,
+        createdAt: testNow.subtract(const Duration(hours: 30)),
+      );
+
+      final metrics = calculateTodayMetrics(
+        complaints: [withinTarget, breached],
+        now: testNow,
+      );
+      final attention = analyzeAttention(
+        complaints: [withinTarget, breached],
+        rentRecords: const [],
+        now: testNow,
+      );
+      final slaAttention = attention.items.singleWhere(
+        (item) => item.type == AttentionType.slaRiskOrBreached,
+      );
+
+      expect(metrics.slaPercent.value, '50%');
+      expect(slaAttention.matchedComplaints, [breached]);
+    });
+
+    test('health score caps penalties per attention type', () {
+      final score = calculateAttentionHealthScore([
+        AttentionItem(
+          type: AttentionType.reopened,
+          severity: AttentionSeverity.urgent,
+          title: 'Reopened',
+          subtitle: 'Many reopened complaints',
+          count: 50,
+          oldestAge: const Duration(days: 2),
+        ),
+        AttentionItem(
+          type: AttentionType.waitingForParts,
+          severity: AttentionSeverity.amber,
+          title: 'Parts',
+          subtitle: 'Many parts delays',
+          count: 50,
+          oldestAge: const Duration(days: 2),
+        ),
+      ]);
+
+      expect(score, 68);
     });
 
     // -------------------------------------------------------------------------

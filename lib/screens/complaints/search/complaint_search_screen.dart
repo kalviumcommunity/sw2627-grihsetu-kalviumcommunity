@@ -12,6 +12,7 @@ import '../../../repositories/property_repository.dart';
 import '../../../services/auth_service.dart';
 import '../../../theme/app_palette.dart';
 import '../../../utils/complaint_query.dart';
+import '../../../utils/display_formatters.dart';
 import '../../../widgets/app_spacing.dart';
 import '../../../widgets/complaint_card.dart';
 import '../../../widgets/empty_state.dart';
@@ -394,7 +395,7 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: Text(
-            '${filtered.length} of ${_allComplaints.length} complaints',
+            '${filtered.length} of ${plural(_allComplaints.length, 'complaint')}',
             style: theme.textTheme.bodySmall?.copyWith(
               color: palette.muted,
               fontWeight: FontWeight.w500,
@@ -659,7 +660,7 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.xs),
       child: Semantics(
-        label: '$label quick filter: $count complaints',
+        label: '$label quick filter: ${plural(count, 'complaint')}',
         selected: isSelected,
         button: true,
         child: ConstrainedBox(

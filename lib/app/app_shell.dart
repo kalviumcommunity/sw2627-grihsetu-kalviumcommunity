@@ -20,7 +20,10 @@ import '../screens/rent/rent_list_screen.dart';
 import '../services/auth_failure.dart';
 import '../services/auth_service.dart';
 import '../services/reference_data_seed_service.dart';
+import '../theme/app_theme_mode.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/profile_header.dart';
+import '../widgets/status_badge.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({
@@ -91,55 +94,86 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppConstants.appName),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(selected.label),
+            Text(
+              AppConstants.appName,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ],
+        ),
         actions: [
-          PopupMenuButton<String>(
-            tooltip: 'Developer tools',
-            icon: const Icon(Icons.swap_horiz),
-            onSelected: (value) {
-              if (value == 'gallery') {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const WidgetGalleryScreen(),
-                  ),
-                );
-              } else if (value == 'seed_reference') {
-                final currentProfile = widget.profile;
-                if (currentProfile != null &&
-                    currentProfile.isAuthorized &&
-                    currentProfile.role.isOperationsStaff) {
+          if (width >= 600)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: StatusBadge(
+                label: _role.displayLabel,
+                tone: StatusBadgeTone.accent,
+              ),
+            ),
+          if (width >= 600) const SizedBox(width: 8),
+          PopupMenuButton<ThemeMode>(
+            tooltip: 'Theme',
+            icon: const Icon(Icons.brightness_6_outlined),
+            onSelected: AppThemeMode.instance.setMode,
+            itemBuilder: (context) => [
+              for (final mode in ThemeMode.values)
+                CheckedPopupMenuItem(
+                  value: mode,
+                  checked: AppThemeMode.instance.value == mode,
+                  child: Text(mode.displayLabel),
+                ),
+            ],
+          ),
+          if (kDebugMode)
+            PopupMenuButton<String>(
+              tooltip: 'Developer tools',
+              icon: const Icon(Icons.swap_horiz),
+              onSelected: (value) {
+                if (value == 'gallery') {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => ReferenceDataSeedScreen(
-                        profile: currentProfile,
-                        seedService: widget.seedService,
+                      builder: (_) => const WidgetGalleryScreen(),
+                    ),
+                  );
+                } else if (value == 'seed_reference') {
+                  final currentProfile = widget.profile;
+                  if (currentProfile != null &&
+                      currentProfile.isAuthorized &&
+                      currentProfile.role.isOperationsStaff) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => ReferenceDataSeedScreen(
+                          profile: currentProfile,
+                          seedService: widget.seedService,
+                        ),
                       ),
+                    );
+                  }
+                } else if (value == 'data_checks') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DataChecksScreen(),
                     ),
                   );
                 }
-              } else if (value == 'data_checks') {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const DataChecksScreen(),
-                  ),
-                );
-              }
-            },
-            itemBuilder: (context) {
-              final isOpsStaff =
-                  widget.profile?.isAuthorized == true &&
-                  widget.profile!.role.isOperationsStaff;
-              return [
-                if (isOpsStaff)
-                  const PopupMenuItem(
-                    value: 'seed_reference',
-                    child: ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.dataset_outlined),
-                      title: Text('Seed reference data'),
+              },
+              itemBuilder: (context) {
+                final isOpsStaff =
+                    widget.profile?.isAuthorized == true &&
+                    widget.profile!.role.isOperationsStaff;
+                return [
+                  if (isOpsStaff)
+                    const PopupMenuItem(
+                      value: 'seed_reference',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.dataset_outlined),
+                        title: Text('Seed reference data'),
+                      ),
                     ),
-                  ),
-                if (kDebugMode) ...[
                   if (isOpsStaff) const PopupMenuDivider(),
                   const PopupMenuItem(
                     value: 'gallery',
@@ -157,10 +191,9 @@ class _AppShellState extends State<AppShell> {
                       title: Text('Data checks'),
                     ),
                   ),
-                ],
-              ];
-            },
-          ),
+                ];
+              },
+            ),
           IconButton(
             tooltip: 'Sign out',
             icon: _isSigningOut
@@ -375,19 +408,13 @@ class _SectionPlaceholder extends StatelessWidget {
         showAppBar: false,
       );
     }
-    final theme = Theme.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(item.selectedIcon, size: 48, color: theme.colorScheme.primary),
-            const SizedBox(height: 16),
-            Text(item.label, style: theme.textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text('${role.displayLabel} workspace'),
-          ],
+        child: EmptyState(
+          icon: item.selectedIcon,
+          title: item.label,
+          message: '${role.displayLabel} workspace',
         ),
       ),
     );

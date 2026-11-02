@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_palette.dart';
+import '../../utils/display_formatters.dart';
 import '../../utils/property_metrics.dart';
-import '../../utils/rent_rules.dart';
 import '../../widgets/app_spacing.dart';
 
 /// Compact operational summary card for a property.
@@ -21,14 +21,8 @@ class PropertySummaryCard extends StatelessWidget {
   final VoidCallback? onTap;
   final bool showSparkline;
 
-  String _formatDuration(Duration? d) {
-    if (d == null) return '--';
-    final hours = d.inMinutes / 60.0;
-    if (hours < 1.0) {
-      return '${d.inMinutes}m';
-    }
-    return '${hours.toStringAsFixed(1)}h';
-  }
+  String _formatDuration(Duration? duration) =>
+      formatHumanDuration(duration, fallback: '--');
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +41,7 @@ class PropertySummaryCard extends StatelessWidget {
     return Semantics(
       label:
           'Property summary for ${summary.propertyName}. '
-          '${summary.openComplaints} open complaints, '
+          '${plural(summary.openComplaints, 'open complaint')}, '
           'SLA $slaDisplay, '
           '${summary.overdueRentCount} overdue rent records. Tap to view detailed summary.',
       button: true,
