@@ -1,26 +1,36 @@
 {
   "project_info": {
-    "project_number": "828867486553",
-    "project_id": "grihsetu-a82d1",
-    "storage_bucket": "grihsetu-a82d1.firebasestorage.app"
+    "project_number": "242898456122",
+    "project_id": "grih-setu",
+    "storage_bucket": "grih-setu.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:828867486553:android:ba51845f63e17364302248",
+        "mobilesdk_app_id": "1:242898456122:android:a1b4ac620c743b6dab6f03",
         "android_client_info": {
           "package_name": "com.example.grihsetu"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "242898456122-24tqjcnbfi65tg8hdn23a6ajeda27l5v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyAOXTA3uYKhVrod6ywvrX295uTbYcdz-yI"
+          "current_key": "AIzaSyD6UKBJvkdkS2li-dNmhHLniIF0OOXpq4w"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "242898456122-24tqjcnbfi65tg8hdn23a6ajeda27l5v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
