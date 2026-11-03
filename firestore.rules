@@ -257,7 +257,16 @@ service cloud.firestore {
               && request.resource.data.activeVisitId is string
               && (!resource.data.keys().hasAny(['activeVisitId'])
                 || resource.data.activeVisitId == null)
-              && request.resource.data.visitCount > resource.data.visitCount
+              && (
+                (
+                  !resource.data.keys().hasAny(['visitCount'])
+                  && request.resource.data.visitCount == 1
+                )
+                || (
+                  resource.data.visitCount is int
+                  && request.resource.data.visitCount == resource.data.visitCount + 1
+                )
+              )
               && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.activeVisitId)).data.complaintId == complaintId
               && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.activeVisitId)).data.technicianId == request.auth.uid
               && getAfter(/databases/$(database)/documents/maintenance_visits/$(request.resource.data.activeVisitId)).data.visitNumber == request.resource.data.visitCount

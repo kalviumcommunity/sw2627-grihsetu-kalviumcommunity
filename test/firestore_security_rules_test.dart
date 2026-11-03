@@ -119,12 +119,11 @@ void main() {
       test('visit start audits accept the metadata written by the service', () {
         expect(
           rulesContent,
-          contains("'visitId', 'visitNumber', 'technicianId', 'previousStatus'"),
+          contains(
+            "'visitId', 'visitNumber', 'technicianId', 'previousStatus'",
+          ),
         );
-        expect(
-          rulesContent,
-          contains("'newStatus', 'operationId'"),
-        );
+        expect(rulesContent, contains("'newStatus', 'operationId'"));
         expect(
           rulesContent,
           contains(
@@ -133,14 +132,39 @@ void main() {
         );
       });
 
-      test('initial assignment supports legacy null firstAssignedAt values', () {
+      test(
+        'initial assignment supports legacy null firstAssignedAt values',
+        () {
+          expect(
+            rulesContent,
+            contains('resource.data.firstAssignedAt == null'),
+          );
+          expect(
+            rulesContent,
+            contains('request.resource.data.firstAssignedAt == request.time'),
+          );
+        },
+      );
+
+      test('visit start accepts a missing legacy counter and increments existing counters exactly once', () {
         expect(
           rulesContent,
-          contains('resource.data.firstAssignedAt == null'),
+          contains("!resource.data.keys().hasAny(['visitCount'])"),
+        );
+        expect(rulesContent, contains('request.resource.data.visitCount == 1'));
+        expect(
+          rulesContent,
+          contains(
+            'request.resource.data.visitCount == resource.data.visitCount + 1',
+          ),
         );
         expect(
           rulesContent,
-          contains('request.resource.data.firstAssignedAt == request.time'),
+          isNot(
+            contains(
+              'request.resource.data.visitCount > resource.data.visitCount',
+            ),
+          ),
         );
       });
 

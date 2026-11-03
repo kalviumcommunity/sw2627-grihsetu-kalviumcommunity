@@ -294,7 +294,20 @@ class MaintenanceVisitService {
       ) async {
         final complaintSnapshot = await transaction.get(complaintRef);
         final actorSnapshot = await transaction.get(actorRef);
-        final existingVisitSnapshot = await transaction.get(visitRef);
+        DocumentSnapshot<Map<String, dynamic>>? existingVisitSnapshot;
+        DocumentSnapshot<Map<String, dynamic>>? startedAuditSnapshot;
+        DocumentSnapshot<Map<String, dynamic>>? startedStatusAuditSnapshot;
+        // A normal start uses random IDs that are guaranteed to be new. Do not
+        // read those missing documents: their read rules rely on resource data
+        // that cannot exist yet. Deterministic retries still read and validate
+        // the existing visit and audit records for idempotency.
+        if (normalizedOperationId != null) {
+          existingVisitSnapshot = await transaction.get(visitRef);
+          startedAuditSnapshot = await transaction.get(startedAuditRef);
+          startedStatusAuditSnapshot = await transaction.get(
+            startedStatusAuditRef,
+          );
+        }
         final complaintData = complaintSnapshot.data();
         if (!complaintSnapshot.exists || complaintData == null) {
           throw const MaintenanceVisitFailure(
@@ -318,13 +331,8 @@ class MaintenanceVisitService {
                 .doc(complaint.activeVisitId),
           );
         }
-        final startedAuditSnapshot = await transaction.get(startedAuditRef);
-        final startedStatusAuditSnapshot = await transaction.get(
-          startedStatusAuditRef,
-        );
-
-        final existingVisit = existingVisitSnapshot.exists
-            ? _decodeVisit(existingVisitSnapshot)
+        final existingVisit = existingVisitSnapshot?.exists ?? false
+            ? _decodeVisit(existingVisitSnapshot!)
             : null;
         if (existingVisit != null) {
           if (normalizedOperationId != null &&
@@ -334,8 +342,8 @@ class MaintenanceVisitService {
               existingVisit.isActive &&
               complaint.activeVisitId == existingVisit.id) {
             _requireExistingAudit(
-              startedAuditSnapshot,
-              startedStatusAuditSnapshot,
+              startedAuditSnapshot!,
+              startedStatusAuditSnapshot!,
               requiredStatusAudit:
                   complaint.status != ComplaintStatus.assigned &&
                   complaint.status != ComplaintStatus.reopened,
@@ -434,7 +442,7 @@ class MaintenanceVisitService {
           },
           previousValue: complaint.status.value,
           newValue: ComplaintStatus.inProgress.value,
-          eventWasAbsent: !startedAuditSnapshot.exists,
+          eventWasAbsent: startedAuditSnapshot?.exists != true,
         );
         if (complaint.status != ComplaintStatus.inProgress) {
           _auditWriter.appendEventInTransaction(
@@ -451,7 +459,7 @@ class MaintenanceVisitService {
             },
             previousValue: complaint.status.value,
             newValue: ComplaintStatus.inProgress.value,
-            eventWasAbsent: !startedStatusAuditSnapshot.exists,
+            eventWasAbsent: startedStatusAuditSnapshot?.exists != true,
           );
         }
 
