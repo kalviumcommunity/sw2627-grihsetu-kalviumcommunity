@@ -4,8 +4,10 @@ import 'package:grihsetu/core/enums/complaint_category.dart';
 import 'package:grihsetu/core/enums/complaint_priority.dart';
 import 'package:grihsetu/core/enums/complaint_status.dart';
 import 'package:grihsetu/core/enums/rent_status.dart';
+import 'package:grihsetu/core/enums/user_role.dart';
 import 'package:grihsetu/core/models/complaint.dart';
 import 'package:grihsetu/core/models/rent_record.dart';
+import 'package:grihsetu/core/models/user.dart';
 import 'package:grihsetu/repositories/complaint_repository.dart';
 import 'package:grihsetu/repositories/dashboard_repository.dart';
 import 'package:grihsetu/screens/complaints/search/complaint_search_screen.dart';
@@ -344,6 +346,80 @@ void main() {
         findsOneWidget,
       );
       expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    });
+
+    testWidgets('property operations gets a portfolio-focused dashboard', (
+      tester,
+    ) async {
+      final snapshot = DashboardSnapshot(
+        complaints: [],
+        rentRecords: [],
+        technicians: [],
+        properties: [],
+        events: [],
+        lastUpdated: testNow,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OperationsDashboardScreen(
+            dashboardRepository: _MockDashboardRepository(snapshot),
+            profile: AppUser(
+              id: 'property-ops',
+              name: 'Property Operator',
+              email: 'property@example.com',
+              role: UserRole.propertyOperations,
+              createdAt: testNow,
+            ),
+            referenceNow: testNow,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Property Operations'), findsOneWidget);
+      expect(find.text('Portfolio Overview'), findsOneWidget);
+      expect(find.text('Properties at a Glance'), findsOneWidget);
+      expect(find.text('Property & Rent Follow-ups'), findsOneWidget);
+      expect(find.text('Complaint Queue'), findsNothing);
+      expect(find.text('Technician Workload'), findsNothing);
+    });
+
+    testWidgets('complaint operations gets a triage-focused dashboard', (
+      tester,
+    ) async {
+      final snapshot = DashboardSnapshot(
+        complaints: [],
+        rentRecords: [],
+        technicians: [],
+        properties: [],
+        events: [],
+        lastUpdated: testNow,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OperationsDashboardScreen(
+            dashboardRepository: _MockDashboardRepository(snapshot),
+            profile: AppUser(
+              id: 'complaint-ops',
+              name: 'Complaint Operator',
+              email: 'complaints@example.com',
+              role: UserRole.complaintOperations,
+              createdAt: testNow,
+            ),
+            referenceNow: testNow,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Complaint Operations'), findsOneWidget);
+      expect(find.text('Complaint Queue'), findsOneWidget);
+      expect(find.text('Technician Workload'), findsOneWidget);
+      expect(find.text('Complaint Audit Activity'), findsOneWidget);
+      expect(find.text('Portfolio Overview'), findsNothing);
+      expect(find.text('Properties at a Glance'), findsNothing);
     });
 
     // -------------------------------------------------------------------------
