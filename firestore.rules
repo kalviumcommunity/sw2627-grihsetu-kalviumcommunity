@@ -214,10 +214,12 @@ service cloud.firestore {
               && (!resource.data.keys().hasAny(['currentTechnicianId'])
                 || resource.data.currentTechnicianId == null)
               && (
-                (!resource.data.keys().hasAny(['firstAssignedAt'])
+                ((!resource.data.keys().hasAny(['firstAssignedAt'])
+                  || resource.data.firstAssignedAt == null)
                   && request.resource.data.keys().hasAny(['firstAssignedAt'])
                   && request.resource.data.firstAssignedAt == request.time)
                 || (resource.data.keys().hasAny(['firstAssignedAt'])
+                  && resource.data.firstAssignedAt != null
                   && request.resource.data.keys().hasAny(['firstAssignedAt'])
                   && request.resource.data.firstAssignedAt == resource.data.firstAssignedAt)
               )

@@ -7,6 +7,7 @@ import 'package:grihsetu/core/enums/user_role.dart';
 import 'package:grihsetu/core/models/complaint.dart';
 import 'package:grihsetu/core/models/technician_assignment.dart';
 import 'package:grihsetu/core/models/user.dart';
+import 'package:grihsetu/repositories/assignment_repository.dart';
 import 'package:grihsetu/services/technician_assignment_service.dart';
 
 void main() {
@@ -216,6 +217,40 @@ void main() {
 
       expect(audit['eventType'], technicianAssignedEventType);
       expect(audit['metadata'], containsPair('previousTechnicianId', null));
+    });
+  });
+
+  group('Firestore technician directory mapping', () {
+    test('uses the Firebase document UID instead of a demo technician ID', () {
+      final technician = TechnicianDirectoryMapper.fromFirestore(
+        'firebase-uid-aman',
+        {
+          'displayName': 'Aman Verma',
+          'phoneNumber': '+91 90000 00000',
+          'role': 'technician',
+          'specialties': ['electrical', 'appliance'],
+          'todayJobCount': 2,
+        },
+      );
+
+      expect(technician.id, 'firebase-uid-aman');
+      expect(technician.name, 'Aman Verma');
+      expect(technician.specialties, [
+        ComplaintCategory.electrical,
+        ComplaintCategory.appliance,
+      ]);
+      expect(technician.todayJobCount, 2);
+    });
+
+    test('keeps profiles without optional trade metadata assignable', () {
+      final technician = TechnicianDirectoryMapper.fromFirestore(
+        'firebase-uid-tech',
+        {'name': 'Field Technician'},
+      );
+
+      expect(technician.specialties, ComplaintCategory.values);
+      expect(technician.availability, TechnicianAvailability.available);
+      expect(technician.todayJobCount, 0);
     });
   });
 }
