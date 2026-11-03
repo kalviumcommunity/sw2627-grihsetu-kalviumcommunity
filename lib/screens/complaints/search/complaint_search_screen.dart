@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/firestore_collections.dart';
 import '../../../core/enums/complaint_priority.dart';
 import '../../../core/enums/complaint_status.dart';
+import '../../../core/enums/user_role.dart';
 import '../../../core/fixtures/sample_fixtures.dart';
 import '../../../core/models/complaint.dart';
 import '../../../core/models/user.dart';
@@ -18,9 +21,14 @@ import '../../../widgets/complaint_card.dart';
 import '../../../widgets/empty_state.dart';
 import '../../../widgets/error_state.dart';
 import '../../../widgets/skeleton_box.dart';
+import '../../property/property_selection_flow.dart';
+import '../complaint_create_screen.dart';
 import '../complaint_detail_screen.dart';
 import '../complaint_view_models.dart';
 import 'filter_sheet.dart';
+
+typedef TenantComplaintLocationLoader =
+    Future<PropertyUnitTenantSelection?> Function(String uid);
 
 /// Complaint search and filter screen for staff, owner, technician, and tenant.
 class ComplaintSearchScreen extends StatefulWidget {
@@ -33,6 +41,7 @@ class ComplaintSearchScreen extends StatefulWidget {
     this.profile,
     this.scope,
     this.onFilterChanged,
+    this.tenantLocationLoader,
     this.showAppBar = false,
   });
 
@@ -43,6 +52,7 @@ class ComplaintSearchScreen extends StatefulWidget {
   final AppUser? profile;
   final ComplaintScope? scope;
   final ValueChanged<ComplaintFilter>? onFilterChanged;
+  final TenantComplaintLocationLoader? tenantLocationLoader;
   final bool showAppBar;
 
   /// Canonical navigation helper to open search screen pre-filtered.
@@ -82,8 +92,11 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
 
   Timer? _debounceTimer;
   bool _isLoading = true;
+  bool _isOpeningCreate = false;
   String? _errorMessage;
   List<Complaint> _allComplaints = [];
+
+  bool get _canRaiseComplaint => widget.profile?.role == UserRole.tenant;
 
   @override
   void initState() {
@@ -189,6 +202,105 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
       if (updated.text != _textController.text) {
         _textController.text = updated.text ?? '';
       }
+    }
+  }
+
+  Future<PropertyUnitTenantSelection?> _loadTenantLocation(String uid) async {
+    final firestore = FirebaseFirestore.instance;
+    var tenant = await firestore
+        .collection(FirestoreCollections.tenants)
+        .doc(uid)
+        .get();
+
+    if (!tenant.exists) {
+      final linked = await firestore
+          .collection(FirestoreCollections.tenants)
+          .where('linkedUserId', isEqualTo: uid)
+          .limit(1)
+          .get();
+      if (linked.docs.isEmpty) return null;
+      tenant = linked.docs.first;
+    }
+
+    final tenantData = tenant.data();
+    final propertyId = tenantData?['propertyId'] as String?;
+    final unitId = tenantData?['unitId'] as String?;
+    if (propertyId == null ||
+        propertyId.trim().isEmpty ||
+        unitId == null ||
+        unitId.trim().isEmpty) {
+      return null;
+    }
+
+    final references = await Future.wait([
+      firestore
+          .collection(FirestoreCollections.properties)
+          .doc(propertyId)
+          .get(),
+      firestore.collection(FirestoreCollections.units).doc(unitId).get(),
+    ]);
+    if (!references[0].exists || !references[1].exists) return null;
+
+    final propertyName =
+        references[0].data()?['name'] as String? ?? 'My property';
+    final unitNumber = references[1].data()?['unitNumber'] as String? ?? unitId;
+    final tenantName =
+        (tenantData?['fullName'] ?? tenantData?['name']) as String? ??
+        widget.profile?.name ??
+        'Tenant';
+
+    return PropertyUnitTenantSelection(
+      propertyId: propertyId,
+      unitId: unitId,
+      tenantId: tenant.id,
+      propertyName: propertyName,
+      unitNumber: unitNumber,
+      tenantName: tenantName,
+    );
+  }
+
+  Future<void> _openCreateComplaint() async {
+    final profile = widget.profile;
+    if (!_canRaiseComplaint || profile == null || _isOpeningCreate) return;
+
+    setState(() => _isOpeningCreate = true);
+    try {
+      final loader = widget.tenantLocationLoader ?? _loadTenantLocation;
+      final location = await loader(profile.id);
+      if (!mounted) return;
+      if (location == null || location.tenantId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Your property and unit are not linked yet. Contact Property Operations.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ComplaintCreateScreen(
+            profile: profile,
+            authService: widget.authService,
+            complaintRepository: _repository,
+            fixedLocation: location,
+          ),
+        ),
+      );
+      if (mounted) await _loadComplaints();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to load your property details. Please try again.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isOpeningCreate = false);
     }
   }
 
@@ -636,7 +748,17 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
 
     return Scaffold(
       appBar: widget.showAppBar
-          ? AppBar(title: const Text('Search Complaints'))
+          ? AppBar(
+              title: const Text('Search Complaints'),
+              actions: [
+                if (_canRaiseComplaint)
+                  IconButton(
+                    tooltip: 'Raise complaint',
+                    onPressed: _isOpeningCreate ? null : _openCreateComplaint,
+                    icon: const Icon(Icons.add),
+                  ),
+              ],
+            )
           : null,
       backgroundColor: palette.canvas,
       body: SafeArea(
@@ -646,6 +768,18 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
           child: content,
         ),
       ),
+      floatingActionButton: _canRaiseComplaint
+          ? FloatingActionButton.extended(
+              onPressed: _isOpeningCreate ? null : _openCreateComplaint,
+              icon: _isOpeningCreate
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.add),
+              label: const Text('Raise complaint'),
+            )
+          : null,
     );
   }
 
@@ -703,11 +837,13 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
     }
 
     if (_allComplaints.isEmpty) {
-      return const Center(
+      return Center(
         child: EmptyState.noData(
           icon: Icons.assignment_outlined,
           title: 'No complaints found',
           message: 'There are no complaints registered in this workspace.',
+          actionLabel: _canRaiseComplaint ? 'Raise complaint' : null,
+          onAction: _canRaiseComplaint ? _openCreateComplaint : null,
         ),
       );
     }

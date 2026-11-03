@@ -56,6 +56,7 @@ void main() {
       final payload = ComplaintFirestorePayloads.auditForComplaintCreate(
         complaintId: 'submission-1',
         actorId: 'uid-42',
+        actorRole: UserRole.tenant,
         category: 'plumbing',
         priority: 'high',
       );
@@ -63,6 +64,8 @@ void main() {
       expect(payload['complaintId'], 'submission-1');
       expect(payload['eventType'], complaintCreatedEventType);
       expect(payload['actorId'], 'uid-42');
+      expect(payload['actorRole'], 'tenant');
+      expect(payload['schemaVersion'], 1);
       expect(payload['createdAt'], isA<FieldValue>());
       expect(payload['metadata'], containsPair('category', 'plumbing'));
     });
