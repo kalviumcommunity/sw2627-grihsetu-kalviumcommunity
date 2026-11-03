@@ -467,114 +467,58 @@ class FirestoreComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<Complaint> createComplaint(
-    CreateComplaintInput input,
-  ) => runGuarded(() async {
-    final user = _identity.currentUser;
-    if (user == null || user.uid.trim().isEmpty) {
-      throw const ComplaintAuthenticationException();
-    }
+  Future<Complaint> createComplaint(CreateComplaintInput input) => runGuarded(
+    () async {
+      final user = _identity.currentUser;
+      if (user == null || user.uid.trim().isEmpty) {
+        throw const ComplaintAuthenticationException();
+      }
 
-    final validationErrors = input.validate();
-    if (validationErrors.isNotEmpty) {
-      throw ComplaintValidationException(validationErrors.join(' '));
-    }
+      final validationErrors = input.validate();
+      if (validationErrors.isNotEmpty) {
+        throw ComplaintValidationException(validationErrors.join(' '));
+      }
 
-    final requestedId = input.submissionId?.trim();
-    if (requestedId != null &&
-        requestedId.isNotEmpty &&
-        requestedId.contains('/')) {
-      throw const ComplaintValidationException('Submission ID is invalid.');
-    }
+      final requestedId = input.submissionId?.trim();
+      if (requestedId != null &&
+          requestedId.isNotEmpty &&
+          requestedId.contains('/')) {
+        throw const ComplaintValidationException('Submission ID is invalid.');
+      }
 
-    final complaintRef = _firestore
-        .collection(FirestoreCollections.complaints)
-        .doc(requestedId == null || requestedId.isEmpty ? null : requestedId);
-    final auditRef = _firestore
-        .collection(FirestoreCollections.auditEvents)
-        .doc('${complaintRef.id}_created');
-    final actorId = user.uid;
-    final actorRef = _firestore
-        .collection(FirestoreCollections.users)
-        .doc(actorId);
+      final complaintRef = _firestore
+          .collection(FirestoreCollections.complaints)
+          .doc(requestedId == null || requestedId.isEmpty ? null : requestedId);
+      final auditRef = _firestore
+          .collection(FirestoreCollections.auditEvents)
+          .doc('${complaintRef.id}_created');
+      final actorId = user.uid;
+      final actorRef = _firestore
+          .collection(FirestoreCollections.users)
+          .doc(actorId);
 
-    try {
-      return await _firestore.runTransaction<Complaint>((transaction) async {
-        // All reads occur before either write so retries remain transaction-safe.
-        final existingComplaint = await transaction.get(complaintRef);
-        final existingAudit = await transaction.get(auditRef);
-        final actorSnapshot = await transaction.get(actorRef);
-
-        if (!actorSnapshot.exists || actorSnapshot.data() == null) {
-          throw const ComplaintPermissionException();
-        }
-        final actorProfile = AppUser.fromMap(
-          actorSnapshot.data()!,
-          id: actorSnapshot.id,
+      try {
+        final actor = await _validateCreateContext(
+          actorRef: actorRef,
+          input: input,
+          actorId: actorId,
         );
-        final actor = AuditActorContext.fromProfile(
-          profile: actorProfile,
-          authenticatedUid: actorId,
+        final batch = _firestore.batch();
+        batch.set(
+          complaintRef,
+          ComplaintFirestorePayloads.complaintForCreate(input, actorId),
         );
-
-        if (existingComplaint.exists) {
-          final existingData = existingComplaint.data();
-          if (existingData == null) {
-            throw const ComplaintFailure(ComplaintFailureCode.malformedData);
-          }
-          final existing = Complaint.fromMap(
-            existingData,
-            id: existingComplaint.id,
-          );
-          if (existing.createdBy != actorId) {
-            throw const ComplaintFailure(ComplaintFailureCode.conflict);
-          }
-          if (existingAudit.exists) {
-            final auditData = existingAudit.data();
-            if (auditData == null ||
-                auditData['complaintId'] != existing.id ||
-                auditData['eventType'] != complaintCreatedEventType ||
-                auditData['actorId'] != actorId) {
-              throw const ComplaintFailure(ComplaintFailureCode.malformedData);
-            }
-            return existing;
-          }
-
-          // Repairs an interrupted legacy pair while keeping the same IDs.
-          _auditWriter.appendEventInTransaction(
-            transaction,
-            complaintId: existing.id,
-            eventId: auditRef.id,
-            eventType: ComplaintAuditEventType.complaintCreated,
-            actor: actor,
-            details: {
-              'category': existing.category.value,
-              'priority': existing.priority.value,
-            },
-            eventWasAbsent: !existingAudit.exists,
-          );
-          return existing;
-        }
-
-        await _validateReferences(transaction, input);
-
-        final complaintPayload = ComplaintFirestorePayloads.complaintForCreate(
-          input,
-          actorId,
+        batch.set(
+          auditRef,
+          ComplaintFirestorePayloads.auditForComplaintCreate(
+            complaintId: complaintRef.id,
+            actorId: actorId,
+            actorRole: actor.actorRole,
+            category: input.category.value,
+            priority: input.priority.value,
+          ),
         );
-        transaction.set(complaintRef, complaintPayload);
-        _auditWriter.appendEventInTransaction(
-          transaction,
-          complaintId: complaintRef.id,
-          eventId: auditRef.id,
-          eventType: ComplaintAuditEventType.complaintCreated,
-          actor: actor,
-          details: {
-            'category': input.category.value,
-            'priority': input.priority.value,
-          },
-          eventWasAbsent: !existingAudit.exists,
-        );
+        await batch.commit();
 
         // Server timestamps are unresolved until Firestore acknowledges the
         // write, so this result intentionally carries nullable dates.
@@ -592,20 +536,32 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         );
         _store.addOrUpdate(created);
         return created;
-      });
-    } on ComplaintFailure {
-      rethrow;
-    } on FirebaseException catch (error) {
-      throw _fromFirebaseException(error);
-    } catch (error) {
-      throw ComplaintWriteException(error.toString());
-    }
-  });
+      } on ComplaintFailure {
+        rethrow;
+      } on FirebaseException catch (error) {
+        if (requestedId != null && requestedId.isNotEmpty) {
+          final existing = await _recoverIdempotentCreate(
+            complaintRef: complaintRef,
+            auditRef: auditRef,
+            actorId: actorId,
+          );
+          if (existing != null) {
+            _store.addOrUpdate(existing);
+            return existing;
+          }
+        }
+        throw _fromFirebaseException(error);
+      } catch (error) {
+        throw ComplaintWriteException(error.toString());
+      }
+    },
+  );
 
-  Future<void> _validateReferences(
-    Transaction transaction,
-    CreateComplaintInput input,
-  ) async {
+  Future<AuditActorContext> _validateCreateContext({
+    required DocumentReference<Map<String, dynamic>> actorRef,
+    required CreateComplaintInput input,
+    required String actorId,
+  }) async {
     final propertyRef = _firestore
         .collection(FirestoreCollections.properties)
         .doc(input.propertyId.trim());
@@ -616,9 +572,19 @@ class FirestoreComplaintRepository implements ComplaintRepository {
         .collection(FirestoreCollections.tenants)
         .doc(input.tenantId.trim());
 
-    final propertySnapshot = await transaction.get(propertyRef);
-    final unitSnapshot = await transaction.get(unitRef);
-    final tenantSnapshot = await transaction.get(tenantRef);
+    final snapshots = await Future.wait([
+      actorRef.get(),
+      propertyRef.get(),
+      unitRef.get(),
+      tenantRef.get(),
+    ]);
+    final actorSnapshot = snapshots[0];
+    final propertySnapshot = snapshots[1];
+    final unitSnapshot = snapshots[2];
+    final tenantSnapshot = snapshots[3];
+    if (!actorSnapshot.exists || actorSnapshot.data() == null) {
+      throw const ComplaintPermissionException();
+    }
     if (!propertySnapshot.exists ||
         !unitSnapshot.exists ||
         !tenantSnapshot.exists) {
@@ -640,6 +606,49 @@ class FirestoreComplaintRepository implements ComplaintRepository {
       throw const ComplaintValidationException(
         'The selected tenant is not assigned to the selected unit.',
       );
+    }
+
+    final actorProfile = AppUser.fromMap(
+      actorSnapshot.data()!,
+      id: actorSnapshot.id,
+    );
+    return AuditActorContext.fromProfile(
+      profile: actorProfile,
+      authenticatedUid: actorId,
+    );
+  }
+
+  Future<Complaint?> _recoverIdempotentCreate({
+    required DocumentReference<Map<String, dynamic>> complaintRef,
+    required DocumentReference<Map<String, dynamic>> auditRef,
+    required String actorId,
+  }) async {
+    try {
+      final snapshots = await Future.wait([complaintRef.get(), auditRef.get()]);
+      final complaintSnapshot = snapshots[0];
+      final auditSnapshot = snapshots[1];
+      final complaintData = complaintSnapshot.data();
+      final auditData = auditSnapshot.data();
+      if (!complaintSnapshot.exists ||
+          !auditSnapshot.exists ||
+          complaintData == null ||
+          auditData == null) {
+        return null;
+      }
+
+      final existing = Complaint.fromMap(
+        complaintData,
+        id: complaintSnapshot.id,
+      );
+      if (existing.createdBy != actorId ||
+          auditData['complaintId'] != existing.id ||
+          auditData['eventType'] != complaintCreatedEventType ||
+          auditData['actorId'] != actorId) {
+        return null;
+      }
+      return existing;
+    } on FirebaseException {
+      return null;
     }
   }
 

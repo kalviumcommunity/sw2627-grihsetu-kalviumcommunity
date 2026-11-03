@@ -3,9 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:grihsetu/core/enums/complaint_category.dart';
 import 'package:grihsetu/core/enums/complaint_priority.dart';
 import 'package:grihsetu/core/enums/complaint_status.dart';
+import 'package:grihsetu/core/enums/user_role.dart';
 import 'package:grihsetu/core/models/complaint.dart';
+import 'package:grihsetu/core/models/user.dart';
 import 'package:grihsetu/repositories/complaint_repository.dart';
+import 'package:grihsetu/screens/complaints/complaint_create_screen.dart';
 import 'package:grihsetu/screens/complaints/search/complaint_search_screen.dart';
+import 'package:grihsetu/screens/property/property_selection_flow.dart';
 import 'package:grihsetu/utils/complaint_query.dart';
 import 'package:grihsetu/widgets/complaint_card.dart';
 
@@ -69,6 +73,46 @@ void main() {
   final testComplaints = [c1, c2, c3];
 
   group('Ticket GRIH-035 Tests', () {
+    testWidgets('tenant can open complaint creation with linked location', (
+      tester,
+    ) async {
+      final repo = InMemoryComplaintRepository(initialComplaints: [c1]);
+      const profile = AppUser(
+        id: 'uid_tenant',
+        name: 'Kabir Mehta',
+        email: 'kabir@example.com',
+        role: UserRole.tenant,
+        createdAt: null,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ComplaintSearchScreen(
+            repository: repo,
+            profile: profile,
+            tenantLocationLoader: (_) async =>
+                const PropertyUnitTenantSelection(
+                  propertyId: 'prop_tenant',
+                  unitId: 'unit_tenant',
+                  tenantId: 'uid_tenant',
+                  propertyName: 'Green Heights',
+                  unitNumber: 'A-204',
+                  tenantName: 'Kabir Mehta',
+                ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Raise complaint'), findsOneWidget);
+      await tester.tap(find.text('Raise complaint'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ComplaintCreateScreen), findsOneWidget);
+      expect(find.text('Green Heights'), findsOneWidget);
+      expect(find.text('A-204 - Kabir Mehta'), findsOneWidget);
+    });
+
     test('applyFilter (word matching, AND/OR combination, the Unassigned technician filter, overdue boundary)', () {
       // 1. Word matching (all words required, case-insensitive, trimmed)
       final matchBoth = applyFilter(

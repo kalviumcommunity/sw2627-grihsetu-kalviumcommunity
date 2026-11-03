@@ -27,6 +27,7 @@ class ComplaintCreateScreen extends StatefulWidget {
     this.authService,
     this.complaintRepository,
     this.propertyRepository,
+    this.fixedLocation,
     this.showAppBar = true,
   });
 
@@ -34,6 +35,7 @@ class ComplaintCreateScreen extends StatefulWidget {
   final AuthService? authService;
   final ComplaintRepository? complaintRepository;
   final PropertyRepository? propertyRepository;
+  final PropertyUnitTenantSelection? fixedLocation;
   final bool showAppBar;
 
   @override
@@ -51,6 +53,12 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
   bool _busy = false;
   AppFailure? _failure;
   String _submissionId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _location = widget.fixedLocation;
+  }
 
   ComplaintRepository get _complaintRepository => _repository ??=
       widget.complaintRepository ??
@@ -123,7 +131,7 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
         _submissionId = '';
         _titleController.clear();
         _descriptionController.clear();
-        _location = null;
+        _location = widget.fixedLocation;
         _category = ComplaintCategory.other;
         _priority = ComplaintPriority.medium;
       });
@@ -158,15 +166,30 @@ class _ComplaintCreateScreenState extends State<ComplaintCreateScreen> {
                 style: TextStyle(color: context.palette.muted),
               ),
               const SizedBox(height: AppSpacing.lg),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _chooseLocation,
-                icon: const Icon(Icons.location_on_outlined),
-                label: Text(
-                  _location == null
-                      ? 'Choose property, unit, and tenant'
-                      : '${_location!.propertyName} · ${_location!.unitNumber} · ${_location!.tenantName}',
+              if (widget.fixedLocation == null)
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _chooseLocation,
+                  icon: const Icon(Icons.location_on_outlined),
+                  label: Text(
+                    _location == null
+                        ? 'Choose property, unit, and tenant'
+                        : '${_location!.propertyName} · ${_location!.unitNumber} · ${_location!.tenantName}',
+                  ),
+                )
+              else
+                Semantics(
+                  label: 'Complaint location for the signed-in tenant',
+                  child: Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.home_outlined),
+                      title: Text(widget.fixedLocation!.propertyName),
+                      subtitle: Text(
+                        '${widget.fixedLocation!.unitNumber} - ${widget.fixedLocation!.tenantName ?? 'Tenant'}',
+                      ),
+                      trailing: const Icon(Icons.lock_outline),
+                    ),
+                  ),
                 ),
-              ),
               const SizedBox(height: AppSpacing.md),
               AppTextField(
                 controller: _titleController,
