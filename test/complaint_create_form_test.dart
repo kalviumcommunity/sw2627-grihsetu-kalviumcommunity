@@ -7,6 +7,7 @@ import 'package:grihsetu/core/models/complaint.dart';
 import 'package:grihsetu/repositories/complaint_repository.dart';
 import 'package:grihsetu/repositories/property_repository.dart';
 import 'package:grihsetu/screens/complaints/complaint_create_screen.dart';
+import 'package:grihsetu/screens/property/property_selection_flow.dart';
 import 'package:grihsetu/theme/app_theme.dart';
 import 'package:grihsetu/widgets/app_loading_button.dart';
 
@@ -80,6 +81,54 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ComplaintCreateScreen - Form Validation and Submission', () {
+    testWidgets('uses a locked tenant location when one is supplied', (
+      tester,
+    ) async {
+      _setTestWindow(tester);
+      final repo = ControllableComplaintRepository();
+      const location = PropertyUnitTenantSelection(
+        propertyId: 'prop_tenant',
+        unitId: 'unit_tenant',
+        tenantId: 'uid_tenant',
+        propertyName: 'Green Heights',
+        unitNumber: 'A-204',
+        tenantName: 'Kabir Mehta',
+      );
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          child: ComplaintCreateScreen(
+            complaintRepository: repo,
+            fixedLocation: location,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Green Heights'), findsOneWidget);
+      expect(find.text('A-204 - Kabir Mehta'), findsOneWidget);
+      expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+      expect(find.text('Choose property, unit, and tenant'), findsNothing);
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Complaint title'),
+        'Water leakage',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Description'),
+        'Water is leaking below the kitchen sink.',
+      );
+      await tester.ensureVisible(find.byType(AppLoadingButton));
+      await tester.tap(find.text('Submit complaint'));
+      await tester.pumpAndSettle();
+
+      expect(repo.createCalls, 1);
+      expect(repo.recordedInputs.single.propertyId, 'prop_tenant');
+      expect(repo.recordedInputs.single.unitId, 'unit_tenant');
+      expect(repo.recordedInputs.single.tenantId, 'uid_tenant');
+      expect(find.text('Green Heights'), findsOneWidget);
+    });
+
     testWidgets('validates required fields and prevents empty submission', (
       tester,
     ) async {

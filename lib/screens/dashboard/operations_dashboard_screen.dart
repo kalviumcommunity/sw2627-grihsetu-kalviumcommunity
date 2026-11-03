@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/user_role.dart' as app_role;
 import '../../core/enums/complaint_audit_event_type.dart';
 import '../../core/enums/rent_status.dart';
+import '../../core/enums/user_role.dart';
 import '../../core/fixtures/sample_fixtures.dart';
 import '../../core/models/complaint.dart';
 import '../../core/models/complaint_audit_event.dart';
@@ -218,6 +219,8 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
 
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= 900;
+    final isPropertyOperations =
+        widget.profile?.role == UserRole.propertyOperations;
 
     return Scaffold(
       backgroundColor: palette.canvas,
@@ -240,6 +243,8 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                   ],
+                  _RoleFocusBanner(isPropertyOperations: isPropertyOperations),
+                  const SizedBox(height: AppSpacing.md),
                   // 1. Greeting header
                   _GreetingHeader(
                     now: _now,
@@ -250,40 +255,50 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
 
                   // Responsive layout: 1 col on mobile; 2 cols on >=900px
                   if (!isDesktop) ...[
-                    // Hero: Attention list
-                    _AttentionSection(
-                      analysis: attentionAnalysis,
-                      showAll: _showAllAttention,
-                      onToggleShowAll: () => setState(
-                        () => _showAllAttention = !_showAllAttention,
+                    if (isPropertyOperations) ...[
+                      _PropertyPortfolioStrip(snapshot: snapshot),
+                      const SizedBox(height: AppSpacing.lg),
+                      _PropertiesAtAGlanceSection(
+                        properties: snapshot.properties,
+                        complaints: snapshot.complaints,
+                        rentRecords: snapshot.rentRecords,
+                        onTapProperty: _onPropertyTapped,
                       ),
-                      onItemTap: _onAttentionItemTapped,
-                      lastCheckedTime: snapshot.lastUpdated,
-                    ),
+                      const SizedBox(height: AppSpacing.lg),
+                      _AttentionSection(
+                        title: 'Property & Rent Follow-ups',
+                        analysis: attentionAnalysis,
+                        showAll: _showAllAttention,
+                        onToggleShowAll: () => setState(
+                          () => _showAllAttention = !_showAllAttention,
+                        ),
+                        onItemTap: _onAttentionItemTapped,
+                        lastCheckedTime: snapshot.lastUpdated,
+                      ),
+                    ] else ...[
+                      _AttentionSection(
+                        title: 'Complaint Queue',
+                        analysis: attentionAnalysis,
+                        showAll: _showAllAttention,
+                        onToggleShowAll: () => setState(
+                          () => _showAllAttention = !_showAllAttention,
+                        ),
+                        onItemTap: _onAttentionItemTapped,
+                        lastCheckedTime: snapshot.lastUpdated,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      _TodayStrip(metrics: todayMetrics),
+                      const SizedBox(height: AppSpacing.lg),
+                      _TechnicianWorkloadSection(
+                        technicians: snapshot.technicians,
+                        onTapTechnician: _onTechnicianTapped,
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.lg),
-
-                    // Today strip below attention list
-                    _TodayStrip(metrics: todayMetrics),
-                    const SizedBox(height: AppSpacing.lg),
-
-                    // Technician workload
-                    _TechnicianWorkloadSection(
-                      technicians: snapshot.technicians,
-                      onTapTechnician: _onTechnicianTapped,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-
-                    // Properties at a glance
-                    _PropertiesAtAGlanceSection(
-                      properties: snapshot.properties,
-                      complaints: snapshot.complaints,
-                      rentRecords: snapshot.rentRecords,
-                      onTapProperty: _onPropertyTapped,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-
-                    // Recent activity
                     _RecentActivitySection(
+                      title: isPropertyOperations
+                          ? 'Property Maintenance Activity'
+                          : 'Complaint Audit Activity',
                       events: snapshot.events,
                       onTapEvent: _onEventTapped,
                     ),
@@ -292,40 +307,61 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Left 60% Hero: Attention list
                         Expanded(
                           flex: 3,
-                          child: _AttentionSection(
-                            analysis: attentionAnalysis,
-                            showAll: _showAllAttention,
-                            onToggleShowAll: () => setState(
-                              () => _showAllAttention = !_showAllAttention,
-                            ),
-                            onItemTap: _onAttentionItemTapped,
-                            lastCheckedTime: snapshot.lastUpdated,
-                          ),
+                          child: isPropertyOperations
+                              ? Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    _PropertyPortfolioStrip(
+                                      snapshot: snapshot,
+                                    ),
+                                    const SizedBox(height: AppSpacing.lg),
+                                    _PropertiesAtAGlanceSection(
+                                      properties: snapshot.properties,
+                                      complaints: snapshot.complaints,
+                                      rentRecords: snapshot.rentRecords,
+                                      onTapProperty: _onPropertyTapped,
+                                    ),
+                                  ],
+                                )
+                              : _AttentionSection(
+                                  title: 'Complaint Queue',
+                                  analysis: attentionAnalysis,
+                                  showAll: _showAllAttention,
+                                  onToggleShowAll: () => setState(
+                                    () => _showAllAttention = !_showAllAttention,
+                                  ),
+                                  onItemTap: _onAttentionItemTapped,
+                                  lastCheckedTime: snapshot.lastUpdated,
+                                ),
                         ),
                         const SizedBox(width: AppSpacing.lg),
-
-                        // Right 40%: Today strip, Workload, Properties
                         Expanded(
                           flex: 2,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _TodayStrip(metrics: todayMetrics),
-                              const SizedBox(height: AppSpacing.lg),
-                              _TechnicianWorkloadSection(
-                                technicians: snapshot.technicians,
-                                onTapTechnician: _onTechnicianTapped,
-                              ),
-                              const SizedBox(height: AppSpacing.lg),
-                              _PropertiesAtAGlanceSection(
-                                properties: snapshot.properties,
-                                complaints: snapshot.complaints,
-                                rentRecords: snapshot.rentRecords,
-                                onTapProperty: _onPropertyTapped,
-                              ),
+                              if (isPropertyOperations)
+                                _AttentionSection(
+                                  title: 'Property & Rent Follow-ups',
+                                  analysis: attentionAnalysis,
+                                  showAll: _showAllAttention,
+                                  onToggleShowAll: () => setState(
+                                    () => _showAllAttention = !_showAllAttention,
+                                  ),
+                                  onItemTap: _onAttentionItemTapped,
+                                  lastCheckedTime: snapshot.lastUpdated,
+                                )
+                              else ...[
+                                _TodayStrip(metrics: todayMetrics),
+                                const SizedBox(height: AppSpacing.lg),
+                                _TechnicianWorkloadSection(
+                                  technicians: snapshot.technicians,
+                                  onTapTechnician: _onTechnicianTapped,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -335,6 +371,9 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
 
                     // Full width activity at the bottom
                     _RecentActivitySection(
+                      title: isPropertyOperations
+                          ? 'Property Maintenance Activity'
+                          : 'Complaint Audit Activity',
                       events: snapshot.events,
                       onTapEvent: _onEventTapped,
                     ),
@@ -345,6 +384,137 @@ class _OperationsDashboardScreenState extends State<OperationsDashboardScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ROLE FOCUS
+// ---------------------------------------------------------------------------
+class _RoleFocusBanner extends StatelessWidget {
+  const _RoleFocusBanner({required this.isPropertyOperations});
+
+  final bool isPropertyOperations;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final title = isPropertyOperations
+        ? 'Property Operations'
+        : 'Complaint Operations';
+    final description = isPropertyOperations
+        ? 'Manage the property portfolio, occupancy context and rent follow-ups.'
+        : 'Triage complaints, coordinate technicians and protect response times.';
+    final icon = isPropertyOperations
+        ? Icons.apartment_outlined
+        : Icons.support_agent_outlined;
+    final focusItems = isPropertyOperations
+        ? const ['Properties', 'Units', 'Rent']
+        : const ['Complaint queue', 'SLA', 'Assignments'];
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: palette.accentSoft,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: palette.accent.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: palette.surface,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: palette.accent),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: palette.ink,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: palette.muted),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    for (final item in focusItems)
+                      Chip(
+                        visualDensity: VisualDensity.compact,
+                        label: Text(item),
+                        backgroundColor: palette.surface,
+                        side: BorderSide(color: palette.border),
+                        labelStyle: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(color: palette.ink),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PropertyPortfolioStrip extends StatelessWidget {
+  const _PropertyPortfolioStrip({required this.snapshot});
+
+  final DashboardSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final propertyIds = snapshot.properties.map((property) => property.id).toSet();
+    final unitCount = SampleFixtures.sampleUnits
+        .where((unit) => propertyIds.contains(unit.propertyId))
+        .length;
+    final overdueRent = snapshot.rentRecords
+        .where((record) => record.status == RentStatus.overdue)
+        .length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Portfolio Overview',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: context.palette.ink,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        KpiStrip(
+          values: [
+            KpiValue(
+              label: 'Properties',
+              value: '${snapshot.properties.length}',
+            ),
+            KpiValue(label: 'Units', value: '$unitCount'),
+            KpiValue(label: 'Overdue rent', value: '$overdueRent'),
+            KpiValue(
+              label: 'Maintenance records',
+              value: '${snapshot.complaints.length}',
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -499,6 +669,7 @@ class _GreetingHeader extends StatelessWidget {
 // ---------------------------------------------------------------------------
 class _AttentionSection extends StatelessWidget {
   const _AttentionSection({
+    required this.title,
     required this.analysis,
     required this.showAll,
     required this.onToggleShowAll,
@@ -506,6 +677,7 @@ class _AttentionSection extends StatelessWidget {
     required this.lastCheckedTime,
   });
 
+  final String title;
   final AttentionAnalysis analysis;
   final bool showAll;
   final VoidCallback onToggleShowAll;
@@ -531,7 +703,7 @@ class _AttentionSection extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Needs Attention',
+                  title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: palette.ink,
@@ -874,10 +1046,12 @@ class _PropertiesAtAGlanceSection extends StatelessWidget {
 // ---------------------------------------------------------------------------
 class _RecentActivitySection extends StatelessWidget {
   const _RecentActivitySection({
+    required this.title,
     required this.events,
     required this.onTapEvent,
   });
 
+  final String title;
   final List<ComplaintAuditEvent> events;
   final ValueChanged<ComplaintAuditEvent> onTapEvent;
 
@@ -922,7 +1096,7 @@ class _RecentActivitySection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Recent Activity',
+            title,
             style: Theme.of(context).textTheme.titleSmall
                 ?.copyWith(fontWeight: FontWeight.bold, color: palette.ink),
           ),
