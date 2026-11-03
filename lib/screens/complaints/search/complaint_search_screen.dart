@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../../app/user_role.dart' as app_role;
 import '../../../core/constants/firestore_collections.dart';
 import '../../../core/enums/complaint_priority.dart';
 import '../../../core/enums/complaint_status.dart';
@@ -894,6 +895,16 @@ class _ComplaintSearchScreenState extends State<ComplaintSearchScreen> {
                 propertyName: propertyName,
                 unitNumber: unitNumber,
                 complaintRepository: _repository,
+                userRole: switch (widget.profile?.role) {
+                  UserRole.technician => app_role.UserRole.technician,
+                  UserRole.tenant => app_role.UserRole.tenant,
+                  UserRole.propertyOwner => app_role.UserRole.owner,
+                  UserRole.propertyOperations ||
+                  UserRole.complaintOperations => app_role.UserRole.staff,
+                  null => app_role.UserRole.staff,
+                },
+                currentUserId: widget.profile?.id,
+                currentUserName: widget.profile?.name,
               );
               if (mounted) {
                 // Restore and reload while keeping filter and sort

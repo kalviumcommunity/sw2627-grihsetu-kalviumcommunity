@@ -1,7 +1,11 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../core/constants/firestore_collections.dart';
 import '../core/enums/complaint_category.dart';
 import '../core/enums/complaint_status.dart';
+import '../core/enums/user_role.dart';
 import '../core/models/complaint.dart';
 import '../services/errors/app_failure.dart';
 import '../services/errors/run_guarded.dart';
@@ -133,6 +137,76 @@ class AssignmentResult {
 abstract interface class AssignmentRepository {
   Future<List<TechnicianOption>> loadTechnicians(Complaint c);
   Future<AssignmentResult> assign(AssignmentRequest r);
+}
+
+/// Technician picker backed by the authoritative Firebase user profiles.
+///
+/// The assignment sheet only prepares a selection result; the complaint
+/// repository performs the atomic complaint/history/audit write afterwards.
+/// Using document IDs here is important because Firebase UIDs, rather than
+/// demo fixture IDs such as `usr_002`, are stored in `currentTechnicianId`.
+class FirestoreTechnicianDirectoryRepository
+    extends InMemoryAssignmentRepository {
+  FirestoreTechnicianDirectoryRepository({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      super(simulatedDelay: Duration.zero);
+
+  final FirebaseFirestore _firestore;
+
+  @override
+  Future<List<TechnicianOption>> loadTechnicians(Complaint complaint) =>
+      runGuarded(() async {
+        final snapshot = await _firestore
+            .collection(FirestoreCollections.users)
+            .where('role', isEqualTo: UserRole.technician.value)
+            .get();
+        final technicians = snapshot.docs
+            .where((document) => document.data()['isActive'] != false)
+            .map(
+              (document) => TechnicianDirectoryMapper.fromFirestore(
+                document.id,
+                document.data(),
+              ),
+            )
+            .toList();
+        technicians.sort((a, b) => a.name.compareTo(b.name));
+        return technicians;
+      });
+}
+
+abstract final class TechnicianDirectoryMapper {
+  static TechnicianOption fromFirestore(
+    String uid,
+    Map<String, dynamic> data,
+  ) {
+    final rawSpecialties = data['specialties'];
+    final specialties = rawSpecialties is Iterable
+        ? rawSpecialties
+              .whereType<String>()
+              .map(ComplaintCategory.tryFromValue)
+              .whereType<ComplaintCategory>()
+              .toList()
+        : <ComplaintCategory>[];
+    final rawAvailability = data['availability'] as String?;
+    final availability = switch (rawAvailability?.trim().toLowerCase()) {
+      'on_job' || 'on job' => TechnicianAvailability.onJob,
+      'off_duty' || 'off duty' => TechnicianAvailability.offDuty,
+      _ => TechnicianAvailability.available,
+    };
+    final name = (data['displayName'] ?? data['name']) as String?;
+    final phone = (data['phoneNumber'] ?? data['phone']) as String?;
+
+    return TechnicianOption(
+      id: uid,
+      name: name?.trim().isNotEmpty == true ? name!.trim() : 'Technician',
+      phone: phone?.trim() ?? '',
+      specialties: specialties.isEmpty
+          ? List.unmodifiable(ComplaintCategory.values)
+          : List.unmodifiable(specialties),
+      todayJobCount: (data['todayJobCount'] as num?)?.toInt() ?? 0,
+      availability: availability,
+    );
+  }
 }
 
 /// In-memory implementation of [AssignmentRepository] backed by realistic seed fixtures.
