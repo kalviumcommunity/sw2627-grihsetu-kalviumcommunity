@@ -836,7 +836,11 @@ class ComplaintActionBar extends StatelessWidget {
     BuildContext context, {
     required bool isReassign,
   }) async {
-    final repo = assignmentRepository ?? InMemoryAssignmentRepository();
+    final repo =
+        assignmentRepository ??
+        (controller.repository is FirestoreComplaintRepository
+            ? FirestoreTechnicianDirectoryRepository()
+            : InMemoryAssignmentRepository());
     final result = await AssignTechnicianSheet.show(
       context,
       complaint: controller.state.complaint!,

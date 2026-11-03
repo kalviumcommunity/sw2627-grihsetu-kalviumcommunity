@@ -116,6 +116,34 @@ void main() {
         );
       });
 
+      test('visit start audits accept the metadata written by the service', () {
+        expect(
+          rulesContent,
+          contains("'visitId', 'visitNumber', 'technicianId', 'previousStatus'"),
+        );
+        expect(
+          rulesContent,
+          contains("'newStatus', 'operationId'"),
+        );
+        expect(
+          rulesContent,
+          contains(
+            'request.resource.data.metadata.technicianId == request.auth.uid',
+          ),
+        );
+      });
+
+      test('initial assignment supports legacy null firstAssignedAt values', () {
+        expect(
+          rulesContent,
+          contains('resource.data.firstAssignedAt == null'),
+        );
+        expect(
+          rulesContent,
+          contains('request.resource.data.firstAssignedAt == request.time'),
+        );
+      });
+
       test(
         'complaints collection forbids deletion and locks creation fields',
         () {
